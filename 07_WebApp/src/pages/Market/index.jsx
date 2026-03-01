@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Users, TrendingUp, Route, Building2 } from 'lucide-react'
+import { Users, TrendingUp, Route, Building2, Package } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
@@ -119,6 +119,7 @@ export default function MarketPage() {
     if (!filtered.length || !latestYear) return null
     const totalPax = filtered.reduce((s, d) => s + d.PASSENGERS, 0)
     const totalFreight = filtered.reduce((s, d) => s + d.FREIGHT, 0)
+    const totalMail = filtered.reduce((s, d) => s + d.MAIL, 0)
 
     // Routes = unique origin-dest pairs
     const routeSet = new Set(filtered.map((d) => `${d.ORIGIN}-${d.DEST}`))
@@ -142,7 +143,7 @@ export default function MarketPage() {
       if (prevPax > 0) yoyChange = (latestPax - prevPax) / prevPax
     }
 
-    return { totalPax, totalFreight, activeRoutes, topCarrier, yoyChange }
+    return { totalPax, totalFreight, totalMail, activeRoutes, topCarrier, yoyChange }
   }, [filtered, latestYear, filters.year])
 
   /* ── trend data ─────────────────────────────────────────────────── */
@@ -160,6 +161,15 @@ export default function MarketPage() {
     filtered.forEach((d) => {
       if (!byYear.has(d.YEAR)) byYear.set(d.YEAR, 0)
       byYear.set(d.YEAR, byYear.get(d.YEAR) + d.FREIGHT)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filtered])
+
+  const mailTrend = useMemo(() => {
+    const byYear = new Map()
+    filtered.forEach((d) => {
+      if (!byYear.has(d.YEAR)) byYear.set(d.YEAR, 0)
+      byYear.set(d.YEAR, byYear.get(d.YEAR) + d.MAIL)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
   }, [filtered])
@@ -242,11 +252,13 @@ export default function MarketPage() {
           Carrier: d.CARRIER_NAME,
           Passengers: 0,
           Freight: 0,
+          Mail: 0,
         })
       }
       const row = byKey.get(key)
       row.Passengers += d.PASSENGERS
       row.Freight += d.FREIGHT
+      row.Mail += d.MAIL
     })
     return Array.from(byKey.values()).sort((a, b) => b.Passengers - a.Passengers)
   }, [filtered])
@@ -260,6 +272,7 @@ export default function MarketPage() {
     { key: 'Carrier', label: 'Carrier' },
     { key: 'Passengers', label: 'Passengers', render: (v) => formatNumber(v) },
     { key: 'Freight', label: 'Freight (lbs)', render: (v) => formatNumber(v) },
+    { key: 'Mail', label: 'Mail (lbs)', render: (v) => formatNumber(v) },
   ]
 
   /* ── render ─────────────────────────────────────────────────────── */
@@ -338,7 +351,7 @@ export default function MarketPage() {
     >
       {/* ── KPI Cards ─────────────────────────────────────────────── */}
       <SectionBlock>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
           <StatCard
             label="Total Passengers"
             value={stats ? fmtCompact(stats.totalPax) : '—'}
@@ -357,25 +370,32 @@ export default function MarketPage() {
             delay={100}
           />
           <StatCard
+            label="Total Mail"
+            value={stats ? fmtLbs(stats.totalMail) : '—'}
+            highlight
+            icon={Package}
+            delay={200}
+          />
+          <StatCard
             label="Active Routes"
             value={stats ? formatNumber(stats.activeRoutes) : '—'}
             highlight
             icon={Route}
-            delay={200}
+            delay={300}
           />
           <StatCard
             label="Top Carrier"
             value={stats?.topCarrier || '—'}
             highlight
             icon={TrendingUp}
-            delay={300}
+            delay={400}
           />
         </div>
       </SectionBlock>
 
       {/* ── Trends ────────────────────────────────────────────────── */}
       <SectionBlock alt>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <ChartCard
             title="Passenger Trend"
             subtitle="Annual passengers (filtered)"
@@ -389,6 +409,13 @@ export default function MarketPage() {
             downloadData={{ summary: { data: freightTrend, filename: 'market-freight-trend' } }}
           >
             <LineChart data={freightTrend} xKey="year" yKey="value" formatValue={fmtLbs} />
+          </ChartCard>
+          <ChartCard
+            title="Mail Trend"
+            subtitle="Annual mail volume (filtered)"
+            downloadData={{ summary: { data: mailTrend, filename: 'market-mail-trend' } }}
+          >
+            <LineChart data={mailTrend} xKey="year" yKey="value" formatValue={fmtLbs} />
           </ChartCard>
         </div>
       </SectionBlock>

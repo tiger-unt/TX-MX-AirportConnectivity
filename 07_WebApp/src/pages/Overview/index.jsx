@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plane, Users, ArrowRightLeft, BarChart3 } from 'lucide-react'
+import { Plane, Users, ArrowRightLeft, BarChart3, Package } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
@@ -22,6 +22,16 @@ const fmtCompact = (v) => {
   if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}M`
   if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}K`
   return `${sign}${abs.toFixed(0)}`
+}
+
+const fmtLbs = (v) => {
+  if (v == null || isNaN(v)) return '0 lbs'
+  const abs = Math.abs(v)
+  const sign = v < 0 ? '-' : ''
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(1)}B lbs`
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}M lbs`
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}K lbs`
+  return `${sign}${abs.toFixed(0)} lbs`
 }
 
 /** Is this record a TX origin going to any destination? */
@@ -152,9 +162,11 @@ export default function OverviewPage() {
       .filter((d) => d.YEAR === latestYear && (isTxToMx(d) || isMxToTx(d)))
       .reduce((s, d) => s + d.DEPARTURES_PERFORMED, 0)
 
+    const txMxMail = txMxLatest.reduce((s, d) => s + d.MAIL, 0)
+
     return {
       txPax, txPaxChange, txFlightsLatest,
-      txMxPax, txMxPaxChange, txMxFlightsLatest,
+      txMxPax, txMxPaxChange, txMxFlightsLatest, txMxMail,
       latestYear, prevYear,
     }
   }, [filteredMarket, filteredSegment, latestYear])
@@ -268,6 +280,22 @@ export default function OverviewPage() {
     return Array.from(byYearDir.values()).sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
   }, [filteredSegment])
 
+  /* ── TX-MX mail trends (bidirectional) ───────────────────────────── */
+  const txMxMailTrend = useMemo(() => {
+    if (!filteredMarket.length) return []
+    const byYearDir = new Map()
+    filteredMarket.forEach((d) => {
+      let dir = null
+      if (isTxToMx(d)) dir = 'TX → Mexico'
+      else if (isMxToTx(d)) dir = 'Mexico → TX'
+      if (!dir) return
+      const key = `${d.YEAR}|${dir}`
+      if (!byYearDir.has(key)) byYearDir.set(key, { year: d.YEAR, value: 0, Direction: dir })
+      byYearDir.get(key).value += d.MAIL
+    })
+    return Array.from(byYearDir.values()).sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
+  }, [filteredMarket])
+
   /* ── render ─────────────────────────────────────────────────────── */
 
   if (loading) {
@@ -344,7 +372,7 @@ export default function OverviewPage() {
     >
       {/* ── KPI Cards ─────────────────────────────────────────────── */}
       <SectionBlock>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
           <StatCard
             label={`TX Passengers (${latestYear || '—'})`}
             value={stats ? fmtCompact(stats.txPax) : '—'}
@@ -377,6 +405,13 @@ export default function OverviewPage() {
             highlight
             icon={BarChart3}
             delay={300}
+          />
+          <StatCard
+            label={`TX–MX Mail (${latestYear || '—'})`}
+            value={stats ? fmtLbs(stats.txMxMail) : '—'}
+            highlight
+            icon={Package}
+            delay={400}
           />
         </div>
       </SectionBlock>
@@ -424,7 +459,7 @@ export default function OverviewPage() {
 
       {/* ── Texas–Mexico Connection ───────────────────────────────── */}
       <SectionBlock>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <ChartCard
             title="TX–Mexico Passenger Trends"
             subtitle="Bidirectional passenger flows by year"
@@ -453,6 +488,21 @@ export default function OverviewPage() {
               yKey="value"
               seriesKey="Direction"
               formatValue={fmtCompact}
+            />
+          </ChartCard>
+          <ChartCard
+            title="TX–Mexico Mail Trends"
+            subtitle="Bidirectional mail volume by year"
+            downloadData={{
+              summary: { data: txMxMailTrend, filename: 'tx-mx-mail-trends' },
+            }}
+          >
+            <LineChart
+              data={txMxMailTrend}
+              xKey="year"
+              yKey="value"
+              seriesKey="Direction"
+              formatValue={fmtLbs}
             />
           </ChartCard>
         </div>
