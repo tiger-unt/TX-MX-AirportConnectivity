@@ -6,7 +6,7 @@
 
 /**
  * Parse GeoJSON FeatureCollection into a Map<IATA, { name, lat, lng }>
- * GeoJSON properties: AIRPORT, AIRPORT_NAME, LATITUDE, LONGITUDE
+ * GeoJSON properties: AIRPORT, DISPLAY_AIRPORT_NAME, LATITUDE, LONGITUDE
  */
 export function buildAirportIndex(geojson) {
   const index = new Map()
@@ -15,7 +15,7 @@ export function buildAirportIndex(geojson) {
     const p = f.properties
     if (!p?.AIRPORT) continue
     index.set(p.AIRPORT, {
-      name: p.AIRPORT_NAME || p.AIRPORT,
+      name: p.DISPLAY_AIRPORT_NAME || p.AIRPORT,
       lat: p.LATITUDE ?? f.geometry?.coordinates?.[1] ?? null,
       lng: p.LONGITUDE ?? f.geometry?.coordinates?.[0] ?? null,
     })
@@ -33,12 +33,8 @@ export function enrichRow(row, airportIndex) {
 
   row.ORIGIN_AIRPORT_NAME = orig?.name || row.ORIGIN
   row.DEST_AIRPORT_NAME = dest?.name || row.DEST
-  row.ORIGIN_FULL_LABEL = orig
-    ? `${row.ORIGIN} \u2014 ${orig.name}`
-    : row.ORIGIN
-  row.DEST_FULL_LABEL = dest
-    ? `${row.DEST} \u2014 ${dest.name}`
-    : row.DEST
+  row.ORIGIN_FULL_LABEL = orig?.name || row.ORIGIN
+  row.DEST_FULL_LABEL = dest?.name || row.DEST
   row.ORIGIN_LAT = orig?.lat ?? null
   row.ORIGIN_LNG = orig?.lng ?? null
   row.DEST_LAT = dest?.lat ?? null
@@ -61,7 +57,7 @@ export function aggregateRoutes(data, airportIndex) {
         dest: d.DEST,
         originName: d.ORIGIN_FULL_LABEL || d.ORIGIN,
         destName: d.DEST_FULL_LABEL || d.DEST,
-        label: `${d.ORIGIN}–${d.DEST}`,
+        label: `${d.ORIGIN_FULL_LABEL || d.ORIGIN}–${d.DEST_FULL_LABEL || d.DEST}`,
         passengers: 0,
         originLat: orig?.lat ?? d.ORIGIN_LAT ?? null,
         originLng: orig?.lng ?? d.ORIGIN_LNG ?? null,

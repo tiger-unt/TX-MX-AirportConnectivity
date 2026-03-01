@@ -107,7 +107,7 @@ export default function USMexicoPage() {
     // Top route
     const byRoute = new Map()
     latest.forEach((d) => {
-      const key = `${d.ORIGIN}–${d.DEST}`
+      const key = `${d.ORIGIN_FULL_LABEL || d.ORIGIN}–${d.DEST_FULL_LABEL || d.DEST}`
       byRoute.set(key, (byRoute.get(key) || 0) + d.PASSENGERS)
     })
     const topRoute = byRoute.size

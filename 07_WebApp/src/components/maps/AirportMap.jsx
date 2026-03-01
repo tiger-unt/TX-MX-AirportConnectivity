@@ -217,7 +217,7 @@ export default function AirportMap({
                 >
                   <Popup>
                     <div className="text-sm">
-                      <strong>{a.iata}</strong> &mdash; {a.name}
+                      <strong>{a.name}</strong>
                       <br />
                       {a.city}
                       <br />
