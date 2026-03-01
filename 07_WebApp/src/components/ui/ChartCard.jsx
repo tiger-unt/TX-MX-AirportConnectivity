@@ -150,9 +150,10 @@ export default function ChartCard({
 
         {/* Chart Area — DO NOT add fixed height or max-height here.
             Chart components set their own minHeight based on data/legend needs.
-            The flex-1 lets this area grow; the chart's inline minHeight drives expansion. */}
+            The flex-1 lets this area grow; the chart's inline minHeight drives expansion.
+            When fullscreen is active, hide card children to avoid duplicate Leaflet maps. */}
         <div ref={chartAreaRef} className="px-5 pb-5 flex-1" style={{ minHeight }}>
-          {children}
+          {!isFullscreen && children}
         </div>
       </div>
 

@@ -5,7 +5,7 @@ const PAGE_MAP = {
   '/trade-by-state': { dataset: 'btsUsState', label: 'Trade by State' },
   '/commodities': { dataset: 'usAggregated', label: 'Trade by Commodity' },
   '/trade-by-mode': { dataset: 'usAggregated', label: 'Trade by Mode' },
-  '/border-ports': { dataset: 'txBorderPorts', label: 'TX Border Ports' },
+  '/border-ports': { dataset: 'txBorderPorts', label: 'Texas Border Ports' },
 }
 
 export function gatherPageContext() {

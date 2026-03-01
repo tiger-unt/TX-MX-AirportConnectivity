@@ -21,9 +21,11 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Menu, X, ChevronDown } from 'lucide-react'
 
 const navItems = [
-  { label: 'Overview', path: '/' },
-  { label: 'Market', path: '/market' },
-  { label: 'Segment', path: '/segment' },
+  { label: 'Home', path: '/' },
+  { label: 'Texas Domestic', path: '/texas-domestic' },
+  { label: 'Texas International', path: '/texas-international' },
+  { label: 'U.S.–Mexico', path: '/us-mexico' },
+  { label: 'Texas–Mexico', path: '/texas-mexico' },
 ]
 
 export default function MainNav() {

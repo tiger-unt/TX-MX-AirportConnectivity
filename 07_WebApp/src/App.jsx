@@ -4,8 +4,10 @@ import { useAviationStore } from '@/stores/aviationStore'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import PageWrapper from '@/components/layout/PageWrapper'
 import OverviewPage from '@/pages/Overview'
-import MarketPage from '@/pages/Market'
-import SegmentPage from '@/pages/Segment'
+import TexasDomesticPage from '@/pages/TexasDomestic'
+import TexasInternationalPage from '@/pages/TexasInternational'
+import USMexicoPage from '@/pages/USMexico'
+import TexasMexicoPage from '@/pages/TexasMexico'
 import NotFoundPage from '@/pages/NotFound'
 
 function ScrollToTop() {
@@ -29,8 +31,10 @@ function AppContent() {
       <ErrorBoundary>
         <Routes>
           <Route path="/" element={<OverviewPage />} />
-          <Route path="/market" element={<MarketPage />} />
-          <Route path="/segment" element={<SegmentPage />} />
+          <Route path="/texas-domestic" element={<TexasDomesticPage />} />
+          <Route path="/texas-international" element={<TexasInternationalPage />} />
+          <Route path="/us-mexico" element={<USMexicoPage />} />
+          <Route path="/texas-mexico" element={<TexasMexicoPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </ErrorBoundary>

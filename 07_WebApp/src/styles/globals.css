@@ -289,6 +289,21 @@
     height: unset !important;
   }
 
+  /* AirportMap in fullscreen: fill available space, keep legend at natural height.
+     Must override the generic "> * > div { height:100% }" rule which
+     breaks the map's flex layout by stretching the legend. */
+  .fullscreen-chart-area .airport-map-container {
+    height: 100% !important;
+  }
+  .fullscreen-chart-area .airport-map-container > div {
+    height: auto !important;
+  }
+  .fullscreen-chart-area .airport-map-container > div:first-child {
+    flex: 1;
+    height: 0 !important;
+    min-height: 0;
+  }
+
   /* Fullscreen chart enhancements — thicker strokes for presence.
      Font sizes are handled natively by each chart via isFullscreen + getResponsiveFontSize
      so D3 can allocate proper margins. */

@@ -75,7 +75,7 @@ export function getFollowUpSuggestions(question) {
   }
 
   return [
-    'What was the total U.S.\u2013Mexico trade in 2024?',
+    'What was the total U.S.–Mexico trade in 2024?',
     'Which state trades the most with Mexico?',
     'Show me the top border ports',
   ]

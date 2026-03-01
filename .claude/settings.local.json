@@ -42,7 +42,14 @@
       "Read(//mnt/c/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Data-Dashboard-Boilerplate/**)",
       "Bash(rsync -av --exclude='node_modules' --exclude='dist' --exclude='.git' --exclude='public/data' \"c:/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Data-Dashboard-Boilerplate/Boilerplate/\" \"c:/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Task 6 - Airport Connectivity/07_WebApp/\")",
       "Bash(npm run build)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Read(//c/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Task 6 - Airport Connectivity/07_WebApp/public/data/**)",
+      "Read(//c/Users/UNT/.claude/plans/**)",
+      "Bash(npm install leaflet react-leaflet)",
+      "Bash(timeout 8 npm run dev)",
+      "Bash(npx --yes playwright install chromium)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(npm run dev)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",

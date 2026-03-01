@@ -69,20 +69,20 @@ export default function StatCard({
 
   return (
     <div
-      className={`rounded-xl p-5 transition-all duration-300 animate-fade-up ${cardClass}`}
+      className={`rounded-xl p-5 transition-all duration-300 animate-fade-up h-full ${cardClass}`}
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-3 h-full">
+        <div className="min-w-0 flex-1 flex flex-col">
           <p
-            className={`text-base font-medium uppercase tracking-wider mb-2 min-h-[3rem] ${
+            className={`text-base font-medium uppercase tracking-wider mb-2 flex-1 ${
               highlight ? 'text-white/70' : 'text-text-secondary'
             }`}
           >
             {label}
           </p>
           <p
-            className={`text-2xl md:text-3xl font-bold leading-none tracking-tight ${
+            className={`text-2xl md:text-3xl font-bold leading-none tracking-tight whitespace-nowrap ${
               highlight ? 'text-white' : 'text-text-primary'
             }`}
           >

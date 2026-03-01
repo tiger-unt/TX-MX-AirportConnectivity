@@ -1,0 +1,30 @@
+/* ── Leaflet TxDOT Brand Overrides ──────────────────────────────────── */
+
+.leaflet-popup-content-wrapper {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-content {
+  margin: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-control-zoom a {
+  color: var(--color-brand-blue, #0056a9) !important;
+  border-color: var(--color-border-light, #d1d5db) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: var(--color-surface-alt, #f3f4f6) !important;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px !important;
+}

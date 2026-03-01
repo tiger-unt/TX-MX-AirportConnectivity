@@ -1,17 +1,12 @@
 /**
  * ── aviationStore.js ──────────────────────────────────────────────────────
  * Central Zustand store for BTS T-100 air carrier data.
- * Loads market + segment CSVs, normalizes columns, provides global filter state.
- *
- * Market data: origin-to-destination passenger journeys (counted once).
- *   Columns: YEAR, ORIGIN, DEST, CARRIER_NAME, CLASS, PASSENGERS, FREIGHT, MAIL, DISTANCE
- *
- * Segment data: individual flight legs.
- *   Additional columns: DEPARTURES_SCHEDULED, DEPARTURES_PERFORMED, SEATS,
- *                       PAYLOAD, AIR_TIME, RAMP_TO_RAMP
+ * Loads market + segment CSVs + airport GeoJSON, normalizes columns,
+ * enriches rows with airport names/coords, provides global filter state.
  */
 import { create } from 'zustand'
 import * as d3 from 'd3'
+import { buildAirportIndex, enrichRow } from '@/lib/airportUtils'
 
 const STRING_FIELDS = [
   'ORIGIN', 'ORIGIN_CITY_NAME', 'ORIGIN_STATE_NM', 'ORIGIN_COUNTRY_NAME',
@@ -38,6 +33,8 @@ function normalizeRow(d, extraNumeric = []) {
 export const useAviationStore = create((set) => ({
   marketData: null,
   segmentData: null,
+  airportIndex: null,
+  airportGeo: null,
   loading: true,
   error: null,
 
@@ -47,6 +44,9 @@ export const useAviationStore = create((set) => ({
     carrier: '',
     originAirport: '',
     destAirport: '',
+    originState: '',
+    destState: '',
+    destCountry: '',
   },
 
   setFilter: (key, value) => {
@@ -57,7 +57,11 @@ export const useAviationStore = create((set) => ({
 
   resetFilters: () => {
     set({
-      filters: { year: '', direction: '', carrier: '', originAirport: '', destAirport: '' },
+      filters: {
+        year: '', direction: '', carrier: '',
+        originAirport: '', destAirport: '',
+        originState: '', destState: '', destCountry: '',
+      },
     })
   },
 
@@ -65,9 +69,10 @@ export const useAviationStore = create((set) => ({
     set({ loading: true, error: null })
     try {
       const base = import.meta.env.BASE_URL
-      const [market, segment] = await Promise.all([
+      const [market, segment, airportGeo] = await Promise.all([
         d3.csv(`${base}data/BTS_T-100_Market_2015-2024.csv`, d3.autoType),
         d3.csv(`${base}data/BTS_T-100_Segment_2015-2024.csv`, d3.autoType),
+        d3.json(`${base}data/BTS_T-100_Airports_2015-2024.geojson`),
       ])
 
       // Normalize market data
@@ -80,10 +85,18 @@ export const useAviationStore = create((set) => ({
       ]
       segment.forEach((d) => normalizeRow(d, segmentNumeric))
 
+      // Build airport index from GeoJSON
+      const airportIndex = buildAirportIndex(airportGeo)
+
+      // Enrich every row with airport names and coordinates
+      market.forEach((d) => enrichRow(d, airportIndex))
+      segment.forEach((d) => enrichRow(d, airportIndex))
+
       if (!market.length) console.warn('[aviationStore] Market data is empty.')
       if (!segment.length) console.warn('[aviationStore] Segment data is empty.')
+      if (!airportIndex.size) console.warn('[aviationStore] Airport index is empty.')
 
-      set({ marketData: market, segmentData: segment, loading: false })
+      set({ marketData: market, segmentData: segment, airportIndex, airportGeo, loading: false })
     } catch (err) {
       console.error('Failed to load aviation data:', err)
       set({ error: err.message, loading: false })

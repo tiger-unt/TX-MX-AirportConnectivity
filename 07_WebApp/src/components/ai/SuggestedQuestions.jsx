@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react'
 
 const SUGGESTIONS = [
-  'What was the total U.S.\u2013Mexico trade in 2024?',
+  'What was the total U.S.–Mexico trade in 2024?',
   'Which state trades the most with Mexico?',
   'What are the top commodities shipped by truck?',
   'How has Laredo port trade changed over time?',

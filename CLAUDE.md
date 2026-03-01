@@ -38,6 +38,10 @@ All Python scripts live under `02_Data_Staging/BTS_Air_Carrier_Statistics/Script
 
 Scripts use relative paths from their own location (`Path(__file__).parent`).
 
+## GeoJSON Usage
+- GeoJSON files are used to extract only two pieces of information: **airport display names** and **lat/lng coordinates**
+- All other airport data comes from the database; GeoJSON serves purely as the spatial reference for mapping
+
 ## Tech Stack
 - **Python**: pandas, sqlite3, geopandas, shapely, matplotlib
 - **Database**: SQLite

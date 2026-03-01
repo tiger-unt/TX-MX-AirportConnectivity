@@ -391,6 +391,21 @@ def main():
     apply_geojson_state_fill(features, states_df)
     print()
 
+    # Step 6: Strip properties to essential fields only
+    print("  Step 6: Stripping to essential properties...")
+    KEEP_FIELDS = {"AIRPORT", "DISPLAY_AIRPORT_NAME", "LATITUDE", "LONGITUDE"}
+    RENAME_FIELDS = {"DISPLAY_AIRPORT_NAME": "AIRPORT_NAME"}
+    for feat in features:
+        props = feat["properties"]
+        stripped = {}
+        for key in KEEP_FIELDS:
+            val = props.get(key)
+            out_key = RENAME_FIELDS.get(key, key)
+            stripped[out_key] = val
+        feat["properties"] = stripped
+    print(f"  [STRIP] Kept {len(KEEP_FIELDS)} fields, renamed DISPLAY_AIRPORT_NAME -> AIRPORT_NAME")
+    print()
+
     # Save
     geo["features"] = features
     out_path = output_dir / GEOJSON_FILE
