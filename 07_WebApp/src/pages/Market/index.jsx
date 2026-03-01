@@ -313,27 +313,29 @@ export default function MarketPage() {
     </>
   )
 
+  const heroSection = (
+    <div className="gradient-blue text-white">
+      <div className="container-chrome py-8 md:py-10">
+        <h2 className="text-2xl md:text-3xl font-bold text-white">
+          TX–Mexico Market
+        </h2>
+        <p className="text-white/70 mt-2 text-base max-w-2xl">
+          Passenger market analysis for air travel between Texas and Mexico.
+          Market data counts each passenger journey once, regardless of
+          intermediate stops.
+        </p>
+      </div>
+    </div>
+  )
+
   return (
     <DashboardLayout
+      hero={heroSection}
       filters={filterControls}
       onResetAll={resetFilters}
       activeCount={activeCount}
       activeTags={activeTags}
     >
-      {/* ── Hero ──────────────────────────────────────────────────── */}
-      <div className="gradient-blue text-white">
-        <div className="container-chrome py-8 md:py-10">
-          <h2 className="text-2xl md:text-3xl font-bold text-white">
-            TX–Mexico Market
-          </h2>
-          <p className="text-white/70 mt-2 text-base max-w-2xl">
-            Passenger market analysis for air travel between Texas and Mexico.
-            Market data counts each passenger journey once, regardless of
-            intermediate stops.
-          </p>
-        </div>
-      </div>
-
       {/* ── KPI Cards ─────────────────────────────────────────────── */}
       <SectionBlock>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">

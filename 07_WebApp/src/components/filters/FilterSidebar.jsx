@@ -44,8 +44,14 @@ export default function FilterSidebar({ children, onResetAll, activeCount = 0, a
 
   useEffect(() => {
     const measureChrome = () => {
-      const nav = document.querySelector('nav')
-      if (nav) chromeHeightRef.current = nav.offsetTop + nav.offsetHeight
+      // Prefer the dashboard content marker so the sidebar starts below the hero
+      const marker = document.querySelector('[data-sidebar-top]')
+      if (marker) {
+        chromeHeightRef.current = marker.getBoundingClientRect().top + window.scrollY
+      } else {
+        const nav = document.querySelector('nav')
+        if (nav) chromeHeightRef.current = nav.offsetTop + nav.offsetHeight
+      }
     }
 
     const onScroll = () => {

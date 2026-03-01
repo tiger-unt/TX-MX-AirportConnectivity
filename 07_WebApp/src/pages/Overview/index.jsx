@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plane, Users, ArrowRightLeft, BarChart3 } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
+import DashboardLayout from '@/components/layout/DashboardLayout'
+import FilterSelect from '@/components/filters/FilterSelect'
 import StatCard from '@/components/ui/StatCard'
 import ChartCard from '@/components/ui/ChartCard'
 import SectionBlock from '@/components/ui/SectionBlock'
@@ -45,41 +47,108 @@ const isTxIntl = (d) =>
 
 
 export default function OverviewPage() {
-  const { marketData, segmentData, loading } = useAviationStore()
+  const { marketData, segmentData, loading, filters, setFilter, resetFilters } = useAviationStore()
   const navigate = useNavigate()
   const [selectedCountry, setSelectedCountry] = useState(null)
+
+  /* ── filter options ───────────────────────────────────────────────── */
+  const yearOptions = useMemo(() => {
+    if (!marketData) return []
+    const years = [...new Set(marketData.map((d) => d.YEAR))].filter(Number.isFinite).sort()
+    return years.map(String)
+  }, [marketData])
+
+  const carrierOptions = useMemo(() => {
+    if (!marketData) return []
+    return [...new Set(marketData.map((d) => d.CARRIER_NAME))].filter(Boolean).sort()
+  }, [marketData])
+
+  const originOptions = useMemo(() => {
+    if (!marketData) return []
+    return [...new Set(marketData.map((d) => d.ORIGIN))].filter(Boolean).sort()
+  }, [marketData])
+
+  const destOptions = useMemo(() => {
+    if (!marketData) return []
+    return [...new Set(marketData.map((d) => d.DEST))].filter(Boolean).sort()
+  }, [marketData])
+
+  /* ── filtered datasets ────────────────────────────────────────────── */
+  const filteredMarket = useMemo(() => {
+    if (!marketData) return []
+    let data = marketData
+    if (filters.year) data = data.filter((d) => String(d.YEAR) === filters.year)
+    if (filters.direction === 'TX_TO_MX') data = data.filter(isTxToMx)
+    if (filters.direction === 'MX_TO_TX') data = data.filter(isMxToTx)
+    if (filters.carrier) data = data.filter((d) => d.CARRIER_NAME === filters.carrier)
+    if (filters.originAirport) data = data.filter((d) => d.ORIGIN === filters.originAirport)
+    if (filters.destAirport) data = data.filter((d) => d.DEST === filters.destAirport)
+    return data
+  }, [marketData, filters])
+
+  const filteredSegment = useMemo(() => {
+    if (!segmentData) return []
+    let data = segmentData
+    if (filters.year) data = data.filter((d) => String(d.YEAR) === filters.year)
+    if (filters.direction === 'TX_TO_MX') data = data.filter(isTxToMx)
+    if (filters.direction === 'MX_TO_TX') data = data.filter(isMxToTx)
+    if (filters.carrier) data = data.filter((d) => d.CARRIER_NAME === filters.carrier)
+    if (filters.originAirport) data = data.filter((d) => d.ORIGIN === filters.originAirport)
+    if (filters.destAirport) data = data.filter((d) => d.DEST === filters.destAirport)
+    return data
+  }, [segmentData, filters])
+
+  /* ── active filter count & tags ───────────────────────────────────── */
+  const activeCount = [
+    filters.year, filters.direction, filters.carrier,
+    filters.originAirport, filters.destAirport,
+  ].filter(Boolean).length
+
+  const activeTags = useMemo(() => {
+    const tags = []
+    if (filters.year) tags.push({ group: 'Year', label: filters.year, onRemove: () => setFilter('year', '') })
+    if (filters.direction) tags.push({
+      group: 'Direction',
+      label: filters.direction === 'TX_TO_MX' ? 'TX → Mexico' : 'Mexico → TX',
+      onRemove: () => setFilter('direction', ''),
+    })
+    if (filters.carrier) tags.push({ group: 'Carrier', label: filters.carrier, onRemove: () => setFilter('carrier', '') })
+    if (filters.originAirport) tags.push({ group: 'Origin', label: filters.originAirport, onRemove: () => setFilter('originAirport', '') })
+    if (filters.destAirport) tags.push({ group: 'Dest', label: filters.destAirport, onRemove: () => setFilter('destAirport', '') })
+    return tags
+  }, [filters, setFilter])
 
   /* ── derived data ───────────────────────────────────────────────── */
 
   const latestYear = useMemo(() => {
-    if (!marketData?.length) return null
-    return Math.max(...marketData.map((d) => d.YEAR).filter(Number.isFinite))
-  }, [marketData])
+    if (!filteredMarket.length) return null
+    return Math.max(...filteredMarket.map((d) => d.YEAR).filter(Number.isFinite))
+  }, [filteredMarket])
 
   /* ── KPI stats ──────────────────────────────────────────────────── */
   const stats = useMemo(() => {
-    if (!marketData || !segmentData || !latestYear) return null
+    if (!filteredMarket.length || !filteredSegment.length || !latestYear) return null
     const prevYear = latestYear - 1
 
     // Market data KPIs
-    const txLatest = marketData.filter((d) => d.YEAR === latestYear && isTxOrigin(d))
-    const txPrev = marketData.filter((d) => d.YEAR === prevYear && isTxOrigin(d))
+    const txLatest = filteredMarket.filter((d) => d.YEAR === latestYear && isTxOrigin(d))
+    const txPrev = filteredMarket.filter((d) => d.YEAR === prevYear && isTxOrigin(d))
     const txPax = txLatest.reduce((s, d) => s + d.PASSENGERS, 0)
     const txPaxPrev = txPrev.reduce((s, d) => s + d.PASSENGERS, 0)
     const txPaxChange = txPaxPrev ? (txPax - txPaxPrev) / txPaxPrev : 0
 
-    const txMxLatest = marketData.filter((d) => d.YEAR === latestYear && (isTxToMx(d) || isMxToTx(d)))
-    const txMxPrev = marketData.filter((d) => d.YEAR === prevYear && (isTxToMx(d) || isMxToTx(d)))
+    const txMxLatest = filteredMarket.filter((d) => d.YEAR === latestYear && (isTxToMx(d) || isMxToTx(d)))
+    const txMxPrev = filteredMarket.filter((d) => d.YEAR === prevYear && (isTxToMx(d) || isMxToTx(d)))
     const txMxPax = txMxLatest.reduce((s, d) => s + d.PASSENGERS, 0)
     const txMxPaxPrev = txMxPrev.reduce((s, d) => s + d.PASSENGERS, 0)
     const txMxPaxChange = txMxPaxPrev ? (txMxPax - txMxPaxPrev) / txMxPaxPrev : 0
 
     // Segment data KPIs (flight counts)
-    const txFlightsLatest = segmentData
+    const txFlightsLatest = filteredSegment
       .filter((d) => d.YEAR === latestYear && isTxOrigin(d))
       .reduce((s, d) => s + d.DEPARTURES_PERFORMED, 0)
 
-    const txMxFlightsLatest = segmentData
+    const txMxFlightsLatest = filteredSegment
       .filter((d) => d.YEAR === latestYear && (isTxToMx(d) || isMxToTx(d)))
       .reduce((s, d) => s + d.DEPARTURES_PERFORMED, 0)
 
@@ -88,25 +157,25 @@ export default function OverviewPage() {
       txMxPax, txMxPaxChange, txMxFlightsLatest,
       latestYear, prevYear,
     }
-  }, [marketData, segmentData, latestYear])
+  }, [filteredMarket, filteredSegment, latestYear])
 
   /* ── Texas passenger trends by year ────────────────────────────── */
   const txTrendData = useMemo(() => {
-    if (!marketData) return []
+    if (!filteredMarket.length) return []
     const byYear = new Map()
-    marketData.forEach((d) => {
+    filteredMarket.forEach((d) => {
       if (!isTxOrigin(d)) return
       if (!byYear.has(d.YEAR)) byYear.set(d.YEAR, 0)
       byYear.set(d.YEAR, byYear.get(d.YEAR) + d.PASSENGERS)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [marketData])
+  }, [filteredMarket])
 
   /* ── Top destination countries from TX ─────────────────────────── */
   const topCountries = useMemo(() => {
-    if (!marketData) return []
+    if (!filteredMarket.length) return []
     const byCountry = new Map()
-    marketData.forEach((d) => {
+    filteredMarket.forEach((d) => {
       if (!isTxOrigin(d) || d.DEST_COUNTRY_NAME === 'United States') return
       const c = d.DEST_COUNTRY_NAME
       if (!byCountry.has(c)) byCountry.set(c, 0)
@@ -115,13 +184,13 @@ export default function OverviewPage() {
     return Array.from(byCountry, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
-  }, [marketData])
+  }, [filteredMarket])
 
   /* ── TX–MX passenger trends (bidirectional) ────────────────────── */
   const txMxTrendData = useMemo(() => {
-    if (!marketData) return []
+    if (!filteredMarket.length) return []
     const byYearDir = new Map()
-    marketData.forEach((d) => {
+    filteredMarket.forEach((d) => {
       let dir = null
       if (isTxToMx(d)) dir = 'TX → Mexico'
       else if (isMxToTx(d)) dir = 'Mexico → TX'
@@ -131,13 +200,13 @@ export default function OverviewPage() {
       byYearDir.get(key).value += d.PASSENGERS
     })
     return Array.from(byYearDir.values()).sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
-  }, [marketData])
+  }, [filteredMarket])
 
   /* ── Top TX-MX routes ──────────────────────────────────────────── */
   const topRoutes = useMemo(() => {
-    if (!marketData) return []
+    if (!filteredMarket.length) return []
     const byRoute = new Map()
-    marketData.forEach((d) => {
+    filteredMarket.forEach((d) => {
       if (!isTxToMx(d) && !isMxToTx(d)) return
       const airports = [d.ORIGIN, d.DEST].sort()
       const routeKey = `${airports[0]}–${airports[1]}`
@@ -147,14 +216,14 @@ export default function OverviewPage() {
     return Array.from(byRoute, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
-  }, [marketData])
+  }, [filteredMarket])
 
   /* ── TX share of US→MX traffic ─────────────────────────────────── */
   const txShareData = useMemo(() => {
-    if (!marketData) return []
+    if (!filteredMarket.length) return []
     let txTotal = 0
     let otherTotal = 0
-    marketData.forEach((d) => {
+    filteredMarket.forEach((d) => {
       if (isUsToMx(d)) {
         if (d.ORIGIN_STATE_NM === 'Texas') txTotal += d.PASSENGERS
         else otherTotal += d.PASSENGERS
@@ -165,13 +234,13 @@ export default function OverviewPage() {
       { label: 'Texas', value: txTotal },
       { label: 'Other States', value: otherTotal },
     ]
-  }, [marketData])
+  }, [filteredMarket])
 
   /* ── Top US states serving Mexico ──────────────────────────────── */
   const topStates = useMemo(() => {
-    if (!marketData) return []
+    if (!filteredMarket.length) return []
     const byState = new Map()
-    marketData.forEach((d) => {
+    filteredMarket.forEach((d) => {
       if (!isUsToMx(d)) return
       const st = d.ORIGIN_STATE_NM
       if (!st) return
@@ -181,13 +250,13 @@ export default function OverviewPage() {
     return Array.from(byState, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
-  }, [marketData])
+  }, [filteredMarket])
 
   /* ── TX-MX flight trends (segment) ─────────────────────────────── */
   const txMxFlightTrend = useMemo(() => {
-    if (!segmentData) return []
+    if (!filteredSegment.length) return []
     const byYearDir = new Map()
-    segmentData.forEach((d) => {
+    filteredSegment.forEach((d) => {
       let dir = null
       if (isTxToMx(d)) dir = 'TX → Mexico'
       else if (isMxToTx(d)) dir = 'Mexico → TX'
@@ -197,7 +266,7 @@ export default function OverviewPage() {
       byYearDir.get(key).value += d.DEPARTURES_PERFORMED
     })
     return Array.from(byYearDir.values()).sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
-  }, [segmentData])
+  }, [filteredSegment])
 
   /* ── render ─────────────────────────────────────────────────────── */
 
@@ -212,22 +281,67 @@ export default function OverviewPage() {
     )
   }
 
-  return (
+  const filterControls = (
     <>
-      {/* ── Hero ──────────────────────────────────────────────────── */}
-      <div className="gradient-blue text-white">
-        <div className="container-chrome py-10 md:py-14">
-          <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
-            Texas–Mexico Air Connectivity
-          </h2>
-          <p className="text-white/70 mt-2 text-base max-w-2xl">
-            Analysis of air carrier passenger markets and flight operations between
-            Texas and Mexico using BTS T-100 data (2015–{latestYear || '…'}).
-            Covers market-level passenger demand and segment-level flight operations.
-          </p>
-        </div>
-      </div>
+      <FilterSelect
+        label="Year"
+        value={filters.year}
+        options={yearOptions}
+        onChange={(v) => setFilter('year', v)}
+      />
+      <FilterSelect
+        label="Direction"
+        value={filters.direction}
+        options={[
+          { value: 'TX_TO_MX', label: 'TX → Mexico' },
+          { value: 'MX_TO_TX', label: 'Mexico → TX' },
+        ]}
+        onChange={(v) => setFilter('direction', v)}
+      />
+      <FilterSelect
+        label="Carrier"
+        value={filters.carrier}
+        options={carrierOptions}
+        onChange={(v) => setFilter('carrier', v)}
+      />
+      <FilterSelect
+        label="Origin Airport"
+        value={filters.originAirport}
+        options={originOptions}
+        onChange={(v) => setFilter('originAirport', v)}
+      />
+      <FilterSelect
+        label="Dest Airport"
+        value={filters.destAirport}
+        options={destOptions}
+        onChange={(v) => setFilter('destAirport', v)}
+      />
+    </>
+  )
 
+  const heroSection = (
+    <div className="gradient-blue text-white">
+      <div className="container-chrome py-10 md:py-14">
+        <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
+          Texas–Mexico Air Connectivity
+        </h2>
+        <p className="text-white/70 mt-2 text-base max-w-2xl">
+          Analysis of air carrier passenger markets and flight operations between
+          Texas and Mexico using BTS T-100 data (2015–{latestYear || '…'}).
+          Covers market-level passenger demand and segment-level flight operations.
+        </p>
+      </div>
+    </div>
+  )
+
+  return (
+    <DashboardLayout
+      hero={heroSection}
+      filters={filterControls}
+      onResetAll={resetFilters}
+      activeCount={activeCount}
+      activeTags={activeTags}
+    >
       {/* ── KPI Cards ─────────────────────────────────────────────── */}
       <SectionBlock>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
@@ -407,6 +521,6 @@ export default function OverviewPage() {
           </div>
         </div>
       </SectionBlock>
-    </>
+    </DashboardLayout>
   )
 }

@@ -41,7 +41,8 @@
       "Bash(\"/c/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe\" -c \":*)",
       "Read(//mnt/c/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Data-Dashboard-Boilerplate/**)",
       "Bash(rsync -av --exclude='node_modules' --exclude='dist' --exclude='.git' --exclude='public/data' \"c:/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Data-Dashboard-Boilerplate/Boilerplate/\" \"c:/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Task 6 - Airport Connectivity/07_WebApp/\")",
-      "Bash(npm run build)"
+      "Bash(npm run build)",
+      "Bash(npx vite build)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",

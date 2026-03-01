@@ -2,20 +2,20 @@
  * ── DASHBOARD LAYOUT ────────────────────────────────────────────────────
  *
  * Two-column layout wrapper used by all pages that have a filter sidebar.
- * Renders a flex row with:
+ * Renders an optional full-width hero above a flex row with:
  *   - Left: main content area (flex-1, min-w-0 to prevent overflow)
  *   - Right: FilterSidebar with filter controls
  *
  * Props:
  *   - children     — Main page content (charts, tables, stat cards)
+ *   - hero         — Full-width hero JSX rendered above the filter layout
  *   - filters      — JSX filter controls to render inside the sidebar
  *                     (e.g., FilterSelect, FilterMultiSelect components)
  *   - onResetAll   — Callback to clear all active filters
  *   - activeCount  — Number of active filter categories
  *   - activeTags   — Array of { group, label, onRemove } for tag display
  *
- * If `filters` is null/undefined, no sidebar is rendered (used by pages
- * that don't need filters, like the Home page which uses its own layout).
+ * The hero section spans full width; the filter sidebar begins below it.
  *
  * ── BOILERPLATE: HOW TO ADAPT ───────────────────────────────────────────
  * No changes are needed when adapting for a new dataset. This is a
@@ -26,10 +26,14 @@ import FilterSidebar from '@/components/filters/FilterSidebar'
 import FilterBar from '@/components/filters/FilterBar'
 import FilterContext from '@/contexts/FilterContext'
 
-export default function DashboardLayout({ children, filters, onResetAll, activeCount, activeTags }) {
+export default function DashboardLayout({ children, hero, filters, onResetAll, activeCount, activeTags }) {
   return (
     <FilterContext.Provider value={filters ? { filters, onResetAll, activeCount, activeTags } : null}>
-      <div className="flex min-h-screen flex-col lg:flex-row">
+      {/* Hero — full-width, above the filter sidebar */}
+      {hero}
+
+      {/* Dashboard content + sidebar begin below hero */}
+      <div data-sidebar-top className="flex min-h-screen flex-col lg:flex-row">
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Mobile/tablet filters: inline bar above content */}
