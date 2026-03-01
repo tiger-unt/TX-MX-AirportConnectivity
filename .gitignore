@@ -1,9 +1,12 @@
 # Ignore all top-level folders
 01_Raw Data/
-02_Data_Staging/
-03_Process_Data/
 04_GIS/
 05_Stakeholder_Outreach/
 06_Deliverables/
-07_WebApp/
 08_Ref_Documents
+
+# Large files (>99 MB) - explicitly ignored
+01_Raw Data/BTS_Air_Carrier_Statistics/BTS_Airport_Data.db
+02_Data_Staging/BTS_Air_Carrier_Statistics/Database/BTS_Air_Carrier_Statistics.db
+08_Ref_Documents/The Texas Freight Data Hub (4).twbx
+08_Ref_Documents/TranSearch_Commodity_Flow.twbx

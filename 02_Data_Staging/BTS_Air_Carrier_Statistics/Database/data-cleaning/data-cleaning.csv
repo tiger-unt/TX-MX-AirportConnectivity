@@ -1,0 +1,12 @@
+action,target,airport_id,field,old_value,new_value,notes
+update,csv,12544,CODE,JQF,USA,Concord NC - FAA LID changed to IATA code in 2017
+update,csv,13788,CODE,NZC,VQQ,Jacksonville FL - Cecil Field code reassigned
+update,csv,16658,CODE,T1X,GLE,Gainesville TX - temp BTS code replaced by FAA LID
+update,all,16879,CODE,T4X,AQO,Llano TX - T4X is not a real FAA/IATA code
+update,segment,15081,CODE,SXF,BER,Berlin - Schoenefeld absorbed into Brandenburg 2020
+update,geojson,15968,CODE,XJD,IUD,Al Udeid AB Qatar - GeoJSON master list code mismatch
+update,csv,16852,CITY_NAME,"Zumpango, Mexico","Mexico City, Mexico",NLU Felipe Angeles Airport - per Jolanda
+delete,all,16706,,,,Austin TX ID 16706 - unidentifiable facility
+filter,csv,,ZERO_DISTANCE,,,Remove rows where ORIGIN=DEST AND DISTANCE=0
+filter,csv,,ALL_ZERO_ACTIVITY,,,Remove rows where PASSENGERS=0 AND FREIGHT=0 AND MAIL=0
+fill,all,,STATE_NAME,missing-states.csv,,Fill null state names from lookup file

@@ -1,0 +1,2031 @@
+{
+  "overview": {
+    "sqlite_version": "3.45.3",
+    "database_size_mb": 4473.05,
+    "tables": [
+      "BORDER_AIRPORTS",
+      "BTS_MARKET",
+      "BTS_SEGMENT",
+      "TEMP_AIRPORTS"
+    ],
+    "views": [],
+    "indexes": []
+  },
+  "extraction_timestamp": "2026-01-11T17:40:56.038275",
+  "tables": {
+    "BORDER_AIRPORTS": {
+      "table_name": "BORDER_AIRPORTS",
+      "columns": [
+        {
+          "cid": 0,
+          "name": "AIRPORT_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 1,
+          "name": "AIRPORT_COUNTRY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "AIRPORT_STATE_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "BORDER_COUNTY",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "DISPLAY_AIRPORT_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "ALT_NAME1",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "ALT_NAME2",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "DISPLAY_CITY_MARKET_NAME_FULL",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "IATA_CODE",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "ICAO_CODE",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 10,
+          "name": "ICAO_CODE_ALT",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 11,
+          "name": "CHECK_BLTCODE",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 12,
+          "name": "ALT_ID",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 13,
+          "name": "p1",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 14,
+          "name": "p2",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 15,
+          "name": "distance",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 16,
+          "name": "AIRPORT_IS_CLOSED",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 17,
+          "name": "TXDOT_BORDER_DISTRICT",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 18,
+          "name": "WKT",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "record_count": 244,
+      "sample_data": [
+        {
+          "AIRPORT_ID": -10001,
+          "AIRPORT_COUNTRY_NAME": "United States",
+          "AIRPORT_STATE_NAME": "Texas",
+          "BORDER_COUNTY": 1.0,
+          "DISPLAY_AIRPORT_NAME": "Mid Valley Airport",
+          "ALT_NAME1": null,
+          "ALT_NAME2": "McAllen Miller International Airport",
+          "DISPLAY_CITY_MARKET_NAME_FULL": "Weslaco, TX",
+          "IATA_CODE": "TXW",
+          "ICAO_CODE": null,
+          "ICAO_CODE_ALT": "KMFE",
+          "CHECK_BLTCODE": "KMFE",
+          "ALT_ID": -10001.0,
+          "p1": 0.7688691417517346,
+          "p2": 1.0,
+          "distance": 29385.44290751319,
+          "AIRPORT_IS_CLOSED": 0,
+          "TXDOT_BORDER_DISTRICT": 1.0,
+          "WKT": "POINT (-97.974006 26.178708)"
+        },
+        {
+          "AIRPORT_ID": -10000,
+          "AIRPORT_COUNTRY_NAME": "United States",
+          "AIRPORT_STATE_NAME": "Texas",
+          "BORDER_COUNTY": 1.0,
+          "DISPLAY_AIRPORT_NAME": "Presidio-Lely International Airport.",
+          "ALT_NAME1": "Parasi Airport",
+          "ALT_NAME2": null,
+          "DISPLAY_CITY_MARKET_NAME_FULL": "Presidio, TX",
+          "IATA_CODE": "PRS",
+          "ICAO_CODE": "AGGP",
+          "ICAO_CODE_ALT": null,
+          "CHECK_BLTCODE": null,
+          "ALT_ID": NaN,
+          "p1": NaN,
+          "p2": NaN,
+          "distance": NaN,
+          "AIRPORT_IS_CLOSED": 0,
+          "TXDOT_BORDER_DISTRICT": 1.0,
+          "WKT": "POINT (-104.361494 29.634212)"
+        },
+        {
+          "AIRPORT_ID": 10013,
+          "AIRPORT_COUNTRY_NAME": "United States",
+          "AIRPORT_STATE_NAME": "Texas",
+          "BORDER_COUNTY": 0.0,
+          "DISPLAY_AIRPORT_NAME": "Crosbyton Municipal",
+          "ALT_NAME1": null,
+          "ALT_NAME2": " Crosbyton, TX: Crosbyton Municipal",
+          "DISPLAY_CITY_MARKET_NAME_FULL": "Crosbyton, TX",
+          "IATA_CODE": "8F3",
+          "ICAO_CODE": null,
+          "ICAO_CODE_ALT": "T26",
+          "CHECK_BLTCODE": "8F3 ",
+          "ALT_ID": 10013.0,
+          "p1": 0.9616602430075163,
+          "p2": 1.0,
+          "distance": 4807.026610993661,
+          "AIRPORT_IS_CLOSED": 0,
+          "TXDOT_BORDER_DISTRICT": 0.0,
+          "WKT": "POINT (-101.240833 33.623889)"
+        },
+        {
+          "AIRPORT_ID": 10136,
+          "AIRPORT_COUNTRY_NAME": "United States",
+          "AIRPORT_STATE_NAME": "Texas",
+          "BORDER_COUNTY": 0.0,
+          "DISPLAY_AIRPORT_NAME": "Abilene Regional",
+          "ALT_NAME1": "Abilene Regional Airport",
+          "ALT_NAME2": "Abilene Regional Airport",
+          "DISPLAY_CITY_MARKET_NAME_FULL": "Abilene, TX",
+          "IATA_CODE": "ABI",
+          "ICAO_CODE": "KABI",
+          "ICAO_CODE_ALT": "KABI",
+          "CHECK_BLTCODE": "KABI",
+          "ALT_ID": 10136.0,
+          "p1": 0.9968477032875895,
+          "p2": 1.0,
+          "distance": 395.0828312762153,
+          "AIRPORT_IS_CLOSED": 0,
+          "TXDOT_BORDER_DISTRICT": 0.0,
+          "WKT": "POINT (-99.6825 32.408333)"
+        },
+        {
+          "AIRPORT_ID": 10148,
+          "AIRPORT_COUNTRY_NAME": "Mexico",
+          "AIRPORT_STATE_NAME": null,
+          "BORDER_COUNTY": NaN,
+          "DISPLAY_AIRPORT_NAME": "Acapulco International",
+          "ALT_NAME1": "General Juan N. Alvarez International Airport",
+          "ALT_NAME2": "General Juan N Alvarez International Airport",
+          "DISPLAY_CITY_MARKET_NAME_FULL": "Acapulco, Mexico",
+          "IATA_CODE": "ACA",
+          "ICAO_CODE": "MMAA",
+          "ICAO_CODE_ALT": "MMAA",
+          "CHECK_BLTCODE": "MMAA",
+          "ALT_ID": 10148.0,
+          "p1": 0.9998506819897153,
+          "p2": 1.0,
+          "distance": 18.714237433812933,
+          "AIRPORT_IS_CLOSED": 0,
+          "TXDOT_BORDER_DISTRICT": NaN,
+          "WKT": "POINT (-99.753889 16.757222)"
+        }
+      ],
+      "data_types_info": {
+        "AIRPORT_ID": "int64",
+        "AIRPORT_COUNTRY_NAME": "object",
+        "AIRPORT_STATE_NAME": "object",
+        "BORDER_COUNTY": "float64",
+        "DISPLAY_AIRPORT_NAME": "object",
+        "ALT_NAME1": "object",
+        "ALT_NAME2": "object",
+        "DISPLAY_CITY_MARKET_NAME_FULL": "object",
+        "IATA_CODE": "object",
+        "ICAO_CODE": "object",
+        "ICAO_CODE_ALT": "object",
+        "CHECK_BLTCODE": "object",
+        "ALT_ID": "float64",
+        "p1": "float64",
+        "p2": "float64",
+        "distance": "float64",
+        "AIRPORT_IS_CLOSED": "int64",
+        "TXDOT_BORDER_DISTRICT": "float64",
+        "WKT": "object"
+      },
+      "indexes": [],
+      "data_analysis": {
+        "AIRPORT_ID": {
+          "min": -10001.0,
+          "max": 17013.0,
+          "avg": 13464.282786885246
+        },
+        "BORDER_COUNTY": {
+          "min": 0.0,
+          "max": 1.0,
+          "avg": 0.1069182389937107
+        },
+        "ALT_ID": {
+          "min": -10001.0,
+          "max": 17013.0,
+          "avg": 13535.208333333334
+        },
+        "p1": {
+          "min": 0.361389081395477,
+          "max": 0.9999998045957621,
+          "avg": 0.9746540298631801
+        },
+        "p2": {
+          "min": 1.0,
+          "max": 1.0,
+          "avg": 1.0
+        },
+        "distance": {
+          "min": 0.024490289390087128,
+          "max": 91272.14086185639,
+          "avg": 3296.2756389800325
+        },
+        "AIRPORT_IS_CLOSED": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "TXDOT_BORDER_DISTRICT": {
+          "min": 0.0,
+          "max": 1.0,
+          "avg": 0.1761006289308176
+        }
+      }
+    },
+    "BTS_MARKET": {
+      "table_name": "BTS_MARKET",
+      "columns": [
+        {
+          "cid": 0,
+          "name": "PASSENGERS",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 1,
+          "name": "FREIGHT",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "MAIL",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "DISTANCE",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "UNIQUE_CARRIER",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "AIRLINE_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "UNIQUE_CARRIER_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "UNIQUE_CARRIER_ENTITY",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "REGION",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "CARRIER",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 10,
+          "name": "CARRIER_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 11,
+          "name": "CARRIER_GROUP",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 12,
+          "name": "CARRIER_GROUP_NEW",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 13,
+          "name": "ORIGIN_AIRPORT_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 14,
+          "name": "ORIGIN_AIRPORT_SEQ_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 15,
+          "name": "ORIGIN_CITY_MARKET_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 16,
+          "name": "ORIGIN",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 17,
+          "name": "ORIGIN_CITY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 18,
+          "name": "ORIGIN_STATE_ABR",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 19,
+          "name": "ORIGIN_STATE_FIPS",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 20,
+          "name": "ORIGIN_STATE_NM",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 21,
+          "name": "ORIGIN_COUNTRY",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 22,
+          "name": "ORIGIN_COUNTRY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 23,
+          "name": "ORIGIN_WAC",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 24,
+          "name": "DEST_AIRPORT_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 25,
+          "name": "DEST_AIRPORT_SEQ_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 26,
+          "name": "DEST_CITY_MARKET_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 27,
+          "name": "DEST",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 28,
+          "name": "DEST_CITY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 29,
+          "name": "DEST_STATE_ABR",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 30,
+          "name": "DEST_STATE_FIPS",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 31,
+          "name": "DEST_STATE_NM",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 32,
+          "name": "DEST_COUNTRY",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 33,
+          "name": "DEST_COUNTRY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 34,
+          "name": "DEST_WAC",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 35,
+          "name": "YEAR",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 36,
+          "name": "QUARTER",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 37,
+          "name": "MONTH",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 38,
+          "name": "DISTANCE_GROUP",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 39,
+          "name": "CLASS",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 40,
+          "name": "DATA_SOURCE",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "record_count": 8263523,
+      "sample_data": [
+        {
+          "PASSENGERS": 0.0,
+          "FREIGHT": null,
+          "MAIL": 0.0,
+          "DISTANCE": 24.0,
+          "UNIQUE_CARRIER": "YV",
+          "AIRLINE_ID": 20378,
+          "UNIQUE_CARRIER_NAME": "Mesa Airlines Inc.",
+          "UNIQUE_CARRIER_ENTITY": "06689",
+          "REGION": "D",
+          "CARRIER": "YV",
+          "CARRIER_NAME": "Mesa Airlines Inc.",
+          "CARRIER_GROUP": 2,
+          "CARRIER_GROUP_NEW": 2,
+          "ORIGIN_AIRPORT_ID": 12191,
+          "ORIGIN_AIRPORT_SEQ_ID": 1219103,
+          "ORIGIN_CITY_MARKET_ID": 31453,
+          "ORIGIN": "HOU",
+          "ORIGIN_CITY_NAME": "Houston, TX",
+          "ORIGIN_STATE_ABR": "TX",
+          "ORIGIN_STATE_FIPS": 48.0,
+          "ORIGIN_STATE_NM": "Texas",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 74,
+          "DEST_AIRPORT_ID": 12266,
+          "DEST_AIRPORT_SEQ_ID": 1226603,
+          "DEST_CITY_MARKET_ID": 31453,
+          "DEST": "IAH",
+          "DEST_CITY_NAME": "Houston, TX",
+          "DEST_STATE_ABR": "TX",
+          "DEST_STATE_FIPS": 48.0,
+          "DEST_STATE_NM": "Texas",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 74,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 1,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        },
+        {
+          "PASSENGERS": 0.0,
+          "FREIGHT": null,
+          "MAIL": 0.0,
+          "DISTANCE": 141.0,
+          "UNIQUE_CARRIER": "YV",
+          "AIRLINE_ID": 20378,
+          "UNIQUE_CARRIER_NAME": "Mesa Airlines Inc.",
+          "UNIQUE_CARRIER_ENTITY": "06689",
+          "REGION": "D",
+          "CARRIER": "YV",
+          "CARRIER_NAME": "Mesa Airlines Inc.",
+          "CARRIER_GROUP": 2,
+          "CARRIER_GROUP_NEW": 2,
+          "ORIGIN_AIRPORT_ID": 11292,
+          "ORIGIN_AIRPORT_SEQ_ID": 1129202,
+          "ORIGIN_CITY_MARKET_ID": 30325,
+          "ORIGIN": "DEN",
+          "ORIGIN_CITY_NAME": "Denver, CO",
+          "ORIGIN_STATE_ABR": "CO",
+          "ORIGIN_STATE_FIPS": 8.0,
+          "ORIGIN_STATE_NM": "Colorado",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 82,
+          "DEST_AIRPORT_ID": 12094,
+          "DEST_AIRPORT_SEQ_ID": 1209402,
+          "DEST_CITY_MARKET_ID": 34699,
+          "DEST": "HDN",
+          "DEST_CITY_NAME": "Hayden, CO",
+          "DEST_STATE_ABR": "CO",
+          "DEST_STATE_FIPS": 8.0,
+          "DEST_STATE_NM": "Colorado",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 82,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 1,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        },
+        {
+          "PASSENGERS": 0.0,
+          "FREIGHT": null,
+          "MAIL": 0.0,
+          "DISTANCE": 152.0,
+          "UNIQUE_CARRIER": "YV",
+          "AIRLINE_ID": 20378,
+          "UNIQUE_CARRIER_NAME": "Mesa Airlines Inc.",
+          "UNIQUE_CARRIER_ENTITY": "06689",
+          "REGION": "D",
+          "CARRIER": "YV",
+          "CARRIER_NAME": "Mesa Airlines Inc.",
+          "CARRIER_GROUP": 2,
+          "CARRIER_GROUP_NEW": 2,
+          "ORIGIN_AIRPORT_ID": 11292,
+          "ORIGIN_AIRPORT_SEQ_ID": 1129202,
+          "ORIGIN_CITY_MARKET_ID": 30325,
+          "ORIGIN": "DEN",
+          "ORIGIN_CITY_NAME": "Denver, CO",
+          "ORIGIN_STATE_ABR": "CO",
+          "ORIGIN_STATE_FIPS": 8.0,
+          "ORIGIN_STATE_NM": "Colorado",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 82,
+          "DEST_AIRPORT_ID": 12012,
+          "DEST_AIRPORT_SEQ_ID": 1201206,
+          "DEST_CITY_MARKET_ID": 32012,
+          "DEST": "GUC",
+          "DEST_CITY_NAME": "Gunnison, CO",
+          "DEST_STATE_ABR": "CO",
+          "DEST_STATE_FIPS": 8.0,
+          "DEST_STATE_NM": "Colorado",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 82,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 1,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        },
+        {
+          "PASSENGERS": 0.0,
+          "FREIGHT": null,
+          "MAIL": 0.0,
+          "DISTANCE": 156.0,
+          "UNIQUE_CARRIER": "YV",
+          "AIRLINE_ID": 20378,
+          "UNIQUE_CARRIER_NAME": "Mesa Airlines Inc.",
+          "UNIQUE_CARRIER_ENTITY": "06689",
+          "REGION": "D",
+          "CARRIER": "YV",
+          "CARRIER_NAME": "Mesa Airlines Inc.",
+          "CARRIER_GROUP": 2,
+          "CARRIER_GROUP_NEW": 2,
+          "ORIGIN_AIRPORT_ID": 13851,
+          "ORIGIN_AIRPORT_SEQ_ID": 1385103,
+          "ORIGIN_CITY_MARKET_ID": 33851,
+          "ORIGIN": "OKC",
+          "ORIGIN_CITY_NAME": "Oklahoma City, OK",
+          "ORIGIN_STATE_ABR": "OK",
+          "ORIGIN_STATE_FIPS": 40.0,
+          "ORIGIN_STATE_NM": "Oklahoma",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 73,
+          "DEST_AIRPORT_ID": 12278,
+          "DEST_AIRPORT_SEQ_ID": 1227805,
+          "DEST_CITY_MARKET_ID": 30928,
+          "DEST": "ICT",
+          "DEST_CITY_NAME": "Wichita, KS",
+          "DEST_STATE_ABR": "KS",
+          "DEST_STATE_FIPS": 20.0,
+          "DEST_STATE_NM": "Kansas",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 62,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 1,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        },
+        {
+          "PASSENGERS": 0.0,
+          "FREIGHT": null,
+          "MAIL": 0.0,
+          "DISTANCE": 167.0,
+          "UNIQUE_CARRIER": "YV",
+          "AIRLINE_ID": 20378,
+          "UNIQUE_CARRIER_NAME": "Mesa Airlines Inc.",
+          "UNIQUE_CARRIER_ENTITY": "06689",
+          "REGION": "D",
+          "CARRIER": "YV",
+          "CARRIER_NAME": "Mesa Airlines Inc.",
+          "CARRIER_GROUP": 2,
+          "CARRIER_GROUP_NEW": 2,
+          "ORIGIN_AIRPORT_ID": 11140,
+          "ORIGIN_AIRPORT_SEQ_ID": 1114008,
+          "ORIGIN_CITY_MARKET_ID": 31140,
+          "ORIGIN": "CRP",
+          "ORIGIN_CITY_NAME": "Corpus Christi, TX",
+          "ORIGIN_STATE_ABR": "TX",
+          "ORIGIN_STATE_FIPS": 48.0,
+          "ORIGIN_STATE_NM": "Texas",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 74,
+          "DEST_AIRPORT_ID": 10423,
+          "DEST_AIRPORT_SEQ_ID": 1042302,
+          "DEST_CITY_MARKET_ID": 30423,
+          "DEST": "AUS",
+          "DEST_CITY_NAME": "Austin, TX",
+          "DEST_STATE_ABR": "TX",
+          "DEST_STATE_FIPS": 48.0,
+          "DEST_STATE_NM": "Texas",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 74,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 1,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        }
+      ],
+      "data_types_info": {
+        "PASSENGERS": "float64",
+        "FREIGHT": "float64",
+        "MAIL": "float64",
+        "DISTANCE": "float64",
+        "UNIQUE_CARRIER": "object",
+        "AIRLINE_ID": "int64",
+        "UNIQUE_CARRIER_NAME": "object",
+        "UNIQUE_CARRIER_ENTITY": "object",
+        "REGION": "object",
+        "CARRIER": "object",
+        "CARRIER_NAME": "object",
+        "CARRIER_GROUP": "int64",
+        "CARRIER_GROUP_NEW": "int64",
+        "ORIGIN_AIRPORT_ID": "int64",
+        "ORIGIN_AIRPORT_SEQ_ID": "int64",
+        "ORIGIN_CITY_MARKET_ID": "int64",
+        "ORIGIN": "object",
+        "ORIGIN_CITY_NAME": "object",
+        "ORIGIN_STATE_ABR": "object",
+        "ORIGIN_STATE_FIPS": "float64",
+        "ORIGIN_STATE_NM": "object",
+        "ORIGIN_COUNTRY": "object",
+        "ORIGIN_COUNTRY_NAME": "object",
+        "ORIGIN_WAC": "int64",
+        "DEST_AIRPORT_ID": "int64",
+        "DEST_AIRPORT_SEQ_ID": "int64",
+        "DEST_CITY_MARKET_ID": "int64",
+        "DEST": "object",
+        "DEST_CITY_NAME": "object",
+        "DEST_STATE_ABR": "object",
+        "DEST_STATE_FIPS": "float64",
+        "DEST_STATE_NM": "object",
+        "DEST_COUNTRY": "object",
+        "DEST_COUNTRY_NAME": "object",
+        "DEST_WAC": "int64",
+        "YEAR": "int64",
+        "QUARTER": "int64",
+        "MONTH": "int64",
+        "DISTANCE_GROUP": "int64",
+        "CLASS": "object",
+        "DATA_SOURCE": "object"
+      },
+      "indexes": [],
+      "data_analysis": {
+        "PASSENGERS": {
+          "min": 0.0,
+          "max": 162591.0,
+          "avg": 2672.4921703491354
+        },
+        "MAIL": {
+          "min": 0.0,
+          "max": 11415320.0,
+          "avg": 4991.521323532348
+        },
+        "DISTANCE": {
+          "min": 0.0,
+          "max": 11076.0,
+          "avg": 1225.3468780809346
+        },
+        "AIRLINE_ID": {
+          "min": 19385.0,
+          "max": 22145.0,
+          "avg": 20140.911452924593
+        },
+        "CARRIER_GROUP": {
+          "min": 0.0,
+          "max": 7.0,
+          "avg": 2.1604431911183646
+        },
+        "CARRIER_GROUP_NEW": {
+          "min": 0.0,
+          "max": 9.0,
+          "avg": 2.830092177816644
+        },
+        "ORIGIN_AIRPORT_ID": {
+          "min": 10001.0,
+          "max": 1138701.0,
+          "avg": 12815.974918808843
+        },
+        "ORIGIN_AIRPORT_SEQ_ID": {
+          "min": 1000101.0,
+          "max": 1707501.0,
+          "avg": 1281517.9475360569
+        },
+        "ORIGIN_CITY_MARKET_ID": {
+          "min": 30001.0,
+          "max": 37003.0,
+          "avg": 32130.091859125943
+        },
+        "ORIGIN_STATE_FIPS": {
+          "min": 1.0,
+          "max": 78.0,
+          "avg": 25.21301878331245
+        },
+        "ORIGIN_WAC": {
+          "min": 1.0,
+          "max": 975.0,
+          "avg": 92.60199312085173
+        },
+        "DEST_AIRPORT_ID": {
+          "min": 10001.0,
+          "max": 1138701.0,
+          "avg": 12829.301669154911
+        },
+        "DEST_AIRPORT_SEQ_ID": {
+          "min": 1000101.0,
+          "max": 1707601.0,
+          "avg": 1282850.6187714369
+        },
+        "DEST_CITY_MARKET_ID": {
+          "min": 30001.0,
+          "max": 37004.0,
+          "avg": 32146.239968836537
+        },
+        "DEST_STATE_FIPS": {
+          "min": 1.0,
+          "max": 78.0,
+          "avg": 25.198438952329123
+        },
+        "DEST_WAC": {
+          "min": 1.0,
+          "max": 977.0,
+          "avg": 94.1793391269075
+        },
+        "YEAR": {
+          "min": 1999.0,
+          "max": 2025.0,
+          "avg": 2011.9707767498196
+        },
+        "QUARTER": {
+          "min": 1.0,
+          "max": 4.0,
+          "avg": 2.479583586806741
+        },
+        "MONTH": {
+          "min": 1.0,
+          "max": 12.0,
+          "avg": 6.446939882662637
+        },
+        "DISTANCE_GROUP": {
+          "min": 1.0,
+          "max": 23.0,
+          "avg": 2.991393622308548
+        },
+        "YEAR_values": [
+          1999,
+          2000,
+          2001,
+          2002,
+          2003,
+          2004,
+          2005,
+          2006,
+          2007,
+          2008,
+          2009,
+          2010,
+          2011,
+          2012,
+          2013,
+          2014,
+          2015,
+          2016,
+          2017,
+          2018,
+          2019,
+          2020,
+          2021,
+          2022,
+          2023,
+          2024,
+          2025
+        ]
+      }
+    },
+    "BTS_SEGMENT": {
+      "table_name": "BTS_SEGMENT",
+      "columns": [
+        {
+          "cid": 0,
+          "name": "DEPARTURES_SCHEDULED",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 1,
+          "name": "DEPARTURES_PERFORMED",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "PAYLOAD",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "SEATS",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "PASSENGERS",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "FREIGHT",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "MAIL",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "DISTANCE",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "RAMP_TO_RAMP",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "AIR_TIME",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 10,
+          "name": "UNIQUE_CARRIER",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 11,
+          "name": "AIRLINE_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 12,
+          "name": "UNIQUE_CARRIER_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 13,
+          "name": "UNIQUE_CARRIER_ENTITY",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 14,
+          "name": "REGION",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 15,
+          "name": "CARRIER",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 16,
+          "name": "CARRIER_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 17,
+          "name": "CARRIER_GROUP",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 18,
+          "name": "CARRIER_GROUP_NEW",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 19,
+          "name": "ORIGIN_AIRPORT_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 20,
+          "name": "ORIGIN_AIRPORT_SEQ_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 21,
+          "name": "ORIGIN_CITY_MARKET_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 22,
+          "name": "ORIGIN",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 23,
+          "name": "ORIGIN_CITY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 24,
+          "name": "ORIGIN_STATE_ABR",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 25,
+          "name": "ORIGIN_STATE_FIPS",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 26,
+          "name": "ORIGIN_STATE_NM",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 27,
+          "name": "ORIGIN_COUNTRY",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 28,
+          "name": "ORIGIN_COUNTRY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 29,
+          "name": "ORIGIN_WAC",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 30,
+          "name": "DEST_AIRPORT_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 31,
+          "name": "DEST_AIRPORT_SEQ_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 32,
+          "name": "DEST_CITY_MARKET_ID",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 33,
+          "name": "DEST",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 34,
+          "name": "DEST_CITY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 35,
+          "name": "DEST_STATE_ABR",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 36,
+          "name": "DEST_STATE_FIPS",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 37,
+          "name": "DEST_STATE_NM",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 38,
+          "name": "DEST_COUNTRY",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 39,
+          "name": "DEST_COUNTRY_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 40,
+          "name": "DEST_WAC",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 41,
+          "name": "AIRCRAFT_GROUP",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 42,
+          "name": "AIRCRAFT_TYPE",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 43,
+          "name": "AIRCRAFT_CONFIG",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 44,
+          "name": "YEAR",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 45,
+          "name": "QUARTER",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 46,
+          "name": "MONTH",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 47,
+          "name": "DISTANCE_GROUP",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 48,
+          "name": "CLASS",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 49,
+          "name": "DATA_SOURCE",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "record_count": 11401811,
+      "sample_data": [
+        {
+          "DEPARTURES_SCHEDULED": 0.0,
+          "DEPARTURES_PERFORMED": 0.0,
+          "PAYLOAD": 0.0,
+          "SEATS": 0.0,
+          "PASSENGERS": 0.0,
+          "FREIGHT": 0.0,
+          "MAIL": 0.0,
+          "DISTANCE": 0.0,
+          "RAMP_TO_RAMP": 0.0,
+          "AIR_TIME": 0.0,
+          "UNIQUE_CARRIER": "4W",
+          "AIRLINE_ID": 20323,
+          "UNIQUE_CARRIER_NAME": "Warbelow",
+          "UNIQUE_CARRIER_ENTITY": "06967",
+          "REGION": "D",
+          "CARRIER": "4W",
+          "CARRIER_NAME": "Warbelow",
+          "CARRIER_GROUP": 1,
+          "CARRIER_GROUP_NEW": 5,
+          "ORIGIN_AIRPORT_ID": 11630,
+          "ORIGIN_AIRPORT_SEQ_ID": 1163003,
+          "ORIGIN_CITY_MARKET_ID": 31517,
+          "ORIGIN": "FAI",
+          "ORIGIN_CITY_NAME": "Fairbanks, AK",
+          "ORIGIN_STATE_ABR": "AK",
+          "ORIGIN_STATE_FIPS": 2.0,
+          "ORIGIN_STATE_NM": "Alaska",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 1,
+          "DEST_AIRPORT_ID": 11630,
+          "DEST_AIRPORT_SEQ_ID": 1163003,
+          "DEST_CITY_MARKET_ID": 31517,
+          "DEST": "FAI",
+          "DEST_CITY_NAME": "Fairbanks, AK",
+          "DEST_STATE_ABR": "AK",
+          "DEST_STATE_FIPS": 2.0,
+          "DEST_STATE_NM": "Alaska",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 1,
+          "AIRCRAFT_GROUP": 1,
+          "AIRCRAFT_TYPE": 194,
+          "AIRCRAFT_CONFIG": 1,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 3,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        },
+        {
+          "DEPARTURES_SCHEDULED": 0.0,
+          "DEPARTURES_PERFORMED": 0.0,
+          "PAYLOAD": 0.0,
+          "SEATS": 0.0,
+          "PASSENGERS": 0.0,
+          "FREIGHT": 0.0,
+          "MAIL": 0.0,
+          "DISTANCE": 0.0,
+          "RAMP_TO_RAMP": 0.0,
+          "AIR_TIME": 0.0,
+          "UNIQUE_CARRIER": "MX",
+          "AIRLINE_ID": 22080,
+          "UNIQUE_CARRIER_NAME": "Breeze Aviation Group DBA  Breeze",
+          "UNIQUE_CARRIER_ENTITY": "01268",
+          "REGION": "D",
+          "CARRIER": "MX",
+          "CARRIER_NAME": "Breeze Aviation Group DBA  Breeze",
+          "CARRIER_GROUP": 2,
+          "CARRIER_GROUP_NEW": 2,
+          "ORIGIN_AIRPORT_ID": 14635,
+          "ORIGIN_AIRPORT_SEQ_ID": 1463502,
+          "ORIGIN_CITY_MARKET_ID": 31714,
+          "ORIGIN": "RSW",
+          "ORIGIN_CITY_NAME": "Fort Myers, FL",
+          "ORIGIN_STATE_ABR": "FL",
+          "ORIGIN_STATE_FIPS": 12.0,
+          "ORIGIN_STATE_NM": "Florida",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 33,
+          "DEST_AIRPORT_ID": 14635,
+          "DEST_AIRPORT_SEQ_ID": 1463502,
+          "DEST_CITY_MARKET_ID": 31714,
+          "DEST": "RSW",
+          "DEST_CITY_NAME": "Fort Myers, FL",
+          "DEST_STATE_ABR": "FL",
+          "DEST_STATE_FIPS": 12.0,
+          "DEST_STATE_NM": "Florida",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 33,
+          "AIRCRAFT_GROUP": 6,
+          "AIRCRAFT_TYPE": 724,
+          "AIRCRAFT_CONFIG": 1,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 2,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        },
+        {
+          "DEPARTURES_SCHEDULED": 0.0,
+          "DEPARTURES_PERFORMED": 0.0,
+          "PAYLOAD": 0.0,
+          "SEATS": 0.0,
+          "PASSENGERS": 0.0,
+          "FREIGHT": 0.0,
+          "MAIL": 0.0,
+          "DISTANCE": 0.0,
+          "RAMP_TO_RAMP": 0.0,
+          "AIR_TIME": 0.0,
+          "UNIQUE_CARRIER": "MX",
+          "AIRLINE_ID": 22080,
+          "UNIQUE_CARRIER_NAME": "Breeze Aviation Group DBA  Breeze",
+          "UNIQUE_CARRIER_ENTITY": "01268",
+          "REGION": "D",
+          "CARRIER": "MX",
+          "CARRIER_NAME": "Breeze Aviation Group DBA  Breeze",
+          "CARRIER_GROUP": 2,
+          "CARRIER_GROUP_NEW": 2,
+          "ORIGIN_AIRPORT_ID": 14771,
+          "ORIGIN_AIRPORT_SEQ_ID": 1477104,
+          "ORIGIN_CITY_MARKET_ID": 32457,
+          "ORIGIN": "SFO",
+          "ORIGIN_CITY_NAME": "San Francisco, CA",
+          "ORIGIN_STATE_ABR": "CA",
+          "ORIGIN_STATE_FIPS": 6.0,
+          "ORIGIN_STATE_NM": "California",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 91,
+          "DEST_AIRPORT_ID": 14771,
+          "DEST_AIRPORT_SEQ_ID": 1477104,
+          "DEST_CITY_MARKET_ID": 32457,
+          "DEST": "SFO",
+          "DEST_CITY_NAME": "San Francisco, CA",
+          "DEST_STATE_ABR": "CA",
+          "DEST_STATE_FIPS": 6.0,
+          "DEST_STATE_NM": "California",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 91,
+          "AIRCRAFT_GROUP": 6,
+          "AIRCRAFT_TYPE": 724,
+          "AIRCRAFT_CONFIG": 1,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 2,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        },
+        {
+          "DEPARTURES_SCHEDULED": 0.0,
+          "DEPARTURES_PERFORMED": 0.0,
+          "PAYLOAD": 0.0,
+          "SEATS": 0.0,
+          "PASSENGERS": 0.0,
+          "FREIGHT": 0.0,
+          "MAIL": 0.0,
+          "DISTANCE": 17.0,
+          "RAMP_TO_RAMP": 0.0,
+          "AIR_TIME": 0.0,
+          "UNIQUE_CARRIER": "NEW",
+          "AIRLINE_ID": 20273,
+          "UNIQUE_CARRIER_NAME": "New England Airlines Inc.",
+          "UNIQUE_CARRIER_ENTITY": "06924",
+          "REGION": "D",
+          "CARRIER": "NEW",
+          "CARRIER_NAME": "New England Airlines Inc.",
+          "CARRIER_GROUP": 1,
+          "CARRIER_GROUP_NEW": 6,
+          "ORIGIN_AIRPORT_ID": 10613,
+          "ORIGIN_AIRPORT_SEQ_ID": 1061302,
+          "ORIGIN_CITY_MARKET_ID": 30613,
+          "ORIGIN": "BID",
+          "ORIGIN_CITY_NAME": "Block Island, RI",
+          "ORIGIN_STATE_ABR": "RI",
+          "ORIGIN_STATE_FIPS": 44.0,
+          "ORIGIN_STATE_NM": "Rhode Island",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 15,
+          "DEST_AIRPORT_ID": 15855,
+          "DEST_AIRPORT_SEQ_ID": 1585502,
+          "DEST_CITY_MARKET_ID": 35855,
+          "DEST": "WST",
+          "DEST_CITY_NAME": "Westerly, RI",
+          "DEST_STATE_ABR": "RI",
+          "DEST_STATE_FIPS": 44.0,
+          "DEST_STATE_NM": "Rhode Island",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 15,
+          "AIRCRAFT_GROUP": 0,
+          "AIRCRAFT_TYPE": 79,
+          "AIRCRAFT_CONFIG": 1,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 1,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        },
+        {
+          "DEPARTURES_SCHEDULED": 0.0,
+          "DEPARTURES_PERFORMED": 0.0,
+          "PAYLOAD": 0.0,
+          "SEATS": 0.0,
+          "PASSENGERS": 0.0,
+          "FREIGHT": 0.0,
+          "MAIL": 0.0,
+          "DISTANCE": 17.0,
+          "RAMP_TO_RAMP": 0.0,
+          "AIR_TIME": 0.0,
+          "UNIQUE_CARRIER": "NEW",
+          "AIRLINE_ID": 20273,
+          "UNIQUE_CARRIER_NAME": "New England Airlines Inc.",
+          "UNIQUE_CARRIER_ENTITY": "06924",
+          "REGION": "D",
+          "CARRIER": "NEW",
+          "CARRIER_NAME": "New England Airlines Inc.",
+          "CARRIER_GROUP": 1,
+          "CARRIER_GROUP_NEW": 6,
+          "ORIGIN_AIRPORT_ID": 10613,
+          "ORIGIN_AIRPORT_SEQ_ID": 1061302,
+          "ORIGIN_CITY_MARKET_ID": 30613,
+          "ORIGIN": "BID",
+          "ORIGIN_CITY_NAME": "Block Island, RI",
+          "ORIGIN_STATE_ABR": "RI",
+          "ORIGIN_STATE_FIPS": 44.0,
+          "ORIGIN_STATE_NM": "Rhode Island",
+          "ORIGIN_COUNTRY": "US",
+          "ORIGIN_COUNTRY_NAME": "United States",
+          "ORIGIN_WAC": 15,
+          "DEST_AIRPORT_ID": 15855,
+          "DEST_AIRPORT_SEQ_ID": 1585502,
+          "DEST_CITY_MARKET_ID": 35855,
+          "DEST": "WST",
+          "DEST_CITY_NAME": "Westerly, RI",
+          "DEST_STATE_ABR": "RI",
+          "DEST_STATE_FIPS": 44.0,
+          "DEST_STATE_NM": "Rhode Island",
+          "DEST_COUNTRY": "US",
+          "DEST_COUNTRY_NAME": "United States",
+          "DEST_WAC": 15,
+          "AIRCRAFT_GROUP": 0,
+          "AIRCRAFT_TYPE": 79,
+          "AIRCRAFT_CONFIG": 1,
+          "YEAR": 2025,
+          "QUARTER": 1,
+          "MONTH": 2,
+          "DISTANCE_GROUP": 1,
+          "CLASS": "F",
+          "DATA_SOURCE": "DU"
+        }
+      ],
+      "data_types_info": {
+        "DEPARTURES_SCHEDULED": "float64",
+        "DEPARTURES_PERFORMED": "float64",
+        "PAYLOAD": "float64",
+        "SEATS": "float64",
+        "PASSENGERS": "float64",
+        "FREIGHT": "float64",
+        "MAIL": "float64",
+        "DISTANCE": "float64",
+        "RAMP_TO_RAMP": "float64",
+        "AIR_TIME": "float64",
+        "UNIQUE_CARRIER": "object",
+        "AIRLINE_ID": "int64",
+        "UNIQUE_CARRIER_NAME": "object",
+        "UNIQUE_CARRIER_ENTITY": "object",
+        "REGION": "object",
+        "CARRIER": "object",
+        "CARRIER_NAME": "object",
+        "CARRIER_GROUP": "int64",
+        "CARRIER_GROUP_NEW": "int64",
+        "ORIGIN_AIRPORT_ID": "int64",
+        "ORIGIN_AIRPORT_SEQ_ID": "int64",
+        "ORIGIN_CITY_MARKET_ID": "int64",
+        "ORIGIN": "object",
+        "ORIGIN_CITY_NAME": "object",
+        "ORIGIN_STATE_ABR": "object",
+        "ORIGIN_STATE_FIPS": "float64",
+        "ORIGIN_STATE_NM": "object",
+        "ORIGIN_COUNTRY": "object",
+        "ORIGIN_COUNTRY_NAME": "object",
+        "ORIGIN_WAC": "int64",
+        "DEST_AIRPORT_ID": "int64",
+        "DEST_AIRPORT_SEQ_ID": "int64",
+        "DEST_CITY_MARKET_ID": "int64",
+        "DEST": "object",
+        "DEST_CITY_NAME": "object",
+        "DEST_STATE_ABR": "object",
+        "DEST_STATE_FIPS": "float64",
+        "DEST_STATE_NM": "object",
+        "DEST_COUNTRY": "object",
+        "DEST_COUNTRY_NAME": "object",
+        "DEST_WAC": "int64",
+        "AIRCRAFT_GROUP": "int64",
+        "AIRCRAFT_TYPE": "int64",
+        "AIRCRAFT_CONFIG": "int64",
+        "YEAR": "int64",
+        "QUARTER": "int64",
+        "MONTH": "int64",
+        "DISTANCE_GROUP": "int64",
+        "CLASS": "object",
+        "DATA_SOURCE": "object"
+      },
+      "indexes": [],
+      "data_analysis": {
+        "DEPARTURES_SCHEDULED": {
+          "min": 0.0,
+          "max": 84538.0,
+          "avg": 22.178044698337835
+        },
+        "DEPARTURES_PERFORMED": {
+          "min": 0.0,
+          "max": 2524.0,
+          "avg": 24.16782316423242
+        },
+        "PAYLOAD": {
+          "min": 0.0,
+          "max": 92093842.0,
+          "avg": 849205.6409130532
+        },
+        "SEATS": {
+          "min": 0.0,
+          "max": 215214.0,
+          "avg": 2579.7852210495334
+        },
+        "PASSENGERS": {
+          "min": 0.0,
+          "max": 108286.0,
+          "avg": 1960.629453338597
+        },
+        "FREIGHT": {
+          "min": 0.0,
+          "max": 54615559.0,
+          "avg": 103539.0154457042
+        },
+        "MAIL": {
+          "min": 0.0,
+          "max": 8163150.0,
+          "avg": 3782.7058301527713
+        },
+        "DISTANCE": {
+          "min": 0.0,
+          "max": 11070.0,
+          "avg": 976.1937279963684
+        },
+        "RAMP_TO_RAMP": {
+          "min": 0.0,
+          "max": 33203320.0,
+          "avg": 2963.604597374926
+        },
+        "AIR_TIME": {
+          "min": 0.0,
+          "max": 761016.0,
+          "avg": 2456.8696337801075
+        },
+        "AIRLINE_ID": {
+          "min": 19385.0,
+          "max": 22145.0,
+          "avg": 20148.54790635152
+        },
+        "CARRIER_GROUP": {
+          "min": 0.0,
+          "max": 7.0,
+          "avg": 2.1820245047036826
+        },
+        "CARRIER_GROUP_NEW": {
+          "min": 0.0,
+          "max": 9.0,
+          "avg": 2.926014161346448
+        },
+        "ORIGIN_AIRPORT_ID": {
+          "min": 10001.0,
+          "max": 1138701.0,
+          "avg": 12809.282741750412
+        },
+        "ORIGIN_AIRPORT_SEQ_ID": {
+          "min": 1000101.0,
+          "max": 1707401.0,
+          "avg": 1280871.3421728355
+        },
+        "ORIGIN_CITY_MARKET_ID": {
+          "min": 30001.0,
+          "max": 36995.0,
+          "avg": 32106.9240853931
+        },
+        "ORIGIN_STATE_FIPS": {
+          "min": 1.0,
+          "max": 78.0,
+          "avg": 24.160251976196417
+        },
+        "ORIGIN_WAC": {
+          "min": 1.0,
+          "max": 975.0,
+          "avg": 82.61554607421576
+        },
+        "DEST_AIRPORT_ID": {
+          "min": 10001.0,
+          "max": 1138701.0,
+          "avg": 12801.81143662178
+        },
+        "DEST_AIRPORT_SEQ_ID": {
+          "min": 1000101.0,
+          "max": 1707601.0,
+          "avg": 1280124.2113018713
+        },
+        "DEST_CITY_MARKET_ID": {
+          "min": 30001.0,
+          "max": 37004.0,
+          "avg": 32100.245361372854
+        },
+        "DEST_STATE_FIPS": {
+          "min": 1.0,
+          "max": 78.0,
+          "avg": 24.228004191857437
+        },
+        "DEST_WAC": {
+          "min": 1.0,
+          "max": 975.0,
+          "avg": 83.13409738154755
+        },
+        "AIRCRAFT_GROUP": {
+          "min": 0.0,
+          "max": 8.0,
+          "avg": 5.4192022653243415
+        },
+        "AIRCRAFT_TYPE": {
+          "min": 9.0,
+          "max": 890.0,
+          "avg": 593.9461993362282
+        },
+        "AIRCRAFT_CONFIG": {
+          "min": 1.0,
+          "max": 4.0,
+          "avg": 1.2128810940647938
+        },
+        "YEAR": {
+          "min": 1999.0,
+          "max": 2025.0,
+          "avg": 2012.6144222176636
+        },
+        "QUARTER": {
+          "min": 1.0,
+          "max": 4.0,
+          "avg": 2.4858896538453408
+        },
+        "MONTH": {
+          "min": 1.0,
+          "max": 12.0,
+          "avg": 6.463192031511485
+        },
+        "DISTANCE_GROUP": {
+          "min": 1.0,
+          "max": 23.0,
+          "avg": 2.5075727005122257
+        },
+        "YEAR_values": [
+          1999,
+          2000,
+          2001,
+          2002,
+          2003,
+          2004,
+          2005,
+          2006,
+          2007,
+          2008,
+          2009,
+          2010,
+          2011,
+          2012,
+          2013,
+          2014,
+          2015,
+          2016,
+          2017,
+          2018,
+          2019,
+          2020,
+          2021,
+          2022,
+          2023,
+          2024,
+          2025
+        ]
+      }
+    },
+    "TEMP_AIRPORTS": {
+      "table_name": "TEMP_AIRPORTS",
+      "columns": [
+        {
+          "cid": 0,
+          "name": "AIRPORT_ID",
+          "type": "REAL",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 1,
+          "name": "DISPLAY_AIRPORT_NAME",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "record_count": 366,
+      "sample_data": [
+        {
+          "AIRPORT_ID": -10001.0,
+          "DISPLAY_AIRPORT_NAME": "Mid Valley Airport"
+        },
+        {
+          "AIRPORT_ID": -10000.0,
+          "DISPLAY_AIRPORT_NAME": "Presidio-Lely International Airport."
+        },
+        {
+          "AIRPORT_ID": 10013.0,
+          "DISPLAY_AIRPORT_NAME": "Crosbyton Municipal"
+        },
+        {
+          "AIRPORT_ID": 10136.0,
+          "DISPLAY_AIRPORT_NAME": "Abilene Regional"
+        },
+        {
+          "AIRPORT_ID": 10148.0,
+          "DISPLAY_AIRPORT_NAME": "Acapulco International"
+        }
+      ],
+      "data_types_info": {
+        "AIRPORT_ID": "float64",
+        "DISPLAY_AIRPORT_NAME": "object"
+      },
+      "indexes": [],
+      "data_analysis": {
+        "AIRPORT_ID": {
+          "min": -10001.0,
+          "max": 17013.0,
+          "avg": 13464.282786885246
+        }
+      }
+    }
+  },
+  "foreign_keys": {}
+}
