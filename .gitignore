@@ -1,0 +1,9 @@
+# Ignore all top-level folders
+01_Raw Data/
+02_Data_Staging/
+03_Process_Data/
+04_GIS/
+05_Stakeholder_Outreach/
+06_Deliverables/
+07_WebApp/
+08_Ref_Documents
