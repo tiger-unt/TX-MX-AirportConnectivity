@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Plane, Users, MapPin, Award } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, isTxDomestic } from '@/lib/aviationHelpers'
+import { fmtCompact, isTxDomestic, computeAdherenceData } from '@/lib/aviationHelpers'
+import { CHART_COLORS } from '@/lib/chartColors'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
@@ -159,6 +160,8 @@ export default function TexasDomesticPage() {
       .slice(0, 10)
   }, [filtered])
 
+  const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
+
   /* ── map data ──────────────────────────────────────────────────────── */
   const mapRoutes = useMemo(() => aggregateRoutes(filtered, airportIndex), [filtered, airportIndex])
 
@@ -303,6 +306,18 @@ export default function TexasDomesticPage() {
             <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
           </ChartCard>
         </div>
+      </SectionBlock>
+
+      {/* Operations (segment) */}
+      <SectionBlock>
+        <ChartCard
+          title="Schedule Adherence"
+          subtitle="Performed vs scheduled departures (Class F, scheduled service)"
+          downloadData={{ summary: { data: adherenceData, filename: 'tx-domestic-schedule-adherence' } }}
+        >
+          <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
+          <p className="text-xs text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
+        </ChartCard>
       </SectionBlock>
     </DashboardLayout>
   )

@@ -26,7 +26,7 @@ Each dictionary contains:
 - Use `UNIQUE_CARRIER` for consistent carrier analysis across years (handles code reuse)
 - Use `AIRPORT_ID`/`AIRPORT_SEQ_ID` for airport identification (airport codes can change over time)
 - Use `CITY_MARKET_ID` to consolidate airports serving the same metropolitan area
-- `DATA_SOURCE`: 'D' = Domestic flights, 'I' = International flights
+- `DATA_SOURCE`: Two-character code — first letter: D (Domestic route) or I (International route); second letter: U (U.S. carrier) or F (Foreign carrier). Values: DU, IU, DF, IF.
 - Distance is measured in miles, freight/mail in pounds, air time in minutes
 
 ## Table Summary & Key Columns
@@ -61,7 +61,7 @@ Leg-by-leg flight data. Better for "Operational" analysis (seats, flight counts)
 1. **Always use the JSON schema**: Reference `Database_Schema.json` for exact column names and data types before writing SQL.
 2. **Texas-Mexico Focus**: Most queries should filter by `ORIGIN_STATE_ABR = 'TX'` and `DEST_COUNTRY_NAME = 'Mexico'` (or vice versa).
 3. **Performance**: Main tables are large (8M+ rows). Always use indexed columns (`YEAR`, `ORIGIN`, `DEST`) in `WHERE` clauses where possible.
-4. **Data Source**: Use `DATA_SOURCE = 'I'` for International or `DATA_SOURCE = 'D'` for Domestic as needed.
+4. **Data Source**: Use `DATA_SOURCE IN ('IU','IF')` for International routes or `DATA_SOURCE IN ('DU','DF')` for Domestic routes. Use second letter to filter by carrier nationality: U = U.S. carrier, F = Foreign carrier.
 5. **GIS Analysis**: Use the `WKT` column in `BORDER_AIRPORTS` for mapping tasks.
 
 ## Example Query Pattern

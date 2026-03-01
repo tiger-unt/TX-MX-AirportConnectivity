@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Users, Plane, Package, Route, ArrowRightLeft } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, computeAdherenceData } from '@/lib/aviationHelpers'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
-import { formatNumber } from '@/lib/chartColors'
+import { formatNumber, CHART_COLORS } from '@/lib/chartColors'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
 import StatCard from '@/components/ui/StatCard'
@@ -253,15 +253,19 @@ export default function TexasMexicoPage() {
 
   const depTrend = useMemo(() => {
     const byYK = new Map()
-    filteredSegment.forEach((d) => {
-      for (const [metric, field] of [['Scheduled', 'DEPARTURES_SCHEDULED'], ['Performed', 'DEPARTURES_PERFORMED']]) {
-        const key = `${d.YEAR}|${metric}`
-        if (!byYK.has(key)) byYK.set(key, { year: d.YEAR, value: 0, Metric: metric })
-        byYK.get(key).value += d[field]
-      }
-    })
+    filteredSegment
+      .filter((d) => d.CLASS === 'F' && d.DEPARTURES_SCHEDULED > 0)
+      .forEach((d) => {
+        for (const [metric, field] of [['Scheduled', 'DEPARTURES_SCHEDULED'], ['Performed', 'DEPARTURES_PERFORMED']]) {
+          const key = `${d.YEAR}|${metric}`
+          if (!byYK.has(key)) byYK.set(key, { year: d.YEAR, value: 0, Metric: metric })
+          byYK.get(key).value += d[field]
+        }
+      })
     return Array.from(byYK.values()).sort((a, b) => a.year - b.year || a.Metric.localeCompare(b.Metric))
   }, [filteredSegment])
+
+  const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
 
   /* ── state-level storytelling ───────────────────────────────────────── */
   const topMxStates = useMemo(() => {
@@ -519,7 +523,7 @@ export default function TexasMexicoPage() {
 
       {/* Operations (segment) */}
       <SectionBlock>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <ChartCard
             title="Seat Capacity Trends"
             subtitle="Total seats by year (segment data)"
@@ -529,10 +533,19 @@ export default function TexasMexicoPage() {
           </ChartCard>
           <ChartCard
             title="Departures: Scheduled vs Performed"
-            subtitle="By year (segment data)"
+            subtitle="Scheduled service by year (Class F, sched > 0)"
             downloadData={{ summary: { data: depTrend, filename: 'tx-mx-dep-trends' } }}
           >
             <LineChart data={depTrend} xKey="year" yKey="value" seriesKey="Metric" formatValue={fmtCompact} />
+            <p className="text-xs text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
+          </ChartCard>
+          <ChartCard
+            title="Schedule Adherence"
+            subtitle="Performed vs scheduled departures (Class F, scheduled service)"
+            downloadData={{ summary: { data: adherenceData, filename: 'tx-mx-schedule-adherence' } }}
+          >
+            <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
+            <p className="text-xs text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
           </ChartCard>
         </div>
       </SectionBlock>

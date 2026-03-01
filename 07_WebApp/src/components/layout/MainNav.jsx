@@ -26,6 +26,7 @@ const navItems = [
   { label: 'Texas International', path: '/texas-international' },
   { label: 'U.S.–Mexico', path: '/us-mexico' },
   { label: 'Texas–Mexico', path: '/texas-mexico' },
+  { label: 'About the Data', path: '/about-data' },
 ]
 
 export default function MainNav() {

@@ -1,7 +1,7 @@
 """
 Verify BTS T-100 CSV Data Against Documented Corrections
 =========================================================
-Checks all corrections from corrections.csv / corrections.md against
+Checks all corrections from data-cleaning.csv / data-cleaning.md against
 the extracted Market and Segment CSVs. Also scans for new issues.
 
 Author: Generated for TxDOT IAC 2025-26 Task 6
@@ -12,6 +12,7 @@ from pathlib import Path
 
 script_dir = Path(__file__).parent
 TEMP_DIR = script_dir / ".." / "_temp"
+CLEANING_CSV = script_dir / ".." / ".." / "Database" / "data-cleaning" / "data-cleaning.csv"
 
 MARKET_CSV = TEMP_DIR / "BTS_T-100_Market_2015-2024.csv"
 SEGMENT_CSV = TEMP_DIR / "BTS_T-100_Segment_2015-2024.csv"
@@ -23,6 +24,12 @@ def load_data():
     print(f"Market:  {len(mkt):,} rows, {len(mkt.columns)} columns")
     print(f"Segment: {len(seg):,} rows, {len(seg.columns)} columns")
     return mkt, seg
+
+
+def load_rules():
+    rules = pd.read_csv(CLEANING_CSV, dtype={"airport_id": "Int64"})
+    print(f"Rules:   {len(rules):,} rows from {CLEANING_CSV.name}")
+    return rules
 
 
 def check_nlu_city(mkt, seg):
@@ -46,6 +53,7 @@ def check_code_updates(mkt, seg):
         ("2.3a", 12544, "JQF", "USA", "Concord, NC"),
         ("2.3b", 13788, "NZC", "VQQ", "Jacksonville, FL"),
         ("2.3c", 16658, "T1X", "GLE", "Gainesville, TX"),
+        ("2.3d", 15081, "SXF", "BER", "Berlin, Germany"),
     ]
     for ref, aid, old_code, new_code, city in checks:
         print(f"\n--- {ref} Airport ID {aid} ({city}: {old_code} -> {new_code}) ---")
@@ -135,17 +143,128 @@ def check_missing_carrier(mkt, seg):
             print(f"    Years: {sorted(years)}, Classes: {sorted(classes)}")
 
 
-def scan_new_issues(mkt, seg):
+def check_duplicate_rows(mkt, seg):
+    """Check for exact duplicate rows (all columns identical)."""
+    print("\n--- 3.3 Duplicate Rows ---")
+    for label, df in [("Market", mkt), ("Segment", seg)]:
+        dup_count = df.duplicated().sum()
+        print(f"  {label}: {dup_count:,} exact duplicate rows ({dup_count/len(df)*100:.2f}%)")
+        if dup_count > 0:
+            # Show a sample of the duplicated rows
+            dups = df[df.duplicated(keep="first")]
+            sample = dups.head(3)
+            carriers = dups["CARRIER_NAME"].value_counts().head(5).to_dict()
+            print(f"    Top carriers with duplicates: {carriers}")
+
+
+def check_passengers_exceed_seats(mkt, seg):
+    """Check for rows where PASSENGERS > SEATS (segment only)."""
+    print("\n--- 3.4 Passengers Exceeding Seats ---")
+    for label, df in [("Market", mkt), ("Segment", seg)]:
+        if "SEATS" not in df.columns:
+            print(f"  {label}: skipped (no SEATS column)")
+            continue
+        exceed = df[(df["PASSENGERS"] > df["SEATS"]) & (df["SEATS"] > 0)]
+        print(f"  {label}: {len(exceed):,} rows where PASSENGERS > SEATS")
+        if len(exceed) > 0:
+            avg_diff = (exceed["PASSENGERS"] - exceed["SEATS"]).mean()
+            max_diff = (exceed["PASSENGERS"] - exceed["SEATS"]).max()
+            print(f"    Avg excess: {avg_diff:.1f}, Max excess: {max_diff:.0f}")
+
+
+def check_departure_anomalies(mkt, seg):
+    """Report structural departure scheduled vs performed patterns (informational)."""
+    print("\n--- 3.5 Departure Scheduled vs Performed (Informational) ---")
+    for label, df in [("Market", mkt), ("Segment", seg)]:
+        if "DEPARTURES_SCHEDULED" not in df.columns:
+            print(f"  {label}: skipped (no departure columns)")
+            continue
+
+        total = len(df)
+        perf_no_sched = df[(df["DEPARTURES_PERFORMED"] > 0) & (df["DEPARTURES_SCHEDULED"] == 0)]
+        sched_no_perf = df[(df["DEPARTURES_SCHEDULED"] > 0) & (df["DEPARTURES_PERFORMED"] == 0)]
+        perf_gt_sched = df[(df["DEPARTURES_PERFORMED"] > df["DEPARTURES_SCHEDULED"]) & (df["DEPARTURES_SCHEDULED"] > 0)]
+
+        print(f"  {label} ({total:,} rows):")
+        print(f"    Performed>0, Scheduled=0: {len(perf_no_sched):,} ({len(perf_no_sched)/total*100:.1f}%)")
+        if len(perf_no_sched) > 0:
+            by_class = perf_no_sched["CLASS"].value_counts().to_dict()
+            by_source = perf_no_sched["DATA_SOURCE"].value_counts().to_dict()
+            print(f"      By CLASS: {by_class}")
+            print(f"      By DATA_SOURCE: {by_source}")
+
+            # Breakdown of where scheduled=0 is expected vs observed behavior
+            expected_foreign = perf_no_sched[perf_no_sched["DATA_SOURCE"].isin(["IF", "DF"])]
+            expected_nonscheduled = perf_no_sched[perf_no_sched["CLASS"].isin(["L", "P"])]
+            class_f_us = perf_no_sched[
+                (perf_no_sched["CLASS"] == "F") &
+                (perf_no_sched["DATA_SOURCE"].isin(["DU", "IU"]))
+            ]
+            print(f"      Expected foreign (IF/DF): {len(expected_foreign):,}")
+            print(f"      Expected non-scheduled class (L/P): {len(expected_nonscheduled):,}")
+            print(f"      CLASS=F + DU/IU with scheduled=0: {len(class_f_us):,}")
+            print("      Note: some Class F U.S. carrier rows still report scheduled=0 in BTS.")
+
+        print(f"    Scheduled>0, Performed=0: {len(sched_no_perf):,} ({len(sched_no_perf)/total*100:.1f}%)")
+        print(f"    Performed > Scheduled (sched>0): {len(perf_gt_sched):,} ({len(perf_gt_sched)/total*100:.1f}%)")
+
+        # This is the operational subset used for schedule adherence
+        adherence_scope = df[
+            (df["CLASS"] == "F") &
+            (df["DATA_SOURCE"].isin(["DU", "IU"])) &
+            (df["DEPARTURES_SCHEDULED"] > 0)
+        ]
+        if len(adherence_scope) > 0:
+            exact = (adherence_scope["DEPARTURES_PERFORMED"] == adherence_scope["DEPARTURES_SCHEDULED"]).sum()
+            under = (adherence_scope["DEPARTURES_PERFORMED"] < adherence_scope["DEPARTURES_SCHEDULED"]).sum()
+            over = (adherence_scope["DEPARTURES_PERFORMED"] > adherence_scope["DEPARTURES_SCHEDULED"]).sum()
+            print(
+                f"    Adherence scope (CLASS=F, DU/IU, scheduled>0): {len(adherence_scope):,} rows | "
+                f"exact={exact:,}, performed<scheduled={under:,}, performed>scheduled={over:,}"
+            )
+
+
+def build_known_issue_sets(rules):
+    """Build known issue sets from data-cleaning.csv so scanner stays current."""
+    code_updates = rules[
+        (rules["action"] == "update") &
+        (rules["field"] == "CODE") &
+        (rules["airport_id"].notna())
+    ].copy()
+    city_updates = rules[
+        (rules["action"] == "update") &
+        (rules["field"] == "CITY_NAME") &
+        (rules["airport_id"].notna())
+    ].copy()
+    deletes = rules[
+        (rules["action"] == "delete") &
+        (rules["airport_id"].notna())
+    ].copy()
+
+    known_multi_ids = set(code_updates["airport_id"].astype(int).tolist())
+    known_multi_ids.update(deletes["airport_id"].astype(int).tolist())
+
+    known_city_ids = set(city_updates["airport_id"].astype(int).tolist())
+
+    # Explicit multi-ID code conflicts documented in corrections.
+    # T4X is currently represented by one update row + one delete row.
+    known_multi_codes = {"T4X"}
+
+    return known_multi_ids, known_multi_codes, known_city_ids
+
+
+def scan_new_issues(mkt, seg, rules):
     """Detect issues not in current corrections"""
     print("\n" + "=" * 60)
     print("  NEW ISSUE SCAN")
     print("=" * 60)
 
+    known_multi, known_codes, known_city = build_known_issue_sets(rules)
+
     for label, df in [("Market", mkt), ("Segment", seg)]:
         print(f"\n--- {label} ---")
 
-        # Airport IDs with multiple codes (not already documented)
-        known_multi = {12544, 13788, 16658, 16879, 16706}
+        # Airport IDs with multiple codes (not already documented in data-cleaning.csv)
         o_map = df.groupby("ORIGIN_AIRPORT_ID")["ORIGIN"].nunique()
         d_map = df.groupby("DEST_AIRPORT_ID")["DEST"].nunique()
         multi_o = o_map[o_map > 1].index.tolist()
@@ -162,7 +281,6 @@ def scan_new_issues(mkt, seg):
             print("  No new multi-code Airport IDs")
 
         # Codes mapping to multiple IDs (not already documented)
-        known_codes = {"T4X"}
         o_cmap = df.groupby("ORIGIN")["ORIGIN_AIRPORT_ID"].nunique()
         d_cmap = df.groupby("DEST")["DEST_AIRPORT_ID"].nunique()
         multi_co = o_cmap[o_cmap > 1].index.tolist()
@@ -174,7 +292,6 @@ def scan_new_issues(mkt, seg):
             print("  No new multi-ID codes")
 
         # City name inconsistencies (same Airport ID, different city names)
-        known_city = {16852}
         o_cities = df.groupby("ORIGIN_AIRPORT_ID")["ORIGIN_CITY_NAME"].nunique()
         d_cities = df.groupby("DEST_AIRPORT_ID")["DEST_CITY_NAME"].nunique()
         multi_city_o = o_cities[o_cities > 1].index.tolist()
@@ -208,6 +325,7 @@ def main():
     print("=" * 60)
 
     mkt, seg = load_data()
+    rules = load_rules()
 
     check_missing_states(mkt, seg)
     check_nlu_city(mkt, seg)
@@ -215,8 +333,11 @@ def main():
     check_t4x_conflict(mkt, seg)
     check_zero_distance(mkt, seg)
     check_all_zero_activity(mkt, seg)
+    check_duplicate_rows(mkt, seg)
+    check_passengers_exceed_seats(mkt, seg)
+    check_departure_anomalies(mkt, seg)
     check_missing_carrier(mkt, seg)
-    scan_new_issues(mkt, seg)
+    scan_new_issues(mkt, seg, rules)
 
     print("\n" + "=" * 60)
     print("  VERIFICATION COMPLETE")

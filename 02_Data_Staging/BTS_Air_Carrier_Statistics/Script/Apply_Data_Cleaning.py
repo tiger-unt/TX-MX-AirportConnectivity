@@ -21,9 +21,9 @@ from pathlib import Path
 # ============================================================================
 
 script_dir = Path(__file__).parent
-cleaning_dir = script_dir / ".." / ".." / "Database" / "data-cleaning"
-input_dir = script_dir / ".." / "_temp"
-output_dir = script_dir / ".." / ".." / ".." / ".." / "03_Process_Data" / "BTS"
+cleaning_dir = script_dir / ".." / "Database" / "data-cleaning"
+input_dir = script_dir / "_temp"
+output_dir = script_dir / ".." / ".." / ".." / "03_Process_Data" / "BTS"
 
 CLEANING_CSV = cleaning_dir / "data-cleaning.csv"
 STATES_LOOKUP = cleaning_dir / "missing-states.csv"
@@ -61,6 +61,23 @@ CSV_STATE_KEYS = {
 # GeoJSON state fill join keys
 GEO_STATE_KEYS = ("AIRPORT", "DISPLAY_AIRPORT_CITY_NAME_FULL", "AIRPORT_STATE_NAME")
 
+# Metric columns used for post-cleaning re-aggregation after code/city normalization
+CSV_METRIC_COLUMNS = {
+    "market": ["PASSENGERS", "FREIGHT", "MAIL", "DISTANCE"],
+    "segment": [
+        "DEPARTURES_SCHEDULED",
+        "DEPARTURES_PERFORMED",
+        "PAYLOAD",
+        "SEATS",
+        "PASSENGERS",
+        "FREIGHT",
+        "MAIL",
+        "DISTANCE",
+        "RAMP_TO_RAMP",
+        "AIR_TIME",
+    ],
+}
+
 
 # ============================================================================
 # CLEANING FUNCTIONS
@@ -85,6 +102,50 @@ def applies_to_csv(target, csv_type):
 def applies_to_geojson(target):
     """Check if a rule target applies to the GeoJSON."""
     return target in ("geojson", "all")
+
+
+def has_state_fill_rule(rules, target_kind, csv_type=None):
+    """
+    Check whether STATE_NAME fill is enabled by rules for a target.
+    target_kind: "csv" or "geojson"
+    """
+    fill_rules = rules[
+        (rules["action"] == "fill") &
+        (rules["field"] == "STATE_NAME")
+    ]
+    if fill_rules.empty:
+        return False
+
+    if target_kind == "geojson":
+        return any(applies_to_geojson(t) for t in fill_rules["target"])
+
+    if target_kind == "csv":
+        if csv_type is None:
+            return False
+        return any(applies_to_csv(t, csv_type) for t in fill_rules["target"])
+
+    return False
+
+
+def resolve_states_lookup_path(rules):
+    """Resolve lookup path for STATE_NAME fill rules. Returns None if no fill rule."""
+    fill_rules = rules[
+        (rules["action"] == "fill") &
+        (rules["field"] == "STATE_NAME")
+    ]
+    if fill_rules.empty:
+        return None
+
+    # Support explicit lookup filename in old_value, fallback to default
+    value_series = fill_rules["old_value"].dropna().astype(str).str.strip()
+    lookup_value = value_series.iloc[0] if not value_series.empty else ""
+    if lookup_value:
+        lookup_path = Path(lookup_value)
+        if not lookup_path.is_absolute():
+            lookup_path = cleaning_dir / lookup_path
+        return lookup_path
+
+    return STATES_LOOKUP
 
 
 def apply_csv_updates(df, rules, csv_type):
@@ -126,6 +187,50 @@ def apply_csv_updates(df, rules, csv_type):
     return total_changed
 
 
+def apply_csv_corrections(df, rules, csv_type):
+    """Apply correct rules to a CSV DataFrame (value-based fixes)."""
+    total_corrected = 0
+    correct_rules = rules[rules["action"] == "correct"]
+
+    for _, rule in correct_rules.iterrows():
+        if not applies_to_csv(rule["target"], csv_type):
+            continue
+
+        field = rule["field"]
+
+        if field == "DEPARTURES_SCHEDULED_OUTLIER":
+            # Fix rows where DEPARTURES_SCHEDULED is absurdly higher than DEPARTURES_PERFORMED
+            # These are data entry errors (extra digits or miskeyed values)
+            performed = df["DEPARTURES_PERFORMED"]
+            scheduled = df["DEPARTURES_SCHEDULED"]
+            mask = (performed > 0) & (scheduled / performed > 100)
+            count = mask.sum()
+            if count > 0:
+                df.loc[mask, "DEPARTURES_SCHEDULED"] = df.loc[mask, "DEPARTURES_PERFORMED"]
+                total_corrected += count
+                print(f"  [CORRECT] {field}: fixed {count} rows (set DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED)")
+
+        elif field == "PASSENGERS_EXCEED_SEATS":
+            # Cap PASSENGERS at SEATS where passengers exceed available seats
+            # These are reporting errors (only applies to segment data which has SEATS)
+            if "SEATS" in df.columns:
+                mask = (df["PASSENGERS"] > df["SEATS"]) & (df["SEATS"] > 0)
+                count = mask.sum()
+                if count > 0:
+                    df.loc[mask, "PASSENGERS"] = df.loc[mask, "SEATS"]
+                    total_corrected += count
+                    print(f"  [CORRECT] {field}: capped {count} rows (set PASSENGERS = SEATS)")
+                else:
+                    print(f"  [CORRECT] {field}: no rows to fix")
+            else:
+                print(f"  [CORRECT] {field}: skipped (no SEATS column in {csv_type})")
+
+        else:
+            print(f"  [WARNING] Unknown correction type: {field}")
+
+    return total_corrected
+
+
 def apply_csv_deletes(df, rules, csv_type):
     """Apply delete rules to a CSV DataFrame. Returns the filtered DataFrame."""
     delete_rules = rules[rules["action"] == "delete"]
@@ -164,6 +269,8 @@ def apply_csv_filters(df, rules, csv_type):
         elif field == "ALL_ZERO_ACTIVITY":
             mask = (df["PASSENGERS"] == 0) & (df["FREIGHT"] == 0) & (df["MAIL"] == 0)
             df = df[~mask].copy()
+        elif field == "DUPLICATE_ROWS":
+            df = df.drop_duplicates().copy()
         else:
             print(f"  [WARNING] Unknown filter type: {field}")
             continue
@@ -205,6 +312,42 @@ def apply_csv_state_fill(df, states_df, csv_type):
         print(f"  [FILL] {state_col}: filled {filled} of {null_count_before} nulls ({remaining} remaining)")
 
     return df, total_filled
+
+
+def reaggregate_csv(df, csv_type):
+    """
+    Re-aggregate rows after updates/corrections that can normalize keys
+    (e.g., code or city updates), creating semantic duplicates.
+    """
+    metric_cols = [c for c in CSV_METRIC_COLUMNS.get(csv_type, []) if c in df.columns]
+    if not metric_cols:
+        print(f"  [REAGG] {csv_type}: skipped (no configured metric columns)")
+        return df, 0
+
+    key_cols = [c for c in df.columns if c not in metric_cols]
+    if not key_cols:
+        print(f"  [REAGG] {csv_type}: skipped (no key columns)")
+        return df, 0
+
+    before = len(df)
+    duplicate_groups = int(df.duplicated(subset=key_cols, keep=False).sum())
+    if duplicate_groups == 0:
+        print(f"  [REAGG] {csv_type}: no semantic duplicates found")
+        return df, 0
+
+    grouped = (
+        df.groupby(key_cols, dropna=False, as_index=False)[metric_cols]
+        .sum()
+    )
+
+    # Preserve original column order
+    grouped = grouped[df.columns]
+    collapsed = before - len(grouped)
+    print(
+        f"  [REAGG] {csv_type}: collapsed {collapsed} rows "
+        f"({before:,} -> {len(grouped):,}) across normalized duplicate keys"
+    )
+    return grouped, collapsed
 
 
 def apply_geojson_updates(features, rules):
@@ -300,10 +443,16 @@ def main():
     # Load cleaning rules
     rules = load_cleaning_rules(CLEANING_CSV)
 
-    # Load states lookup (for fill rules)
-    states_df = pd.read_csv(STATES_LOOKUP)
-    print(f"[SUCCESS] Loaded {len(states_df)} state lookup entries from {STATES_LOOKUP.name}")
-    print()
+    # Load states lookup only when a STATE_NAME fill rule exists
+    states_df = None
+    states_lookup_path = resolve_states_lookup_path(rules)
+    if states_lookup_path is not None:
+        states_df = pd.read_csv(states_lookup_path)
+        print(f"[SUCCESS] Loaded {len(states_df)} state lookup entries from {states_lookup_path.name}")
+        print()
+    else:
+        print("[INFO] No STATE_NAME fill rule found; state-fill step will be skipped")
+        print()
 
     # ── Process CSVs ──────────────────────────────────────────────────────
     all_csv_airport_ids = set()
@@ -323,19 +472,32 @@ def main():
         apply_csv_updates(df, rules, csv_type)
         print()
 
-        # Step 2: Deletes
-        print("  Step 2: Applying deletes...")
+        # Step 2: Corrections
+        print("  Step 2: Applying corrections...")
+        apply_csv_corrections(df, rules, csv_type)
+        print()
+
+        # Step 3: Deletes
+        print("  Step 3: Applying deletes...")
         df, _ = apply_csv_deletes(df, rules, csv_type)
         print()
 
-        # Step 3: Filters
-        print("  Step 3: Applying filters...")
+        # Step 4: Filters
+        print("  Step 4: Applying filters...")
         df, _ = apply_csv_filters(df, rules, csv_type)
         print()
 
-        # Step 4: State fill
-        print("  Step 4: Filling state names...")
-        df, _ = apply_csv_state_fill(df, states_df, csv_type)
+        # Step 5: State fill
+        print("  Step 5: Filling state names...")
+        if states_df is not None and has_state_fill_rule(rules, target_kind="csv", csv_type=csv_type):
+            df, _ = apply_csv_state_fill(df, states_df, csv_type)
+        else:
+            print("  [FILL] skipped (no matching fill rule for this target)")
+        print()
+
+        # Step 6: Re-aggregate semantic duplicates introduced by normalization
+        print("  Step 6: Re-aggregating normalized duplicate keys...")
+        df, _ = reaggregate_csv(df, csv_type)
         print()
 
         # Collect airport IDs for GeoJSON scoping
@@ -388,7 +550,10 @@ def main():
 
     # Step 5: Fill state names
     print("  Step 5: Filling state names...")
-    apply_geojson_state_fill(features, states_df)
+    if states_df is not None and has_state_fill_rule(rules, target_kind="geojson"):
+        apply_geojson_state_fill(features, states_df)
+    else:
+        print("  [FILL] skipped (no matching fill rule for geojson)")
     print()
 
     # Step 6: Strip properties to essential fields only

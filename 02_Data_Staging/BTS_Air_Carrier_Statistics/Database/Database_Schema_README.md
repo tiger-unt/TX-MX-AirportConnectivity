@@ -103,7 +103,7 @@ Market-level passenger, freight, and mail data.
 - FREIGHT/MAIL: Weight in pounds
 - DISTANCE: Miles between airports
 - UNIQUE_CARRIER: Airline carrier code
-- DATA_SOURCE: 'D' (Domestic) or 'I' (International)
+- DATA_SOURCE: Two-character code — first letter: D (Domestic route) or I (International route); second letter: U (U.S. carrier) or F (Foreign carrier). Values: DU, IU, DF, IF.
 
 ### BTS_SEGMENT (11,401,811 records, 50 columns)
 Flight segment data (each leg of a journey).

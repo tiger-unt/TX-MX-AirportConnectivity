@@ -9,4 +9,7 @@ update,csv,16852,CITY_NAME,"Zumpango, Mexico","Mexico City, Mexico",NLU Felipe A
 delete,all,16706,,,,Austin TX ID 16706 - unidentifiable facility
 filter,csv,,ZERO_DISTANCE,,,Remove rows where ORIGIN=DEST AND DISTANCE=0
 filter,csv,,ALL_ZERO_ACTIVITY,,,Remove rows where PASSENGERS=0 AND FREIGHT=0 AND MAIL=0
+correct,segment,,DEPARTURES_SCHEDULED_OUTLIER,,,Set DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED where scheduled/performed ratio > 100 (data entry errors)
+filter,csv,,DUPLICATE_ROWS,,,Remove exact duplicate rows (all columns identical)
+correct,segment,,PASSENGERS_EXCEED_SEATS,,,Cap PASSENGERS at SEATS where PASSENGERS > SEATS and SEATS > 0
 fill,all,,STATE_NAME,missing-states.csv,,Fill null state names from lookup file

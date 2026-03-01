@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Users, PieChart, MapPin, Route } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, isUsToMx, isMxToUs } from '@/lib/aviationHelpers'
+import { fmtCompact, isUsToMx, isMxToUs, computeAdherenceData } from '@/lib/aviationHelpers'
+import { CHART_COLORS } from '@/lib/chartColors'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
@@ -16,7 +17,7 @@ import AirportMap from '@/components/maps/AirportMap'
 const isUsMx = (d) => isUsToMx(d) || isMxToUs(d)
 
 export default function USMexicoPage() {
-  const { marketData, airportIndex, loading, filters, setFilter, resetFilters } = useAviationStore()
+  const { marketData, segmentData, airportIndex, loading, filters, setFilter, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
 
   /* ── base dataset ──────────────────────────────────────────────────── */
@@ -24,6 +25,11 @@ export default function USMexicoPage() {
     if (!marketData) return []
     return marketData.filter(isUsMx)
   }, [marketData])
+
+  const baseSegment = useMemo(() => {
+    if (!segmentData) return []
+    return segmentData.filter(isUsMx)
+  }, [segmentData])
 
   /* ── filter options ────────────────────────────────────────────────── */
   const yearOptions = useMemo(() => {
@@ -64,6 +70,24 @@ export default function USMexicoPage() {
     }
     return data
   }, [baseMarket, filters])
+
+  const filteredSegment = useMemo(() => {
+    let data = baseSegment
+    if (filters.year) data = data.filter((d) => String(d.YEAR) === filters.year)
+    if (filters.carrier) data = data.filter((d) => d.CARRIER_NAME === filters.carrier)
+    if (filters.originAirport) {
+      data = data.filter((d) => (d.ORIGIN_FULL_LABEL || d.ORIGIN) === filters.originAirport)
+    }
+    if (filters.destAirport) {
+      data = data.filter((d) => (d.DEST_FULL_LABEL || d.DEST) === filters.destAirport)
+    }
+    if (filters.originState) {
+      data = data.filter((d) => d.ORIGIN_STATE_NM === filters.originState)
+    }
+    return data
+  }, [baseSegment, filters])
+
+  const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
 
   /* ── active filter count & tags ────────────────────────────────────── */
   const activeCount = [
@@ -322,6 +346,18 @@ export default function USMexicoPage() {
           downloadData={{ summary: { data: topRoutes, filename: 'top-us-mx-routes' } }}
         >
           <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
+        </ChartCard>
+      </SectionBlock>
+
+      {/* Operations (segment) */}
+      <SectionBlock alt>
+        <ChartCard
+          title="Schedule Adherence"
+          subtitle="Performed vs scheduled departures (Class F, scheduled service)"
+          downloadData={{ summary: { data: adherenceData, filename: 'us-mx-schedule-adherence' } }}
+        >
+          <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
+          <p className="text-xs text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
         </ChartCard>
       </SectionBlock>
     </DashboardLayout>

@@ -8,6 +8,7 @@ import TexasDomesticPage from '@/pages/TexasDomestic'
 import TexasInternationalPage from '@/pages/TexasInternational'
 import USMexicoPage from '@/pages/USMexico'
 import TexasMexicoPage from '@/pages/TexasMexico'
+import AboutDataPage from '@/pages/AboutData'
 import NotFoundPage from '@/pages/NotFound'
 
 function ScrollToTop() {
@@ -35,6 +36,7 @@ function AppContent() {
           <Route path="/texas-international" element={<TexasInternationalPage />} />
           <Route path="/us-mexico" element={<USMexicoPage />} />
           <Route path="/texas-mexico" element={<TexasMexicoPage />} />
+          <Route path="/about-data" element={<AboutDataPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </ErrorBoundary>

@@ -19,11 +19,15 @@
    - 2.2 NLU City Name Standardization
    - 2.3 Airport Code Updates (Same Airport ID, Multiple Codes)
    - 2.4 T4X Code Conflict (Same Code, Multiple Airport IDs)
+   - 2.5 DEPARTURES_SCHEDULED Outliers (Segment Only)
 3. [Issues Filtered Out](#3-issues-filtered-out)
    - 3.1 Zero-Distance Rows (Same Origin and Destination)
    - 3.2 All-Zero Activity Rows
 4. [Issues Acknowledged but Not Corrected](#4-issues-acknowledged-but-not-corrected)
    - 4.1 Missing Carrier Names (2015 Charter Flights)
+4b. [Known Anomalies (No Action Required)](#4b-known-anomalies-no-action-required)
+   - 4b.1 Aeromexico VSA→IAH Cumulative Filing (2004/09)
+   - 4b.2 BTS_SEGMENT Record Granularity (Split by Aircraft Type)
 5. [GeoJSON Cleaning](#5-geojson-cleaning)
    - 5.1 Filter to Latest Records
    - 5.2 Scope to Corrected CSV Airport IDs
@@ -57,7 +61,7 @@ Both datasets contain BTS T-100 data for air routes involving Texas airports or 
 | FREIGHT | Annual freight (lbs) | 0 |
 | MAIL | Annual mail (lbs) | 0 |
 | DISTANCE | Non-stop distance (miles) | 0 |
-| DATA_SOURCE | BTS source (DU/IU/DF/IF) | 0 |
+| DATA_SOURCE | BTS reporting source — first letter: D=Domestic route, I=International route; second letter: U=U.S. carrier, F=Foreign carrier | 0 |
 
 **Segment data** represents individual flight legs with operational metrics (24 columns). It includes the same 18 columns as market plus six additional:
 
@@ -239,6 +243,29 @@ Delete all rows where Airport ID = 16706.
 
 Affected rows: Market 2, Segment 4
 
+### 2.5 DEPARTURES_SCHEDULED Outliers (Segment Only)
+
+**Anomaly:**
+A handful of segment rows have `DEPARTURES_SCHEDULED` values that are orders of magnitude larger than `DEPARTURES_PERFORMED`, clearly indicating data entry errors (extra digits or miskeyed values).
+
+**Known examples (from the full BTS database):**
+
+| Carrier | Route | Year/Month | DEPARTURES_SCHEDULED | DEPARTURES_PERFORMED | Likely Cause |
+|---------|-------|-----------|---------------------|---------------------|--------------|
+| Peninsula Airways | ANC→CDB | 2003/02 | 84,538 | 43 | Extra digits |
+| Spirit | ISP→TPA | 1999/04 | 65,720 | 20 | Extra digits |
+| TEM Enterprises | AUS→CUN | 2004/04 | 1,113 | 8 | Typo/miskeyed |
+
+These are rare but would skew any analysis using `DEPARTURES_SCHEDULED` as a denominator (e.g., schedule reliability, completion rates).
+
+**Detection rule:**
+Rows where `DEPARTURES_PERFORMED > 0` and `DEPARTURES_SCHEDULED / DEPARTURES_PERFORMED > 100`. A ratio above 100 is physically impossible — even extreme cancellation events (COVID, weather) produce ratios under 10.
+
+**Correction:**
+Set `DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED` for affected rows. The assumption is that the scheduled count was a data entry error and the performed count is reliable.
+
+> **Note:** The three known examples above are from years 1999–2004, outside the current 2015–2024 extraction range. The rule is applied generically so it will catch any similar outliers in the current data or if the year range is expanded.
+
 ---
 
 ## 3. Issues Filtered Out
@@ -351,6 +378,34 @@ No correction applied. The 27 rows (< 0.03% of either dataset) are left as-is wi
 
 ---
 
+## 4b. Known Anomalies (No Action Required)
+
+These are data quirks observed during the audit that do not require correction or filtering because they do not affect the analysis at the chosen level of aggregation.
+
+### 4b.1 Aeromexico VSA→IAH Cumulative Filing (2004/09)
+
+**Anomaly (observed in BTS_SEGMENT):**
+A single record in the `BTS_SEGMENT` table for Aeromexico on the VSA (Minatitlán, Mexico) → IAH (Houston, TX) route in September 2004 reports 1,461 departures performed and ~108,000 passengers in one month. This is the only record for this carrier-route combination in 2004. A corresponding cumulative pattern likely exists in `BTS_MARKET` for the same route, though without the departures metric.
+
+**Interpretation:**
+The values are consistent with a full year of operations compressed into a single monthly filing — a cumulative or catch-up report rather than actual September activity. BTS carriers occasionally file accumulated data in a single month when prior months were missed or delayed.
+
+**Why no action is needed:**
+Since this project aggregates data at the **yearly** level, the annual totals for 2004 remain correct regardless of which month the data was filed under. The anomaly would only distort **monthly or seasonal** analysis on this route.
+
+### 4b.2 BTS_SEGMENT Record Granularity (Split by Aircraft Type)
+
+**Anomaly:**
+BTS_SEGMENT data is split by **aircraft type** within each carrier/route/month combination. For example, American Airlines (AA) DFW→MEX in January 2023 has two rows: one for aircraft type 698 (9 departures) and one for aircraft type 614 (109 departures).
+
+**Interpretation:**
+This is by design, not duplication. BTS reports segment-level statistics per aircraft type, so a single carrier operating multiple aircraft types on the same route in the same month will produce multiple rows. Summing across aircraft types gives the correct route-level totals.
+
+**Why no action is needed:**
+The extraction scripts already aggregate across aircraft types when rolling up to yearly totals. This note is recorded so that analysts working with the raw monthly data or the source database understand why multiple rows may appear for what looks like the same carrier-route-month.
+
+---
+
 ## 5. GeoJSON Cleaning
 
 The airport GeoJSON is sourced from the BTS Airport Master List. It requires cleaning steps beyond the CSV corrections because the master list contains time-versioned entries (multiple features per airport) and some code mismatches.
@@ -390,10 +445,10 @@ The machine-parsable `data-cleaning.csv` file defines all cleaning rules. It is 
 
 | Column | Values | Purpose |
 |--------|--------|---------|
-| `action` | `update`, `delete`, `filter`, `fill` | Operation type |
+| `action` | `update`, `correct`, `delete`, `filter`, `fill` | Operation type |
 | `target` | `csv`, `market`, `segment`, `geojson`, `all` | Which output file(s) |
 | `airport_id` | Integer or blank | Match key for record-level ops |
-| `field` | `CODE`, `CITY_NAME`, `STATE_NAME`, `ZERO_DISTANCE`, `ALL_ZERO_ACTIVITY` | Abstract field name or filter type |
+| `field` | `CODE`, `CITY_NAME`, `STATE_NAME`, `ZERO_DISTANCE`, `ALL_ZERO_ACTIVITY`, `DEPARTURES_SCHEDULED_OUTLIER` | Abstract field name, filter type, or correction type |
 | `old_value` | String or blank | Value to match (updates) or lookup file path (fills) |
 | `new_value` | String or blank | Replacement value |
 | `notes` | Free text | Human-readable documentation |
@@ -410,7 +465,7 @@ For GeoJSON, each abstract field maps to a single column:
 - `CITY_NAME` → DISPLAY_AIRPORT_CITY_NAME_FULL
 - `STATE_NAME` → AIRPORT_STATE_NAME
 
-**Processing order:** updates → deletes → filters → fills
+**Processing order:** updates → corrections → deletes → filters → fills
 
 ---
 
@@ -426,6 +481,7 @@ For GeoJSON, each abstract field maps to a single column:
 | 2.3d | Berlin (SXF → BER) | Code update | 0 | 1 | — | Update code |
 | 2.4a | Llano, TX (T4X → AQO) | Code update | 49 | 49 | 1 | Update code |
 | 2.4b | Austin, TX (ID 16706) | Unreliable data | 2 | 4 | 3 | Delete |
+| 2.5 | DEPARTURES_SCHEDULED outliers | Data entry error | — | ratio > 100 | — | Correct (set = performed) |
 | 3.1 | Zero-distance rows | Not real routes | 237 | 316 | — | Filter out |
 | 3.2 | All-zero activity | No activity | 11,921 | 14,552 | — | Filter out |
 | 4.1 | Missing carrier names | Unresolvable | 27 | 27 | — | Acknowledged |

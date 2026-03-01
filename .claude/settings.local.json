@@ -49,7 +49,17 @@
       "Bash(timeout 8 npm run dev)",
       "Bash(npx --yes playwright install chromium)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(npm run dev)"
+      "Bash(npm run dev)",
+      "Bash(python Apply_Data_Cleaning.py)",
+      "Bash(\"/c/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe\" Apply_Data_Cleaning.py)",
+      "Bash(\"C:\\\\Users\\\\UNT\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -c \"import pandas; print\\(pandas.__version__\\)\")",
+      "Bash(\"/c/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe\" Extract_BTS_Data.py)",
+      "Bash(\"/c/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe\" Verify_Corrections.py)",
+      "WebFetch(domain:www.bts.gov)",
+      "WebFetch(domain:www.transtats.bts.gov)",
+      "WebFetch(domain:esubmit.rita.dot.gov)",
+      "WebFetch(domain:www.law.cornell.edu)",
+      "WebFetch(domain:transtats.bts.gov)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",
