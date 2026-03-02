@@ -90,7 +90,9 @@
       "Bash(npm install --save-dev playwright)",
       "Bash(xargs wc -l)",
       "Bash(curl -s http://localhost:5173)",
-      "Bash(npx tailwindcss --help)"
+      "Bash(npx tailwindcss --help)",
+      "Bash(xargs -0 wc -l)",
+      "Bash(npx vite build --logLevel error)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",

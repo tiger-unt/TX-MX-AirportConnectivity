@@ -238,17 +238,23 @@ export default function USMexicoPage() {
     // US states serving Mexico
     const stateSet = new Set(usToMxLatest.map((d) => d.ORIGIN_STATE_NM).filter(Boolean))
 
-    // Top route
+    // Top route (short IATA codes for card display, full names for tooltip)
     const byRoute = new Map()
     latest.forEach((d) => {
-      const key = `${d.ORIGIN_FULL_LABEL || d.ORIGIN}–${d.DEST_FULL_LABEL || d.DEST}`
-      byRoute.set(key, (byRoute.get(key) || 0) + d.PASSENGERS)
+      const code = `${d.ORIGIN}–${d.DEST}`
+      const full = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} – ${d.DEST_FULL_LABEL || d.DEST}`
+      const prev = byRoute.get(code) || { pax: 0, full }
+      byRoute.set(code, { pax: prev.pax + d.PASSENGERS, full: prev.full })
     })
-    const topRoute = byRoute.size
-      ? [...byRoute.entries()].sort((a, b) => b[1] - a[1])[0][0]
-      : '\u2014'
+    let topRoute = '—'
+    let topRouteFull = ''
+    if (byRoute.size) {
+      const [code, { full }] = [...byRoute.entries()].sort((a, b) => b[1].pax - a[1].pax)[0]
+      topRoute = code
+      topRouteFull = full
+    }
 
-    return { pax, paxChange, txShare, usStates: stateSet.size, topRoute, latestYear, prevYear }
+    return { pax, paxChange, txShare, usStates: stateSet.size, topRoute, topRouteFull, latestYear, prevYear }
   }, [filtered, latestYear])
 
   /* ── trends ────────────────────────────────────────────────────────── */
@@ -477,6 +483,7 @@ export default function USMexicoPage() {
           <StatCard
             label="Top U.S.–Mexico Route"
             value={stats?.topRoute || '\u2014'}
+            title={stats?.topRouteFull ? `${stats.topRouteFull} was the top U.S.\u2013Mexico route in ${stats.latestYear}` : undefined}
             highlight icon={Route} delay={300}
           />
         </div>

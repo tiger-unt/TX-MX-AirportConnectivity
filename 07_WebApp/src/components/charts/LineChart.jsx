@@ -268,6 +268,8 @@ export default function LineChart({
 
       if (ann.x2 != null) {
         contentG.append('rect')
+          .attr('class', 'ann-band')
+          .datum(ann)
           .attr('x', Math.min(x1Pos, x2Pos))
           .attr('width', Math.abs(x2Pos - x1Pos))
           .attr('y', 0)
@@ -276,6 +278,8 @@ export default function LineChart({
           .attr('pointer-events', 'none')
       } else {
         contentG.append('line')
+          .attr('class', 'ann-line')
+          .datum(ann)
           .attr('x1', x1Pos).attr('x2', x1Pos)
           .attr('y1', 0).attr('y2', innerH)
           .attr('stroke', ann.color || '#d90d0d')
@@ -286,6 +290,8 @@ export default function LineChart({
 
       if (ann.label) {
         contentG.append('text')
+          .attr('class', 'ann-label')
+          .datum(ann)
           .attr('x', ann.x2 != null ? (x1Pos + x2Pos) / 2 : x1Pos + 4)
           .attr('y', 14)
           .attr('text-anchor', ann.x2 != null ? 'middle' : 'start')
@@ -558,6 +564,22 @@ export default function LineChart({
             contentG.selectAll('.area-path')
               .attr('d', (d) => zoomedArea(d))
           }
+
+          // Update annotations
+          contentG.selectAll('.ann-band').each(function (ann) {
+            const p1 = currentX(ann.x), p2 = currentX(ann.x2)
+            d3.select(this).attr('x', Math.min(p1, p2)).attr('width', Math.abs(p2 - p1))
+          })
+          contentG.selectAll('.ann-line').each(function (ann) {
+            const px = currentX(ann.x)
+            d3.select(this).attr('x1', px).attr('x2', px)
+          })
+          contentG.selectAll('.ann-label').each(function (ann) {
+            const px = ann.x2 != null
+              ? (currentX(ann.x) + currentX(ann.x2)) / 2
+              : currentX(ann.x) + 4
+            d3.select(this).attr('x', px)
+          })
 
           // Update vertical grid
           drawVGrid(currentX)

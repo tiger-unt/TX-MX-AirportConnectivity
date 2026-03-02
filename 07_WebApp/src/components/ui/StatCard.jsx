@@ -41,6 +41,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 export default function StatCard({
   label,
   value,
+  title,
   trend,
   trendLabel,
   highlight = false,
@@ -69,7 +70,7 @@ export default function StatCard({
 
   return (
     <div
-      className={`rounded-xl p-5 transition-all duration-300 animate-fade-up row-span-3 grid grid-rows-subgrid gap-y-0 relative ${cardClass}`}
+      className={`group rounded-xl p-5 transition-all duration-300 animate-fade-up row-span-3 grid grid-rows-subgrid gap-y-0 relative ${cardClass}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       {/* Row 1 — label */}
@@ -110,6 +111,15 @@ export default function StatCard({
             size={20}
             className={highlight ? 'text-white/80' : 'text-brand-blue'}
           />
+        </div>
+      )}
+      {/* Tooltip — shown on hover when title is provided */}
+      {title && (
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+          <div className="bg-gray-900 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+            {title}
+          </div>
+          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-gray-900" />
         </div>
       )}
     </div>
