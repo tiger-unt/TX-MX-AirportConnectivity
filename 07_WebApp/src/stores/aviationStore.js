@@ -90,7 +90,8 @@ export const useAviationStore = create((set) => ({
       // Normalize segment data (has extra numeric columns)
       const segmentNumeric = [
         'DEPARTURES_SCHEDULED', 'DEPARTURES_PERFORMED',
-        'PAYLOAD', 'SEATS', 'RAMP_TO_RAMP', 'AIR_TIME',
+        'PAYLOAD', 'SEATS',
+        'SCHED_REPORTED',
       ]
       segment.forEach((d) => normalizeRow(d, segmentNumeric))
 

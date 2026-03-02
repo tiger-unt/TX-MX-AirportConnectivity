@@ -37,6 +37,7 @@
    - 4b.4 PASSENGERS > 0 with SEATS = 0 (Class P Edge Case)
    - 4b.5 Semantic Duplicates After Normalization
    - 4b.6 T-Prefix FAA LID Airport Codes (7 Small TX Airports)
+   - 4b.7 DEPARTURES_SCHEDULED Missing-as-Zero (DU/IU + Class F)
 5. [GeoJSON Cleaning](#5-geojson-cleaning)
    - 5.1 Filter to Latest Records
    - 5.2 Scope to Corrected CSV Airport IDs
@@ -592,6 +593,21 @@ Seven airport codes beginning with "T" followed by a digit or alphanumeric suffi
 
 > **Note for future agents:** If new T-prefix codes appear in expanded data, check whether they share an Airport ID with an existing IATA/FAA code (like T1X/T4X did). If so, normalize. If the T-code is the sole identifier, leave it as-is.
 
+### 4b.7 DEPARTURES_SCHEDULED Missing-as-Zero (DU/IU + Class F)
+
+**Anomaly:**
+U.S. carriers (DATA_SOURCE = DU, IU) operating scheduled service (CLASS = F) sometimes report DEPARTURES_PERFORMED > 0 but DEPARTURES_SCHEDULED = 0. This affects ~14% of DU/F rows (5,293 rows) and ~13.5% of IU/F rows (1,457 rows). These zeros represent unreported schedule data, not a true absence of scheduled departures.
+
+This is distinct from the well-known cases where DEPARTURES_SCHEDULED = 0 is expected:
+- **Foreign carriers (IF/DF):** Not required to report schedules under T-100(f) regulations
+- **Charters (CLASS = L/P):** No scheduled departures by definition
+
+**Action:** A `SCHED_REPORTED` flag column is added to the cleaned segment CSV during Step 7 of the cleaning pipeline:
+- `SCHED_REPORTED = 0`: Schedule data is unreported/unreliable (IF/DF foreign carriers + DU/IU Class F missing-as-zero)
+- `SCHED_REPORTED = 1`: Schedule data is reported and trustworthy
+
+**Impact:** Schedule adherence analysis should filter to `SCHED_REPORTED = 1 AND CLASS = 'F'` instead of the older `DEPARTURES_SCHEDULED > 0` check. The webapp's schedule adherence charts use this flag automatically.
+
 ---
 
 ## 5. GeoJSON Cleaning
@@ -681,6 +697,7 @@ For GeoJSON, each abstract field maps to a single column:
 | 4b.4 | PASSENGERS > 0 with SEATS = 0 | Edge case | — | 4 | — | Documented; monitor |
 | 4b.5 | Semantic duplicates after normalization | Transformation artifact | 5 groups | 6 groups | — | Re-aggregate in cleaner |
 | 4b.6 | T-prefix FAA LID codes (7 small TX airports) | Valid FAA identifiers | 88 | 92 | — | No action; documented |
+| 4b.7 | DEPARTURES_SCHEDULED missing-as-zero (DU/IU + F) | Unreported data | — | ~6,750 | — | SCHED_REPORTED flag (Step 7) |
 | 5.1 | GeoJSON multi-version | Processing | — | — | 3,627 | Filter to IS_LATEST=1 |
 | 5.2 | GeoJSON orphan airports | Processing | — | — | 79 | Scope to CSV IDs |
 | 5.3 | Al Udeid (XJD → IUD) | Code mismatch | — | — | 1 | Update code |

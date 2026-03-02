@@ -371,6 +371,36 @@ def reaggregate_csv(df, csv_type):
     return grouped, collapsed
 
 
+def add_sched_reported_flag(df):
+    """Add SCHED_REPORTED flag to segment data.
+
+    Marks rows where DEPARTURES_SCHEDULED is trustworthy (1) vs unreported/
+    missing-as-zero (0).
+
+    SCHED_REPORTED = 0 when:
+      - DATA_SOURCE in (IF, DF): foreign carriers don't report schedules
+      - DU/IU + CLASS=F + DEPARTURES_PERFORMED>0 + DEPARTURES_SCHEDULED=0:
+        US scheduled-service carriers with missing schedule data (~14% of DU/F)
+    """
+    foreign = df["DATA_SOURCE"].isin(["IF", "DF"])
+    missing_us = (
+        df["DATA_SOURCE"].isin(["DU", "IU"])
+        & (df["CLASS"] == "F")
+        & (df["DEPARTURES_PERFORMED"] > 0)
+        & (df["DEPARTURES_SCHEDULED"] == 0)
+    )
+    df["SCHED_REPORTED"] = 1
+    df.loc[foreign | missing_us, "SCHED_REPORTED"] = 0
+
+    n_foreign = foreign.sum()
+    n_missing = missing_us.sum()
+    total = n_foreign + n_missing
+    print(f"  [FLAG] SCHED_REPORTED: {total:,} rows flagged as unreported")
+    print(f"         Foreign carriers (IF/DF): {n_foreign:,}")
+    print(f"         US sched missing-as-zero (DU/IU + F): {n_missing:,}")
+    return total
+
+
 def apply_geojson_updates(features, rules):
     """Apply update rules to GeoJSON features."""
     total_changed = 0
@@ -528,6 +558,12 @@ def main():
         print("  Step 6: Re-aggregating normalized duplicate keys...")
         df, _ = reaggregate_csv(df, csv_type)
         print()
+
+        # Step 7: Add derived flags (segment only)
+        if csv_type == "segment":
+            print("  Step 7: Adding derived flags...")
+            add_sched_reported_flag(df)
+            print()
 
         # Collect airport IDs for GeoJSON scoping
         ids = set(df["ORIGIN_AIRPORT_ID"].unique()) | set(df["DEST_AIRPORT_ID"].unique())

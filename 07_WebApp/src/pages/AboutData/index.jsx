@@ -1,7 +1,7 @@
 import {
   Database, Filter, ClipboardCheck, FileOutput, Info, BookOpen,
   AlertTriangle, CheckCircle2, ArrowDownRight, ArrowRight,
-  ExternalLink, FileText, Layers
+  ExternalLink, FileText, Layers, MapPin
 } from 'lucide-react'
 
 export default function AboutDataPage() {
@@ -217,8 +217,11 @@ export default function AboutDataPage() {
                 <p className="text-base text-text-secondary leading-relaxed">
                   <strong className="text-text-primary">Scheduled departures gap:</strong> Foreign carriers
                   (DATA_SOURCE = IF, DF) do not report DEPARTURES_SCHEDULED under T-100(f) regulations.
-                  All foreign carrier segment records have this field as 0. Schedule adherence analysis
-                  should be limited to U.S. carrier records only.
+                  Additionally, ~14% of U.S. scheduled-service records (DU/IU, Class F) have
+                  DEPARTURES_PERFORMED &gt; 0 but DEPARTURES_SCHEDULED = 0 — missing-as-zero data.
+                  The{' '}<code className="bg-surface-alt px-1 py-0.5 rounded text-base">SCHED_REPORTED</code>{' '}
+                  flag column marks all trustworthy schedule rows (1) vs unreported rows (0).
+                  Schedule adherence charts filter to SCHED_REPORTED = 1 automatically.
                 </p>
               </div>
             </div>
@@ -240,7 +243,7 @@ export default function AboutDataPage() {
                   <strong className="text-text-primary">Non-scheduled service:</strong> Records with
                   CLASS = L (charter) or P (non-scheduled civilian) have DEPARTURES_SCHEDULED = 0 by
                   definition, regardless of carrier nationality. For schedule analysis, filter to{' '}
-                  <code className="bg-surface-alt px-1 py-0.5 rounded text-base">CLASS = 'F' AND DEPARTURES_SCHEDULED &gt; 0</code>.
+                  <code className="bg-surface-alt px-1 py-0.5 rounded text-base">SCHED_REPORTED = 1 AND CLASS = 'F'</code>.
                 </p>
               </div>
             </div>
@@ -367,6 +370,19 @@ export default function AboutDataPage() {
               </p>
             </div>
           </div>
+          <div className="mt-4 bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-5">
+            <div className="flex gap-3">
+              <MapPin size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
+              <p className="text-base text-text-secondary leading-relaxed">
+                <strong className="text-text-primary">Texas border airports:</strong> Defined as airports
+                located within a <strong>TxDOT border district</strong>. Six airports meet this criterion:{' '}
+                <strong>ELP</strong> (El Paso), <strong>LRD</strong> (Laredo), <strong>MFE</strong> (McAllen),{' '}
+                <strong>HRL</strong> (Harlingen), <strong>BRO</strong> (Brownsville), and{' '}
+                <strong>DRT</strong> (Del Rio). These airports are highlighted throughout the dashboard
+                with a gold ring on maps and analyzed separately in the Texas–Mexico page.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* ── Data Quality & Cleaning Insights ───────────────────────────── */}
@@ -441,9 +457,12 @@ export default function AboutDataPage() {
                   <li className="flex gap-2">
                     <AlertTriangle size={16} className="text-brand-yellow flex-shrink-0 mt-0.5" />
                     <span>
-                      <strong className="text-text-primary">Supplemental flights (CLASS = F, DATA_SOURCE = DU):</strong>{' '}
-                      Some domestic carriers classified as "F" (scheduled service) still have sched&nbsp;=&nbsp;0.
-                      These appear to be supplemental or extra-section flights beyond the published schedule.
+                      <strong className="text-text-primary">Missing-as-zero (CLASS = F, DATA_SOURCE = DU/IU):</strong>{' '}
+                      ~14% of DU (domestic) and ~13.5% of IU (international) Class F records have
+                      DEPARTURES_PERFORMED &gt; 0 but DEPARTURES_SCHEDULED = 0.
+                      These are U.S. scheduled-service carriers that operated flights but did not report schedule data.
+                      The <code className="bg-surface-alt px-1 py-0.5 rounded text-base">SCHED_REPORTED</code> flag
+                      marks these as 0 (unreported).
                     </span>
                   </li>
                 </ul>
@@ -454,10 +473,10 @@ export default function AboutDataPage() {
           {/* True Scheduled Service */}
           <div className="bg-white rounded-xl border border-border-light shadow-sm p-6 mb-6">
             <h4 className="text-base font-bold text-text-primary mb-1">
-              For True Scheduled Service (CLASS=F, sched &gt; 0): It's Actually Quite Clean
+              For True Scheduled Service (SCHED_REPORTED=1, CLASS=F): It's Actually Quite Clean
             </h4>
             <p className="text-base text-text-secondary mb-4">
-              When we filter to only domestic scheduled flights with actual schedule data, the
+              When we filter to rows with trustworthy schedule data (SCHED_REPORTED = 1, CLASS = F), the
               performed-vs-scheduled match is strong.
             </p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

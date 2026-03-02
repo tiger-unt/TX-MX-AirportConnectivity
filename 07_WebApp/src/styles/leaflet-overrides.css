@@ -1,5 +1,15 @@
 /* ── Leaflet TxDOT Brand Overrides ──────────────────────────────────── */
 
+/* Fix Tailwind v4 preflight breaking Leaflet map tiles:
+   1. `border: 0 solid` on * adds border-style:solid → visible tile borders
+   2. `img { max-width: 100%; height: auto }` constrains 256px tiles → sub-pixel gaps
+   Both cause the white grid-line artifact between map tiles. */
+.leaflet-container img {
+  border-style: none !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
 .leaflet-popup-content-wrapper {
   font-family: var(--font-sans), system-ui, sans-serif;
   border-radius: 8px;

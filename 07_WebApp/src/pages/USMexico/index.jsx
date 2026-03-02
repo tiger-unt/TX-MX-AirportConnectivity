@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Users, PieChart, MapPin, Route } from 'lucide-react'
+import { Users, PieChart, MapPin, Route, Package } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, isUsToMx, isMxToUs, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, isUsToMx, isMxToUs, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { CHART_COLORS } from '@/lib/chartColors'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
@@ -17,6 +17,9 @@ import BarChart from '@/components/charts/BarChart'
 import AirportMap from '@/components/maps/AirportMap'
 
 const isUsMx = (d) => isUsToMx(d) || isMxToUs(d)
+
+/* ── COVID annotation for trend charts ─────────────────────────────── */
+const COVID_ANNOTATION = [{ x: 2020, x2: 2021, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
 /* ── cascading-filter config (stable refs, defined once) ───────────── */
 const buildApplicators = (f) => ({
@@ -48,6 +51,8 @@ const EXTRACTORS = {
 export default function USMexicoPage() {
   const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
+  const [mapMetric, setMapMetric] = useState('PASSENGERS')
+  const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
 
   /* ── base dataset ──────────────────────────────────────────────────── */
   const baseMarket = useMemo(() => {
@@ -247,10 +252,34 @@ export default function USMexicoPage() {
   }, [filtered, latestYear])
 
   /* ── trends ────────────────────────────────────────────────────────── */
-  const trendData = useMemo(() => {
+  const paxTrend = useMemo(() => {
     const byYear = new Map()
     filtered.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.PASSENGERS)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filtered])
+
+  const flightTrend = useMemo(() => {
+    const byYear = new Map()
+    filteredSegment.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.DEPARTURES_PERFORMED)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filteredSegment])
+
+  const freightTrend = useMemo(() => {
+    const byYear = new Map()
+    filtered.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.FREIGHT)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filtered])
+
+  const mailTrend = useMemo(() => {
+    const byYear = new Map()
+    filtered.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.MAIL)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
   }, [filtered])
@@ -281,6 +310,41 @@ export default function USMexicoPage() {
       .slice(0, 10)
   }, [filtered])
 
+  /* ── state ranking: passengers vs cargo ───────────────────────────── */
+  const stateRankingCargo = useMemo(() => {
+    const byState = new Map()
+    filtered.filter(isUsToMx).forEach((d) => {
+      if (!d.ORIGIN_STATE_NM) return
+      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.FREIGHT)
+    })
+    return Array.from(byState, ([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 15)
+  }, [filtered])
+
+  const stateRankingPax = useMemo(() => {
+    const byState = new Map()
+    filtered.filter(isUsToMx).forEach((d) => {
+      if (!d.ORIGIN_STATE_NM) return
+      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.PASSENGERS)
+    })
+    return Array.from(byState, ([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 15)
+  }, [filtered])
+
+  const txRankStats = useMemo(() => {
+    const paxRank = stateRankingPax.findIndex((d) => d.label === 'Texas') + 1
+    const cargoRank = stateRankingCargo.findIndex((d) => d.label === 'Texas') + 1
+    const totalPax = stateRankingPax.reduce((s, d) => s + d.value, 0)
+    const txPax = stateRankingPax.find((d) => d.label === 'Texas')?.value || 0
+    const paxPct = totalPax ? (txPax / totalPax * 100).toFixed(1) : '0'
+    const totalCargo = stateRankingCargo.reduce((s, d) => s + d.value, 0)
+    const txCargo = stateRankingCargo.find((d) => d.label === 'Texas')?.value || 0
+    const cargoPct = totalCargo ? (txCargo / totalCargo * 100).toFixed(1) : '0'
+    return { paxRank: paxRank || '-', paxPct, cargoRank: cargoRank || '-', cargoPct }
+  }, [stateRankingPax, stateRankingCargo])
+
   /* ── top routes ────────────────────────────────────────────────────── */
   const topRoutes = useMemo(() => {
     const byRoute = new Map()
@@ -295,13 +359,18 @@ export default function USMexicoPage() {
   }, [filtered])
 
   /* ── map data ──────────────────────────────────────────────────────── */
-  const mapRoutes = useMemo(() => aggregateRoutes(filtered, airportIndex), [filtered, airportIndex])
+  const mapDataSource = mapMetricConfig.source === 'segment' ? filteredSegment : filtered
+
+  const mapRoutes = useMemo(
+    () => aggregateRoutes(mapDataSource, airportIndex, mapMetricConfig.field),
+    [mapDataSource, airportIndex, mapMetricConfig.field]
+  )
 
   const mapAirports = useMemo(() => {
-    const volumes = aggregateAirportVolumes(filtered)
+    const volumes = aggregateAirportVolumes(mapDataSource, mapMetricConfig.field)
     const seen = new Set()
     const airports = []
-    for (const d of filtered) {
+    for (const d of mapDataSource) {
       for (const code of [d.ORIGIN, d.DEST]) {
         if (seen.has(code)) continue
         seen.add(code)
@@ -319,7 +388,7 @@ export default function USMexicoPage() {
       }
     }
     return airports
-  }, [filtered, airportIndex])
+  }, [mapDataSource, airportIndex, mapMetricConfig.field])
 
   /* ── render ────────────────────────────────────────────────────────── */
   if (loading) {
@@ -415,28 +484,71 @@ export default function USMexicoPage() {
 
       {/* Map */}
       <SectionBlock alt>
-        <ChartCard title="U.S.–Mexico Route Map" subtitle="All U.S. airports serving Mexico, Texas airports highlighted">
+        <ChartCard
+          title="U.S.–Mexico Route Map"
+          subtitle="All U.S. airports serving Mexico, Texas airports highlighted"
+          headerRight={
+            <select
+              value={mapMetric}
+              onChange={(e) => setMapMetric(e.target.value)}
+              className="text-base border border-border rounded-md px-2 py-1 bg-surface-primary"
+            >
+              {MAP_METRIC_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          }
+        >
           <AirportMap
             airports={mapAirports}
             routes={mapRoutes}
             topN={20}
             selectedAirport={selectedAirport}
             onAirportSelect={setSelectedAirport}
+            formatValue={mapMetricConfig.formatter}
+            metricLabel={mapMetricConfig.unit}
+            legendItems={[
+              { color: '#0056a9', label: 'U.S.' },
+              { color: '#df5c16', label: 'Mexico' },
+            ]}
             center={[28, -99]}
             zoom={4}
           />
         </ChartCard>
       </SectionBlock>
 
-      {/* Trends */}
+      {/* Trends (2x2 grid) */}
       <SectionBlock>
-        <ChartCard
-          title="U.S.–Mexico Passenger Trends"
-          subtitle="Total passengers by year (both directions)"
-          downloadData={{ summary: { data: trendData, filename: 'us-mx-passenger-trends' } }}
-        >
-          <LineChart data={trendData} xKey="year" yKey="value" formatValue={fmtCompact} />
-        </ChartCard>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <ChartCard
+            title="U.S.–Mexico Passenger Trends"
+            subtitle="Total passengers by year (both directions)"
+            downloadData={{ summary: { data: paxTrend, filename: 'us-mx-passenger-trends' } }}
+          >
+            <LineChart data={paxTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="U.S.–Mexico Flight Trends"
+            subtitle="Flights operated by year (segment data)"
+            downloadData={{ summary: { data: flightTrend, filename: 'us-mx-flight-trends' } }}
+          >
+            <LineChart data={flightTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="U.S.–Mexico Freight Trends"
+            subtitle="Freight volume by year (lbs)"
+            downloadData={{ summary: { data: freightTrend, filename: 'us-mx-freight-trends' } }}
+          >
+            <LineChart data={freightTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="U.S.–Mexico Mail Trends"
+            subtitle="Mail volume by year (lbs)"
+            downloadData={{ summary: { data: mailTrend, filename: 'us-mx-mail-trends' } }}
+          >
+            <LineChart data={mailTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+        </div>
       </SectionBlock>
 
       {/* TX Share + Top States */}
@@ -463,8 +575,40 @@ export default function USMexicoPage() {
         </div>
       </SectionBlock>
 
-      {/* Top Routes */}
+      {/* TX National Ranking: Passengers vs Cargo */}
       <SectionBlock>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-5">
+          <StatCard
+            label="TX Passenger Rank"
+            value={`#${txRankStats.paxRank} (${txRankStats.paxPct}%)`}
+            highlight variant="primary" icon={Users}
+          />
+          <StatCard
+            label="TX Cargo Rank"
+            value={`#${txRankStats.cargoRank} (${txRankStats.cargoPct}%)`}
+            highlight icon={Package}
+          />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <ChartCard
+            title="U.S. States by Mexico Passengers"
+            subtitle="Top 15 states, U.S. &rarr; Mexico"
+            downloadData={{ summary: { data: stateRankingPax, filename: 'us-states-mx-passengers' } }}
+          >
+            <BarChart data={stateRankingPax} xKey="label" yKey="value" horizontal formatValue={fmtCompact} selectedBar="Texas" />
+          </ChartCard>
+          <ChartCard
+            title="U.S. States by Mexico Cargo"
+            subtitle="Top 15 states, U.S. &rarr; Mexico (freight lbs)"
+            downloadData={{ summary: { data: stateRankingCargo, filename: 'us-states-mx-cargo' } }}
+          >
+            <BarChart data={stateRankingCargo} xKey="label" yKey="value" horizontal formatValue={fmtLbs} selectedBar="Texas" />
+          </ChartCard>
+        </div>
+      </SectionBlock>
+
+      {/* Top Routes */}
+      <SectionBlock alt>
         <ChartCard
           title="Top U.S.–Mexico Routes"
           subtitle="Top 10 by passengers (all filtered years)"

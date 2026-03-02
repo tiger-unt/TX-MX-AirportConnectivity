@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Plane, Users, Globe, Award } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, isTxIntl, isTxToIntl, isIntlToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, isTxIntl, isTxToIntl, isIntlToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { CHART_COLORS } from '@/lib/chartColors'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
@@ -43,10 +43,15 @@ const EXTRACTORS = {
   destCountry: (d) => d.DEST_COUNTRY_NAME,
 }
 
+/* ── COVID annotation for trend charts ─────────────────────────────── */
+const COVID_ANNOTATION = [{ x: 2020, x2: 2021, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
+
 export default function TexasInternationalPage() {
   const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
   const [selectedCountry, setSelectedCountry] = useState(null)
+  const [mapMetric, setMapMetric] = useState('PASSENGERS')
+  const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
 
   /* ── base dataset ──────────────────────────────────────────────────── */
   const baseMarket = useMemo(() => {
@@ -243,10 +248,34 @@ export default function TexasInternationalPage() {
   }, [filtered, filteredSegment, latestYear])
 
   /* ── trends ────────────────────────────────────────────────────────── */
-  const trendData = useMemo(() => {
+  const paxTrend = useMemo(() => {
     const byYear = new Map()
     filtered.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.PASSENGERS)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filtered])
+
+  const flightTrend = useMemo(() => {
+    const byYear = new Map()
+    filteredSegment.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.DEPARTURES_PERFORMED)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filteredSegment])
+
+  const freightTrend = useMemo(() => {
+    const byYear = new Map()
+    filtered.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.FREIGHT)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filtered])
+
+  const mailTrend = useMemo(() => {
+    const byYear = new Map()
+    filtered.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.MAIL)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
   }, [filtered])
@@ -281,13 +310,18 @@ export default function TexasInternationalPage() {
   const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
 
   /* ── map data ──────────────────────────────────────────────────────── */
-  const mapRoutes = useMemo(() => aggregateRoutes(filtered, airportIndex), [filtered, airportIndex])
+  const mapDataSource = mapMetricConfig.source === 'segment' ? filteredSegment : filtered
+
+  const mapRoutes = useMemo(
+    () => aggregateRoutes(mapDataSource, airportIndex, mapMetricConfig.field),
+    [mapDataSource, airportIndex, mapMetricConfig.field]
+  )
 
   const mapAirports = useMemo(() => {
-    const volumes = aggregateAirportVolumes(filtered)
+    const volumes = aggregateAirportVolumes(mapDataSource, mapMetricConfig.field)
     const seen = new Set()
     const airports = []
-    for (const d of filtered) {
+    for (const d of mapDataSource) {
       for (const code of [d.ORIGIN, d.DEST]) {
         if (seen.has(code)) continue
         seen.add(code)
@@ -305,7 +339,7 @@ export default function TexasInternationalPage() {
       }
     }
     return airports
-  }, [filtered, airportIndex])
+  }, [mapDataSource, airportIndex, mapMetricConfig.field])
 
   /* ── render ────────────────────────────────────────────────────────── */
   if (loading) {
@@ -401,60 +435,102 @@ export default function TexasInternationalPage() {
 
       {/* Map */}
       <SectionBlock alt>
-        <ChartCard title="International Route Map" subtitle="Texas airports with connections to world destinations">
+        <ChartCard
+          title="International Route Map"
+          subtitle="Texas airports with connections to world destinations"
+          headerRight={
+            <select
+              value={mapMetric}
+              onChange={(e) => setMapMetric(e.target.value)}
+              className="text-base border border-border rounded-md px-2 py-1 bg-surface-primary"
+            >
+              {MAP_METRIC_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          }
+        >
           <AirportMap
             airports={mapAirports}
             routes={mapRoutes}
             topN={15}
             selectedAirport={selectedAirport}
             onAirportSelect={setSelectedAirport}
+            formatValue={mapMetricConfig.formatter}
+            metricLabel={mapMetricConfig.unit}
+            legendItems={[
+              { color: '#0056a9', label: 'Texas' },
+              { color: '#df5c16', label: 'Mexico' },
+              { color: '#5a7a7a', label: 'Other' },
+            ]}
             center={[25, -90]}
             zoom={4}
           />
         </ChartCard>
       </SectionBlock>
 
-      {/* Trends + Countries donut */}
+      {/* Trends (2x2 grid) */}
       <SectionBlock>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2">
-            <ChartCard
-              title="Texas International Passenger Trends"
-              subtitle={`Total passengers departing Texas internationally by year`}
-              downloadData={{ summary: { data: trendData, filename: 'tx-intl-passenger-trends' } }}
-            >
-              <LineChart data={trendData} xKey="year" yKey="value" formatValue={fmtCompact} />
-            </ChartCard>
-          </div>
-          <div>
-            <ChartCard
-              title="Top International Destinations"
-              subtitle="From Texas (all filtered years)"
-              downloadData={{ summary: { data: topCountries, filename: 'tx-top-intl-destinations' } }}
-            >
-              <DonutChart
-                data={topCountries}
-                formatValue={fmtCompact}
-                onSliceClick={(d) => {
-                  if (!d) return setSelectedCountry(null)
-                  setSelectedCountry((prev) => (prev === d.label ? null : d.label))
-                }}
-                selectedSlice={selectedCountry}
-              />
-            </ChartCard>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <ChartCard
+            title="Passenger Trends"
+            subtitle="Total passengers by year"
+            downloadData={{ summary: { data: paxTrend, filename: 'tx-intl-passenger-trends' } }}
+          >
+            <LineChart data={paxTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="Flight Trends"
+            subtitle="Flights operated by year (segment data)"
+            downloadData={{ summary: { data: flightTrend, filename: 'tx-intl-flight-trends' } }}
+          >
+            <LineChart data={flightTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="Freight Trends"
+            subtitle="Freight volume by year (lbs)"
+            downloadData={{ summary: { data: freightTrend, filename: 'tx-intl-freight-trends' } }}
+          >
+            <LineChart data={freightTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="Mail Trends"
+            subtitle="Mail volume by year (lbs)"
+            downloadData={{ summary: { data: mailTrend, filename: 'tx-intl-mail-trends' } }}
+          >
+            <LineChart data={mailTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
+          </ChartCard>
         </div>
       </SectionBlock>
 
-      {/* Top Routes */}
+      {/* Countries + Top Routes */}
       <SectionBlock alt>
-        <ChartCard
-          title="Top International Routes from Texas"
-          subtitle="Total passengers (all filtered years)"
-          downloadData={{ summary: { data: topRoutes, filename: 'tx-intl-top-routes' } }}
-        >
-          <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-        </ChartCard>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <ChartCard
+            title="Top International Destinations"
+            subtitle="From Texas (all filtered years)"
+            downloadData={{ summary: { data: topCountries, filename: 'tx-top-intl-destinations' } }}
+          >
+            <DonutChart
+              data={topCountries}
+              formatValue={fmtCompact}
+              onSliceClick={(d) => {
+                if (!d) return setSelectedCountry(null)
+                setSelectedCountry((prev) => (prev === d.label ? null : d.label))
+              }}
+              selectedSlice={selectedCountry}
+            />
+          </ChartCard>
+          <div className="lg:col-span-2">
+            <ChartCard
+              title="Top International Routes from Texas"
+              subtitle="Total passengers (all filtered years)"
+              downloadData={{ summary: { data: topRoutes, filename: 'tx-intl-top-routes' } }}
+            >
+              <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
+            </ChartCard>
+          </div>
+        </div>
       </SectionBlock>
 
       {/* Operations (segment) */}

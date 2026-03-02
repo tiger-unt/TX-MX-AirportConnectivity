@@ -60,13 +60,13 @@
 import { useRef, useEffect } from 'react'
 import * as d3 from 'd3'
 import { useChartResize, getResponsiveFontSize } from '@/lib/useChartResize'
-import { CHART_COLORS, formatCurrency } from '@/lib/chartColors'
+import { CHART_COLORS, formatCompact } from '@/lib/chartColors'
 
 export default function DonutChart({
   data = [],
   nameKey = 'label',
   valueKey = 'value',
-  formatValue = formatCurrency,
+  formatValue = formatCompact,
   onSliceClick,
   selectedSlice,
   animate = true,

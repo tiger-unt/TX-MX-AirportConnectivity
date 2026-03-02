@@ -26,6 +26,31 @@ export const fmtLbs = (v) => {
   return `${sign}${abs.toFixed(0)} lbs`
 }
 
+/* ── Map metric options ───────────────────────────────────────────── */
+
+export const MAP_METRIC_OPTIONS = [
+  { value: 'PASSENGERS', label: 'Passengers',   field: 'PASSENGERS',           source: 'market',  formatter: fmtCompact, unit: 'passengers' },
+  { value: 'FREIGHT',    label: 'Freight (lbs)', field: 'FREIGHT',              source: 'market',  formatter: fmtLbs,     unit: 'freight' },
+  { value: 'MAIL',       label: 'Mail (lbs)',    field: 'MAIL',                 source: 'market',  formatter: fmtLbs,     unit: 'mail' },
+  { value: 'FLIGHTS',    label: 'Flights',       field: 'DEPARTURES_PERFORMED', source: 'segment', formatter: fmtCompact, unit: 'flights' },
+]
+
+/* ── Border airports ──────────────────────────────────────────────
+ * Texas border airports are defined as airports located within a
+ * TxDOT border district. Six airports meet this criterion.
+ * ─────────────────────────────────────────────────────────────── */
+
+export const BORDER_AIRPORT_LIST = [
+  { code: 'ELP', city: 'El Paso' },
+  { code: 'LRD', city: 'Laredo' },
+  { code: 'MFE', city: 'McAllen' },
+  { code: 'HRL', city: 'Harlingen' },
+  { code: 'BRO', city: 'Brownsville' },
+  { code: 'DRT', city: 'Del Rio' },
+]
+
+export const BORDER_AIRPORTS = new Set(BORDER_AIRPORT_LIST.map((a) => a.code))
+
 /* ── CLASS labels ─────────────────────────────────────────────────── */
 
 export const CLASS_LABELS = {
@@ -100,10 +125,9 @@ export const isTxDomestic = (d) => isTxToUs(d) || isUsToTx(d)
 
 /**
  * Compute schedule adherence distribution from segment data.
- * Filters to CLASS='F' (scheduled service) AND DEPARTURES_SCHEDULED > 0.
- * This captures all US carriers (DU + IU) that report schedule data while
- * naturally excluding foreign carriers (DF/IF, who never report schedules)
- * and extra-section flights (sched=0 supplemental operations).
+ * Filters to SCHED_REPORTED=1 (trustworthy schedule data) AND CLASS='F'.
+ * Excludes foreign carriers (IF/DF, who don't report schedules) and
+ * US scheduled-service rows with missing-as-zero schedule data (~14% of DU/F).
  * Buckets by (DEPARTURES_PERFORMED − DEPARTURES_SCHEDULED) and returns
  * an array sorted by descending percentage, ready for BarChart.
  */
@@ -111,7 +135,7 @@ export function computeAdherenceData(segmentData) {
   if (!segmentData?.length) return []
 
   const scheduled = segmentData.filter(
-    (d) => d.CLASS === 'F' && d.DEPARTURES_SCHEDULED > 0,
+    (d) => d.SCHED_REPORTED === 1 && d.CLASS === 'F',
   )
   if (!scheduled.length) return []
 

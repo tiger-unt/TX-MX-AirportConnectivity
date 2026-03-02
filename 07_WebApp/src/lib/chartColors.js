@@ -45,12 +45,32 @@ export const CHART_COLORS = [
 export const chartColorScale = d3.scaleOrdinal().range(CHART_COLORS)
 
 /**
+ * Format a numeric value as a compact string (no currency prefix).
+ * Handles null, NaN, and negative values correctly.
+ *
+ * Examples: 1500000000 → "1.5B", -250000 → "-250.0K", 0 → "0"
+ *
+ * Used as the default formatValue for all chart components.
+ *
+ * @param {number} value – the numeric value to format
+ * @returns {string} formatted string
+ */
+export const formatCompact = (value) => {
+  if (value == null || isNaN(value)) return '0'
+  const abs = Math.abs(value)
+  const sign = value < 0 ? '-' : ''
+  if (abs >= 1e12) return `${sign}${(abs / 1e12).toFixed(1)}T`
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(1)}B`
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}M`
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}K`
+  return `${sign}${abs.toFixed(0)}`
+}
+
+/**
  * Format a numeric value as a compact currency string.
  * Handles null, NaN, and negative values correctly.
  *
  * Examples: 1500000000 → "$1.5B", -250000 → "-$250.0K", 0 → "$0"
- *
- * BOILERPLATE: Adjust prefix ('$') and unit thresholds if the data isn't USD.
  *
  * @param {number} value – the numeric value to format
  * @returns {string} formatted string
@@ -68,16 +88,15 @@ export const formatCurrency = (value) => {
 
 /**
  * Returns a D3 axis tick formatter that picks the right unit (T/B/M/K) based
- * on tick granularity so labels are clean integers — e.g. $200B, $400B instead
- * of $0.2T. Zero ticks render as empty strings (no "$0" clutter).
- *
- * BOILERPLATE: If your axis values aren't currency, change the '$' prefix and
- * unit labels to match your domain (e.g. " tons", " kWh").
+ * on tick granularity so labels are clean integers — e.g. 200B, 400B instead
+ * of 0.2T. Zero ticks render as empty strings (no clutter at origin).
  *
  * @param {number} maxValue – the maximum data value (used to derive tick step)
+ * @param {string} [prefix=''] – optional prefix for tick labels (e.g. '$')
+ * @param {string} [suffix=''] – optional suffix for tick labels (e.g. ' lbs')
  * @returns {function} formatter function suitable for d3.axisLeft().tickFormat()
  */
-export const getAxisFormatter = (maxValue) => {
+export const getAxisFormatter = (maxValue, prefix = '', suffix = '') => {
   // Choose unit from the approximate tick step (maxValue / 5) so that
   // tick labels come out as whole numbers, not decimals.
   const step = maxValue / 5
@@ -92,7 +111,7 @@ export const getAxisFormatter = (maxValue) => {
     if (v === 0) return ''
     const n = v / divisor
     const str = n % 1 === 0 ? n.toLocaleString('en-US') : n.toFixed(1)
-    return `$${str}${unit}`
+    return `${prefix}${str}${unit}${suffix}`
   }
 }
 

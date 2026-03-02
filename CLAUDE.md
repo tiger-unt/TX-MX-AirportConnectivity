@@ -33,13 +33,23 @@ TxDOT IAC 2025-26 research project analyzing airport connectivity between Texas 
 All Python scripts live under `02_Data_Staging/BTS_Air_Carrier_Statistics/Script/`.
 Scripts use relative paths from their own location (`Path(__file__).parent`).
 
-### Extraction
+### Step 1: Extraction
 - `Extract_BTS_Data.py` — extracts & aggregates both BTS_MARKET and BTS_SEGMENT for TX/MX connectivity, outputs raw CSVs + airport GeoJSON to `Script/_temp/`
   - Filters: Origin/Dest State = TX OR Origin/Dest Country = Mexico
   - Aggregates monthly data to annual totals via GROUP BY
   - Year range: 2015-2024 (configurable via `START_YEAR`/`END_YEAR`)
 
-### Data Cleaning
+### Step 2: Verification & Rule Discovery
+- `Verify_Corrections.py` — runs against **raw** intermediate files in `_temp/` (before cleaning) to validate that documented rules match the data and scan for new anomalies. This step ensures rules are accurate and complete before cleaning is applied.
+  - Default mode: comprehensive verification report (corrections, state names, self-flights, duplicates, departure outliers, GeoJSON alignment)
+  - `--auto-update-rules`: additionally scans for candidate update rules and can append to `data-cleaning.csv`
+  - `--scan-only`: runs only the auto-update scan (skips verification report)
+  - `--strict`: exits with code 1 if any verification failures are detected (useful for CI/automation)
+  - Safety features: preview-before-write, optional timestamped backup, write-to-temp-then-rename
+- `_helper/Audit_GeoJSON.py` — comprehensive GeoJSON structural quality audit (coordinates, codes, closed airports, duplicates) — complements the rule-based verification in `Verify_Corrections.py`
+- `_helper/Extract_Database_Schema.py` — generates schema JSON from the DB
+
+### Step 3: Data Cleaning
 - `Apply_Data_Cleaning.py` — reads rules from `Database/data-cleaning/data-cleaning.csv` and applies all corrections to raw data from `_temp/`, writes cleaned output to `03_Process_Data/BTS/`
 - `Database/data-cleaning/data-cleaning.csv` — master list of all cleaning rules (CSV-driven, not hardcoded)
 - `Database/data-cleaning/missing-states.csv` — lookup table for filling null state names (460 international airport/city pairs)
@@ -51,18 +61,16 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 4. **Filters** — remove self-flights (ORIGIN=DEST), all-zero activity rows (PAX=0, FREIGHT=0, MAIL=0), exact duplicate rows
 5. **State fill** — fill null state names from missing-states.csv lookup when a `fill` rule is present
 6. **Re-aggregate CSVs** — collapse semantic duplicates introduced by normalization updates
-7. **GeoJSON** — filter to IS_LATEST=1, scope to airports in cleaned CSVs, strip to essential fields
-
-### Verification & Audit
-- `Verify_Corrections.py` — unified script for verification and optional auto-update rule scanning (`--auto-update-rules`); validates corrections against Market CSVs, Segment CSVs, and Airport GeoJSON; scans for new issues; and can append candidate updates + emit audit diff. GeoJSON checks verify update/delete rules, IS_LATEST distribution, and CSV–GeoJSON airport ID alignment. Safety features: previews proposed changes and asks for confirmation, optionally creates timestamped backup of `data-cleaning.csv`, uses write-to-temp-then-rename for safe writes, cross-references null-state data against `missing-states.csv` to warn about uncovered pairs, and reminds user to update `data-cleaning.md` after rule changes
-- `_helper/Audit_GeoJSON.py` — comprehensive GeoJSON structural quality audit (coordinates, codes, closed airports, duplicates) — complements the rule-based verification in `Verify_Corrections.py`
-- `_helper/Extract_Database_Schema.py` — generates schema JSON from the DB
+7. **Derived flags** (segment only) — add `SCHED_REPORTED` column: 0 = schedule data unreported (IF/DF foreign carriers + DU/IU Class F missing-as-zero), 1 = reported/trustworthy
+8. **GeoJSON** — filter to IS_LATEST=1, scope to airports in cleaned CSVs, strip to essential fields
 
 ### Known Data Characteristics (not errors)
 - **Foreign carriers** (DATA_SOURCE=IF/DF) don't report DEPARTURES_SCHEDULED — always 0
+- **US scheduled-service missing-as-zero** — ~14% of DU/F and ~13.5% of IU/F rows have DEPARTURES_PERFORMED > 0 but DEPARTURES_SCHEDULED = 0 (unreported schedule data). The `SCHED_REPORTED` flag marks these as 0
 - **Charter/commuter service** (CLASS=L/P) has no scheduled departures by definition
 - **Record granularity**: BTS_SEGMENT is split by aircraft type within each carrier/route/year
 - **Market vs Segment**: Market counts passengers once per journey; Segment counts each flight leg separately
+- **Self-flight filter uses code equality (ORIGIN == DEST), not airport ID** — this is correct. Within a single BTS record, ORIGIN and DEST are contemporaneous (same reporting period), and IATA/FAA codes are unique at any point in time. Code reassignment (e.g., T4X) is a cross-time concern, not a within-record concern, so `ORIGIN == DEST` always implies `ORIGIN_AIRPORT_ID == DEST_AIRPORT_ID` within the same row. No change to airport-ID-based comparison is needed.
 
 ### Other Scripts
 - `Andrew_Sample_Code/` — example query, load, and GIS scripts
@@ -73,7 +81,7 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 ### Tech Stack
 - **React 19** + Vite 7 — SPA with HashRouter (static-hosting friendly)
 - **Zustand** — lightweight state management (aviationStore, chatStore)
-- **D3.js** — chart rendering (bar, line, donut, stacked bar, treemap)
+- **D3.js** — chart rendering (bar, line, donut, stacked bar, treemap, diverging bar, heatmap table, scatter plot)
 - **Leaflet + React-Leaflet** — interactive airport maps with route arcs
 - **Tailwind CSS 4** — utility-first styling with TxDOT brand tokens
 - **Lucide React** — icon library
@@ -104,14 +112,14 @@ src/
 ├── components/
 │   ├── layout/         # SiteHeader, MainNav, DashboardLayout, PageWrapper, Footer, UtilityBar
 │   ├── ui/             # StatCard, ChartCard, DataTable, FullscreenChart, DownloadButton, PageHeader, SectionBlock, ErrorBoundary, MapPlaceholder
-│   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart
+│   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot
 │   ├── maps/           # AirportMap (Leaflet markers + great-circle route arcs)
 │   ├── filters/        # FilterSidebar, FilterBar, FilterSelect, FilterMultiSelect, ActiveFilterTags
 │   └── ai/             # AskAIDrawer, ChatInput, ChatMessage, SuggestedQuestions
 ├── stores/             # aviationStore.js (data+filters), chatStore.js (AI chat)
 ├── lib/                # Utilities
-│   ├── airportUtils.js     # GeoJSON indexing, row enrichment, route aggregation
-│   ├── aviationHelpers.js  # Route predicates, formatters, schedule adherence
+│   ├── airportUtils.js     # GeoJSON indexing, row enrichment, route aggregation (metric-parameterized)
+│   ├── aviationHelpers.js  # Route predicates, formatters, schedule adherence, BORDER_AIRPORTS, MAP_METRIC_OPTIONS
 │   ├── chartColors.js      # TxDOT brand palette (9 colors) + formatters
 │   ├── tokens.js           # Design tokens for D3 + dynamic styling
 │   ├── aiClient.js         # Mock AI responder (local data-driven answers)
@@ -130,8 +138,27 @@ src/
   - FilterMultiSelect dropdown group/subgroup headers (10–11px uppercase labels) — structural dividers inside compact dropdown menus
   - Leaflet map popup content (13px) — small overlay convention for map popups
   - Leaflet map attribution text (10px) — third-party credit line, universally tiny by mapping convention
-- **DataTable sizing**: Tables must NOT be full-width. Use `w-fit max-w-full mx-auto` on the root container so columns size to their content and the table is centered. Do NOT add `w-full` to the DataTable root or the `<table>` element.
-- **Paginated table column stability**: For multi-page tables, measure the maximum column width needed across ALL pages, then apply that width to every page. This prevents the table from shifting/resizing when the user clicks next/previous.
+- **DataTable sizing**: Tables must NOT be full-width. Use `w-fit max-w-full mx-auto` on the root container so columns size to their content and the table is centered. Do NOT add `w-full` to the DataTable root or the `<table>` element. **Exception**: when any column has `wrap: true`, `w-fit` is dropped so the table fills its container and text can reflow naturally.
+- **DataTable column wrapping**: Columns accept `wrap: true` and optional `minWidth` (default 80px). Long-text columns (airport names, carrier names) should use `wrap: true` to allow multi-line text and avoid horizontal scrolling. Wrap cells use `overflow-wrap: anywhere` so the browser can break mid-word when needed to fit the container. Numeric and short columns keep `whitespace-nowrap`. When wrapping columns are present, the table uses `w-full` (auto layout) instead of fixed-layout column stabilization, and the table fills its container width.
+- **Paginated table column stability**: For multi-page tables without wrapping columns, measure the maximum column width needed across ALL pages, then apply that width to every page. This prevents the table from shifting/resizing when the user clicks next/previous.
+
+### Chart Value Formatting (IMPORTANT)
+All chart components accept a `formatValue` prop that controls how numeric values are displayed in **both** tooltips and axis labels. The page passing data to a chart is responsible for choosing the correct formatter based on the metric being displayed.
+
+**Available formatters:**
+| Formatter | Location | Output example | Use for |
+|---|---|---|---|
+| `formatCompact` | `chartColors.js` | `5.3M`, `42.1K` | Default — counts, passengers, flights, seats, generic numbers |
+| `fmtCompact` | `aviationHelpers.js` | `5.3M`, `42.1K` | Same as formatCompact (aviation-specific alias) |
+| `fmtLbs` | `aviationHelpers.js` | `5.3M lbs`, `42.1K lbs` | Freight and mail (weight in pounds) |
+| `formatCurrency` | `chartColors.js` | `$5.3M`, `$42.1K` | **Only** for actual monetary/currency values |
+| Inline `(v) => \`${v}%\`` | — | `85.2%` | Percentages (load factor, adherence) |
+
+**Rules:**
+1. **Never use `formatCurrency` (or `$` prefix) for non-monetary data.** Passengers, flights, seats, freight, and mail are NOT currency — use `fmtCompact` or `fmtLbs`.
+2. **Always pass `formatValue` explicitly** when rendering a chart. Do not rely on the default formatter — be explicit about units.
+3. **Y-axis ticks use `formatValue` directly** — LineChart and StackedBarChart call `formatValue(v)` for each Y-axis tick label. This ensures the axis shows the same units as the tooltip (e.g., "1.5M lbs" for mail, "3.0M" for passengers). The helper `getAxisFormatter(maxValue, prefix, suffix)` in `chartColors.js` is available for custom axis formatting if needed.
+4. **BTS data units**: PASSENGERS = count, DEPARTURES = count, SEATS = count, FREIGHT = pounds (lbs), MAIL = pounds (lbs). None of these are currency.
 
 ### Key Patterns
 - **Data-agnostic components**: Charts, tables, and cards receive data as props — no hardcoded field names
@@ -141,6 +168,12 @@ src/
 - **Memoization**: Heavy use of `useMemo()` for filtered data and aggregations
 - **TxDOT brand colors**: Primary #0056a9, defined in `chartColors.js` and `globals.css`
 - **Fonts**: IBM Plex Sans (primary), IBM Plex Sans Condensed, IBM Plex Mono
+- **LineChart annotations**: `LineChart` accepts an optional `annotations` prop (array of objects). Each annotation can render a vertical line (`{ x }`) or a shaded band (`{ x, x2 }`), with optional `label`, `color`, and `labelColor`. Used for COVID-19 bands on trend charts.
+- **BORDER_AIRPORTS constant**: `aviationHelpers.js` exports `BORDER_AIRPORTS` (Set) and `BORDER_AIRPORT_LIST` (array of `{code, city}`) — the six Texas border airports, defined as airports located within a TxDOT border district: ELP (El Paso), LRD (Laredo), MFE (McAllen), HRL (Harlingen), BRO (Brownsville), DRT (Del Rio). Used on the Overview page (sidebar card + map highlighting), and the Texas-Mexico page (intro section with mini-map, border vs non-border analysis, O-D route matrix). AirportMap accepts a `highlightAirports` prop (Set of IATA codes) to render those markers with a thick white halo stroke.
+- **DivergingBarChart**: Bilateral horizontal bar chart (left/right from center axis). Props: `data`, `labelKey`, `leftKey`, `rightKey`, `leftLabel`, `rightLabel`, `leftColor`, `rightColor`, `formatValue`, `maxBars`, `animate`. Used for freight import/export imbalance.
+- **HeatmapTable**: Color-intensity HTML grid table. Props: `data` (with `rowLabels`, `colLabels`, `cells` 2D array), `formatValue`. Cell background alpha scales with value. Used for border airport O-D route matrices.
+- **ScatterPlot**: Scatter/bubble chart with two numeric axes. Props: `data`, `xKey`, `yKey`, `labelKey`, `colorKey`, `sizeKey`, `formatX`, `formatY`, `colorMap`, `labelThreshold`, `scaleType` (`'symlog'`/`'linear'`/`'log'`), `animate`. Supports `d3.scaleSymlog()` for data with extreme skew and zero values. Optional bubble sizing via `scaleSqrt`. Permanent labels on top-N points, tooltip on hover for all. Used on Texas-Mexico page for Passengers vs Freight airport activity.
+- **Map metric selector**: Each page's AirportMap has a `<select>` dropdown (via ChartCard `headerRight`) letting users switch between Passengers, Freight (lbs), Mail (lbs), and Flights. Configuration is centralized in `MAP_METRIC_OPTIONS` (aviationHelpers.js). Each option specifies the CSV field, data source (market/segment), formatter, and unit label. The map metric is page-local state (`useState`), not global store state, since it only affects map visualization. `aggregateRoutes(data, airportIndex, field)` and `aggregateAirportVolumes(data, field)` accept an optional field parameter (default `'PASSENGERS'`). AirportMap accepts `formatValue` and `metricLabel` props for popup formatting.
 
 ### Running the WebApp
 ```bash

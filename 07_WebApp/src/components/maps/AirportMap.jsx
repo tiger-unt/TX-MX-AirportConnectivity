@@ -4,20 +4,29 @@
  *
  * Props:
  *   airports      — Array of { iata, name, city, country, lat, lng, volume }
- *   routes        — Array of { origin, dest, originLat, originLng, destLat, destLng, passengers, label }
+ *   routes        — Array of { origin, dest, originLat, originLng, destLat, destLng, value, label }
  *   topN          — Number of top routes to show by default (default 15)
  *   selectedAirport / onAirportSelect — controlled selection state
+ *   highlightAirports — Set of IATA codes to render with a thick white halo (e.g. border airports)
+ *   hoveredAirport — IATA code of externally hovered airport (e.g. from sidebar card)
+ *   fixedRadius   — When set, all markers use this radius instead of volume-based scaling
+ *   legendItems   — Array of legend entries to show; each { color, borderColor?, label }
+ *                   If omitted, default U.S./Mexico/Other(/Border) legends are shown
  *   height        — CSS height string (default '480px')
  *   center        — [lat, lng] (default [25.5, -99.5])
  *   zoom          — initial zoom (default 5)
+ *   formatValue   — Function to format numeric values in popups (default toLocaleString)
+ *   metricLabel   — Unit noun shown in popups, e.g. 'passengers', 'freight' (default 'passengers')
  */
-import { useMemo, useCallback, useEffect } from 'react'
+import { useMemo, useCallback, useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Polyline, Popup, useMapEvents, useMap } from 'react-leaflet'
 import { greatCircleArc } from '@/lib/airportUtils'
 import 'leaflet/dist/leaflet.css'
 
 const COLORS = {
   us: '#0056a9',
+  texas: '#0056a9',
+  usOther: '#94c4de',
   mx: '#df5c16',
   other: '#5a7a7a',
   arc: '#0056a9',
@@ -27,6 +36,8 @@ const COLORS = {
 /* Darker stroke for each category so dots pop against the light basemap */
 const STROKE = {
   us: '#003d75',
+  texas: '#003d75',
+  usOther: '#6d9bb8',
   mx: '#a84410',
   other: '#3a5252',
 }
@@ -39,16 +50,20 @@ function radiusScale(volume, maxVolume) {
 function markerColor(country) {
   if (!country) return COLORS.other
   const c = country.toLowerCase()
+  if (c === 'texas') return COLORS.texas
   if (c === 'mexico') return COLORS.mx
   if (c === 'united states') return COLORS.us
+  if (c === 'us other') return COLORS.usOther
   return COLORS.other
 }
 
 function markerStroke(country) {
   if (!country) return STROKE.other
   const c = country.toLowerCase()
+  if (c === 'texas') return STROKE.texas
   if (c === 'mexico') return STROKE.mx
   if (c === 'united states') return STROKE.us
+  if (c === 'us other') return STROKE.usOther
   return STROKE.other
 }
 
@@ -56,6 +71,36 @@ function MapClickHandler({ onReset }) {
   useMapEvents({
     click: () => onReset?.(),
   })
+  return null
+}
+
+/** Disables scroll-wheel zoom until the user clicks on the map; re-disables on mouseout */
+function ScrollWheelGuard({ onActiveChange }) {
+  const map = useMap()
+  useMapEvents({
+    click: () => {
+      map.scrollWheelZoom.enable()
+      onActiveChange?.(true)
+    },
+    mouseout: () => {
+      map.scrollWheelZoom.disable()
+      onActiveChange?.(false)
+    },
+  })
+  return null
+}
+
+/** Auto-fits map bounds to show all airports with padding */
+function FitBoundsToAirports({ airports, padding = [30, 30] }) {
+  const map = useMap()
+  useEffect(() => {
+    const pts = airports
+      ?.filter((a) => a.lat != null && a.lng != null)
+      .map((a) => [a.lat, a.lng])
+    if (pts && pts.length > 1) {
+      map.fitBounds(pts, { padding })
+    }
+  }, [map, airports, padding])
   return null
 }
 
@@ -86,8 +131,8 @@ function ResetZoomButton({ center, zoom, onReset }) {
   }, [map, center, zoom, onReset])
 
   return (
-    <div className="leaflet-top leaflet-right" style={{ pointerEvents: 'auto' }}>
-      <div className="leaflet-control" style={{ marginTop: 10, marginRight: 10 }}>
+    <div className="leaflet-top leaflet-left" style={{ pointerEvents: 'auto' }}>
+      <div className="leaflet-control" style={{ marginTop: 80, marginLeft: 10 }}>
         <button
           onClick={handleClick}
           title="Reset zoom"
@@ -119,9 +164,17 @@ export default function AirportMap({
   topN = 15,
   selectedAirport = null,
   onAirportSelect,
+  highlightAirports = null,
+  hoveredAirport = null,
+  fixedRadius = null,
+  legendItems = null,
   height = '480px',
   center = [25.5, -99.5],
   zoom = 5,
+  formatValue = (v) => v?.toLocaleString(),
+  metricLabel = 'passengers',
+  hintText = 'Click airport to explore connections',
+  fitToAirports = false,
 }) {
   const maxVolume = useMemo(
     () => Math.max(1, ...airports.map((a) => a.volume || 0)),
@@ -164,18 +217,52 @@ export default function AirportMap({
     onAirportSelect?.(null)
   }, [onAirportSelect])
 
+  const [mapActive, setMapActive] = useState(false)
+  const [showHint, setShowHint] = useState(false)
+  const hintTimer = useRef(null)
+
+  const handleWheel = useCallback(() => {
+    if (!mapActive) {
+      setShowHint(true)
+      clearTimeout(hintTimer.current)
+      hintTimer.current = setTimeout(() => setShowHint(false), 1500)
+    }
+  }, [mapActive])
+
+  useEffect(() => () => clearTimeout(hintTimer.current), [])
+
   return (
     <div
       style={{ minHeight: height, width: '100%' }}
       className="airport-map-container h-full flex flex-col rounded-lg overflow-hidden border border-border-light"
     >
       {/* Map wrapper — flex-1 fills remaining space; absolute-positioned MapContainer inside */}
-      <div className="flex-1 relative" style={{ minHeight: 0 }}>
+      <div className="flex-1 relative" style={{ minHeight: 0 }} onWheel={handleWheel}>
+        {/* Scroll hint overlay */}
+        {showHint && (
+          <div
+            style={{
+              position: 'absolute', inset: 0, zIndex: 1000,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.25)', pointerEvents: 'none',
+              transition: 'opacity 0.3s',
+            }}
+          >
+            <span
+              style={{
+                background: 'rgba(0,0,0,0.7)', color: '#fff',
+                padding: '8px 16px', borderRadius: 6, fontSize: 16,
+              }}
+            >
+              Click the map to enable zooming
+            </span>
+          </div>
+        )}
         <MapContainer
           center={center}
           zoom={zoom}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          scrollWheelZoom={true}
+          scrollWheelZoom={false}
           zoomControl={true}
         >
           <TileLayer
@@ -183,8 +270,12 @@ export default function AirportMap({
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
           <MapClickHandler onReset={handleReset} />
+          <ScrollWheelGuard onActiveChange={setMapActive} />
           <ResetZoomButton center={center} zoom={zoom} onReset={handleReset} />
           <MapResizeHandler />
+          {fitToAirports && airports.length > 1 && (
+            <FitBoundsToAirports airports={airports} />
+          )}
 
           {/* Route arcs */}
           {arcs.map((arc, i) => (
@@ -202,7 +293,7 @@ export default function AirportMap({
                 <div className="text-sm">
                   <strong>{arc.label}</strong>
                   <br />
-                  {arc.passengers?.toLocaleString()} passengers
+                  {formatValue(arc.value)} {metricLabel}
                 </div>
               </Popup>
             </Polyline>
@@ -213,18 +304,21 @@ export default function AirportMap({
             .filter((a) => a.lat != null && a.lng != null)
             .map((a) => {
               const isSelected = selectedAirport === a.iata
-              const r = radiusScale(a.volume, maxVolume)
+              const isHovered = hoveredAirport === a.iata
+              const isHighlighted = highlightAirports?.has(a.iata)
+              const r = fixedRadius != null ? fixedRadius : radiusScale(a.volume, maxVolume)
               return (
                 <CircleMarker
                   key={a.iata}
                   center={[a.lat, a.lng]}
-                  radius={isSelected ? r + 3 : r}
+                  radius={isSelected ? r + 3 : isHovered ? r + 2 : r}
+                  bubblingMouseEvents={false}
                   pathOptions={{
                     fillColor: markerColor(a.country),
-                    color: isSelected ? '#fff' : markerStroke(a.country),
-                    weight: isSelected ? 3 : 1.5,
+                    color: isSelected ? '#fff' : (isHovered || isHighlighted) ? '#E8B923' : markerStroke(a.country),
+                    weight: isSelected ? 3 : isHovered ? 3 : isHighlighted ? 2.5 : 1.5,
                     opacity: 0.9,
-                    fillOpacity: isSelected ? 1 : 0.75,
+                    fillOpacity: isSelected ? 1 : isHovered ? 1 : isHighlighted ? 0.95 : 0.85,
                   }}
                   eventHandlers={{
                     click: () => handleAirportClick(a.iata),
@@ -236,7 +330,7 @@ export default function AirportMap({
                       <br />
                       {a.city}
                       <br />
-                      {a.volume?.toLocaleString()} passengers
+                      {formatValue(a.volume)} {metricLabel}
                     </div>
                   </Popup>
                 </CircleMarker>
@@ -247,22 +341,64 @@ export default function AirportMap({
 
       {/* Legend — flex-shrink-0 keeps it at natural height; inline height overrides fullscreen CSS */}
       <div
-        className="flex items-center gap-4 px-3 py-2 bg-white/90 text-base text-text-secondary border-t border-border-light flex-shrink-0"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 bg-white/90 text-base text-text-secondary border-t border-border-light flex-shrink-0"
         style={{ height: 'auto' }}
       >
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-full" style={{ background: COLORS.us }} />
-          U.S.
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-full" style={{ background: COLORS.mx }} />
-          Mexico
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-full" style={{ background: COLORS.other }} />
-          Other
-        </span>
-        <span className="ml-auto text-base">Click airport to explore connections</span>
+        {legendItems ? (
+          /* Custom legend entries */
+          legendItems.map((item) => (
+            <span key={item.label} className="flex items-center gap-1">
+              <span
+                className="inline-block w-3 h-3 rounded-full"
+                style={{ background: item.color, border: item.borderColor ? `2px solid ${item.borderColor}` : undefined }}
+              />
+              {item.label}
+            </span>
+          ))
+        ) : (
+          /* Default legend entries */
+          <>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-full" style={{ background: COLORS.us }} />
+              U.S.
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-full" style={{ background: COLORS.mx }} />
+              Mexico
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-full" style={{ background: COLORS.other }} />
+              Other
+            </span>
+            {highlightAirports && (
+              <span className="flex items-center gap-1">
+                <span
+                  className="inline-block w-3 h-3 rounded-full"
+                  style={{ background: COLORS.us, border: '2px solid #E8B923' }}
+                />
+                Texas Border
+              </span>
+            )}
+          </>
+        )}
+        {/* Route line legend entries */}
+        {topN > 0 && !selectedAirport && (
+          <span className="flex items-center gap-1.5">
+            <svg width="24" height="10" aria-hidden="true">
+              <line x1="0" y1="5" x2="24" y2="5" stroke={COLORS.arc} strokeWidth="2" strokeDasharray="5 3" opacity="0.6" />
+            </svg>
+            Top {topN} routes
+          </span>
+        )}
+        {selectedAirport && (
+          <span className="flex items-center gap-1.5">
+            <svg width="24" height="10" aria-hidden="true">
+              <line x1="0" y1="5" x2="24" y2="5" stroke={COLORS.arcHover} strokeWidth="2" opacity="0.6" />
+            </svg>
+            Selected airport routes
+          </span>
+        )}
+        {hintText && <span className="ml-auto text-base">{hintText}</span>}
       </div>
     </div>
   )

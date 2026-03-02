@@ -42,10 +42,11 @@ export function enrichRow(row, airportIndex) {
 }
 
 /**
- * Aggregate routes: group by O-D pair, sum passengers, attach coords.
- * Returns array sorted by passengers descending.
+ * Aggregate routes: group by O-D pair, sum the given field, attach coords.
+ * Returns array sorted by value descending.
+ * @param {string} [field='PASSENGERS'] — the numeric column to sum
  */
-export function aggregateRoutes(data, airportIndex) {
+export function aggregateRoutes(data, airportIndex, field = 'PASSENGERS') {
   const byRoute = new Map()
   for (const d of data) {
     const key = `${d.ORIGIN}-${d.DEST}`
@@ -58,27 +59,28 @@ export function aggregateRoutes(data, airportIndex) {
         originName: d.ORIGIN_FULL_LABEL || d.ORIGIN,
         destName: d.DEST_FULL_LABEL || d.DEST,
         label: `${d.ORIGIN_FULL_LABEL || d.ORIGIN}–${d.DEST_FULL_LABEL || d.DEST}`,
-        passengers: 0,
+        value: 0,
         originLat: orig?.lat ?? d.ORIGIN_LAT ?? null,
         originLng: orig?.lng ?? d.ORIGIN_LNG ?? null,
         destLat: dest?.lat ?? d.DEST_LAT ?? null,
         destLng: dest?.lng ?? d.DEST_LNG ?? null,
       })
     }
-    byRoute.get(key).passengers += d.PASSENGERS
+    byRoute.get(key).value += d[field]
   }
-  return Array.from(byRoute.values()).sort((a, b) => b.passengers - a.passengers)
+  return Array.from(byRoute.values()).sort((a, b) => b.value - a.value)
 }
 
 /**
- * Sum passengers per IATA code (as origin + as destination).
+ * Sum a metric per IATA code (as origin + as destination).
  * Returns Map<IATA, number>.
+ * @param {string} [field='PASSENGERS'] — the numeric column to sum
  */
-export function aggregateAirportVolumes(data) {
+export function aggregateAirportVolumes(data, field = 'PASSENGERS') {
   const volumes = new Map()
   for (const d of data) {
-    volumes.set(d.ORIGIN, (volumes.get(d.ORIGIN) || 0) + d.PASSENGERS)
-    volumes.set(d.DEST, (volumes.get(d.DEST) || 0) + d.PASSENGERS)
+    volumes.set(d.ORIGIN, (volumes.get(d.ORIGIN) || 0) + d[field])
+    volumes.set(d.DEST, (volumes.get(d.DEST) || 0) + d[field])
   }
   return volumes
 }

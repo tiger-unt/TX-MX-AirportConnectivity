@@ -85,7 +85,12 @@
       "Bash(where pandoc)",
       "Bash(C:/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe -c \"import docx; print\\(''python-docx available''\\)\")",
       "Bash(C:/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe \"02_Data_Staging/BTS_Air_Carrier_Statistics/Script/Extract_BTS_Data.py\")",
-      "Bash(C:/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe:*)"
+      "Bash(C:/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe:*)",
+      "Bash(curl -s http://localhost:5179)",
+      "Bash(npm install --save-dev playwright)",
+      "Bash(xargs wc -l)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(npx tailwindcss --help)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",

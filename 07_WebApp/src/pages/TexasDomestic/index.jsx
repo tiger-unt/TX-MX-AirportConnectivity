@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Plane, Users, MapPin, Award } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, isTxDomestic, isTxToUs, isUsToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, isTxDomestic, isTxToUs, isUsToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { CHART_COLORS } from '@/lib/chartColors'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
@@ -42,9 +42,14 @@ const EXTRACTORS = {
   destState: (d) => d.DEST_STATE_NM,
 }
 
+/* ── COVID annotation for trend charts ─────────────────────────────── */
+const COVID_ANNOTATION = [{ x: 2020, x2: 2021, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
+
 export default function TexasDomesticPage() {
   const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
+  const [mapMetric, setMapMetric] = useState('PASSENGERS')
+  const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
 
   /* ── base dataset ──────────────────────────────────────────────────── */
   const baseMarket = useMemo(() => {
@@ -235,10 +240,34 @@ export default function TexasDomesticPage() {
   }, [filtered, filteredSegment, latestYear])
 
   /* ── trend data ────────────────────────────────────────────────────── */
-  const trendData = useMemo(() => {
+  const paxTrend = useMemo(() => {
     const byYear = new Map()
     filtered.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.PASSENGERS)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filtered])
+
+  const flightTrend = useMemo(() => {
+    const byYear = new Map()
+    filteredSegment.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.DEPARTURES_PERFORMED)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filteredSegment])
+
+  const freightTrend = useMemo(() => {
+    const byYear = new Map()
+    filtered.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.FREIGHT)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filtered])
+
+  const mailTrend = useMemo(() => {
+    const byYear = new Map()
+    filtered.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.MAIL)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
   }, [filtered])
@@ -270,24 +299,30 @@ export default function TexasDomesticPage() {
   const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
 
   /* ── map data ──────────────────────────────────────────────────────── */
-  const mapRoutes = useMemo(() => aggregateRoutes(filtered, airportIndex), [filtered, airportIndex])
+  const mapDataSource = mapMetricConfig.source === 'segment' ? filteredSegment : filtered
+
+  const mapRoutes = useMemo(
+    () => aggregateRoutes(mapDataSource, airportIndex, mapMetricConfig.field),
+    [mapDataSource, airportIndex, mapMetricConfig.field]
+  )
 
   const mapAirports = useMemo(() => {
-    const volumes = aggregateAirportVolumes(filtered)
+    const volumes = aggregateAirportVolumes(mapDataSource, mapMetricConfig.field)
     const seen = new Set()
     const airports = []
-    for (const d of filtered) {
+    for (const d of mapDataSource) {
       for (const code of [d.ORIGIN, d.DEST]) {
         if (seen.has(code)) continue
         seen.add(code)
         const info = airportIndex?.get(code)
         if (!info?.lat) continue
         const isOrigin = code === d.ORIGIN
+        const stateNm = isOrigin ? d.ORIGIN_STATE_NM : d.DEST_STATE_NM
         airports.push({
           iata: code,
           name: info.name,
           city: isOrigin ? d.ORIGIN_CITY_NAME : d.DEST_CITY_NAME,
-          country: isOrigin ? d.ORIGIN_COUNTRY_NAME : d.DEST_COUNTRY_NAME,
+          country: stateNm === 'Texas' ? 'Texas' : 'US Other',
           lat: info.lat,
           lng: info.lng,
           volume: volumes.get(code) || 0,
@@ -295,7 +330,7 @@ export default function TexasDomesticPage() {
       }
     }
     return airports
-  }, [filtered, airportIndex])
+  }, [mapDataSource, airportIndex, mapMetricConfig.field])
 
   /* ── render ────────────────────────────────────────────────────────── */
   if (loading) {
@@ -391,28 +426,71 @@ export default function TexasDomesticPage() {
 
       {/* Map */}
       <SectionBlock alt>
-        <ChartCard title="Domestic Route Map" subtitle="Texas airports with connections to U.S. destinations">
+        <ChartCard
+          title="Domestic Route Map"
+          subtitle="Texas airports with connections to U.S. destinations"
+          headerRight={
+            <select
+              value={mapMetric}
+              onChange={(e) => setMapMetric(e.target.value)}
+              className="text-base border border-border rounded-md px-2 py-1 bg-surface-primary"
+            >
+              {MAP_METRIC_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          }
+        >
           <AirportMap
             airports={mapAirports}
             routes={mapRoutes}
             topN={15}
             selectedAirport={selectedAirport}
             onAirportSelect={setSelectedAirport}
+            formatValue={mapMetricConfig.formatter}
+            metricLabel={mapMetricConfig.unit}
+            legendItems={[
+              { color: '#0056a9', label: 'Texas' },
+              { color: '#94c4de', label: 'Other U.S.' },
+            ]}
             center={[32, -99]}
             zoom={5}
           />
         </ChartCard>
       </SectionBlock>
 
-      {/* Passenger Trends */}
+      {/* Trends (2x2 grid) */}
       <SectionBlock>
-        <ChartCard
-          title="Texas Domestic Passenger Trends"
-          subtitle={`Total passengers departing Texas to U.S. destinations by year`}
-          downloadData={{ summary: { data: trendData, filename: 'tx-domestic-passenger-trends' } }}
-        >
-          <LineChart data={trendData} xKey="year" yKey="value" formatValue={fmtCompact} />
-        </ChartCard>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <ChartCard
+            title="Passenger Trends"
+            subtitle="Total passengers by year"
+            downloadData={{ summary: { data: paxTrend, filename: 'tx-domestic-passenger-trends' } }}
+          >
+            <LineChart data={paxTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="Flight Trends"
+            subtitle="Flights operated by year (segment data)"
+            downloadData={{ summary: { data: flightTrend, filename: 'tx-domestic-flight-trends' } }}
+          >
+            <LineChart data={flightTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="Freight Trends"
+            subtitle="Freight volume by year (lbs)"
+            downloadData={{ summary: { data: freightTrend, filename: 'tx-domestic-freight-trends' } }}
+          >
+            <LineChart data={freightTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="Mail Trends"
+            subtitle="Mail volume by year (lbs)"
+            downloadData={{ summary: { data: mailTrend, filename: 'tx-domestic-mail-trends' } }}
+          >
+            <LineChart data={mailTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+        </div>
       </SectionBlock>
 
       {/* Top States + Top Routes */}

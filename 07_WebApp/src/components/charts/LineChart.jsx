@@ -47,7 +47,7 @@
  *   Optional. Property name whose unique values split data into separate
  *   line series. If omitted, a single line is drawn.
  *
- * @param {Function} [formatValue=formatCurrency]
+ * @param {Function} [formatValue=formatCompact]
  *   Formatter for tooltip values and y-axis labels.
  *
  * @param {boolean} [showArea=false]
@@ -56,6 +56,14 @@
  *
  * @param {boolean} [animate=true]
  *   Whether lines animate in via stroke-dashoffset on first render.
+ *
+ * @param {Array<Object>} [annotations=[]]
+ *   Optional overlay annotations rendered on the chart. Each object can have:
+ *     - x: numeric x-value for a vertical line or band start
+ *     - x2: optional numeric x-value for band end (omit for a single line)
+ *     - label: optional text label
+ *     - color: band/line color (default: 'rgba(217,13,13,0.08)')
+ *     - labelColor: label text color (default: '#d90d0d')
  *
  * EDGE CASES & LIMITATIONS
  * - A single data point renders a dot but no visible line (two points
@@ -69,7 +77,7 @@
 import { useRef, useEffect, useContext } from 'react'
 import * as d3 from 'd3'
 import { useChartResize, getResponsiveFontSize } from '@/lib/useChartResize'
-import { CHART_COLORS, formatCurrency, getAxisFormatter } from '@/lib/chartColors'
+import { CHART_COLORS, formatCompact } from '@/lib/chartColors'
 import { ZoomRangeContext } from '@/components/ui/ChartCard'
 
 export default function LineChart({
@@ -77,9 +85,10 @@ export default function LineChart({
   xKey = 'year',
   yKey = 'value',
   seriesKey,
-  formatValue = formatCurrency,
+  formatValue = formatCompact,
   showArea = false,
   animate = true,
+  annotations = [],
 }) {
   const containerRef = useRef(null)
   const svgRef = useRef(null)
@@ -250,6 +259,42 @@ export default function LineChart({
         .attr('fill', `url(#${gradientId})`)
         .attr('d', area)
     }
+
+    // ── Annotation bands / lines ─────────────────────────────────
+    annotations.forEach((ann) => {
+      if (ann.x == null) return
+      const x1Pos = x(ann.x)
+      const x2Pos = ann.x2 != null ? x(ann.x2) : x1Pos
+
+      if (ann.x2 != null) {
+        contentG.append('rect')
+          .attr('x', Math.min(x1Pos, x2Pos))
+          .attr('width', Math.abs(x2Pos - x1Pos))
+          .attr('y', 0)
+          .attr('height', innerH)
+          .attr('fill', ann.color || 'rgba(217,13,13,0.08)')
+          .attr('pointer-events', 'none')
+      } else {
+        contentG.append('line')
+          .attr('x1', x1Pos).attr('x2', x1Pos)
+          .attr('y1', 0).attr('y2', innerH)
+          .attr('stroke', ann.color || '#d90d0d')
+          .attr('stroke-width', 1.5)
+          .attr('stroke-dasharray', '6,4')
+          .attr('pointer-events', 'none')
+      }
+
+      if (ann.label) {
+        contentG.append('text')
+          .attr('x', ann.x2 != null ? (x1Pos + x2Pos) / 2 : x1Pos + 4)
+          .attr('y', 14)
+          .attr('text-anchor', ann.x2 != null ? 'middle' : 'start')
+          .attr('font-size', `${FS * 0.8}px`)
+          .attr('fill', ann.labelColor || '#d90d0d')
+          .attr('pointer-events', 'none')
+          .text(ann.label)
+      }
+    })
 
     // ── Lines + dots — in clipped group ─────────────────────────
     series.forEach((s, i) => {
@@ -431,12 +476,11 @@ export default function LineChart({
     styleXAxis(x)
 
     // ── Y-Axis (tick marks span both sides, skip zero) ──────────
-    const axisFormat = getAxisFormatter(yMax)
     const yAxisG = g.append('g')
       .call(
         d3.axisLeft(y)
           .ticks(5)
-          .tickFormat(axisFormat)
+          .tickFormat((v) => v === 0 ? '' : formatValue(v))
           .tickSize(0)
       )
     yAxisG.select('.domain').remove()
@@ -608,7 +652,7 @@ export default function LineChart({
     }
 
     return () => { document.getElementById(tipId)?.remove() }
-  }, [data, width, containerHeight, isFullscreen, xKey, yKey, seriesKey, showArea, animate])
+  }, [data, width, containerHeight, isFullscreen, xKey, yKey, seriesKey, showArea, animate, annotations])
 
   // Ensure container expands for legend rows
   const seriesCount = seriesKey ? new Set(data.map(d => d[seriesKey])).size : 0

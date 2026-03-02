@@ -12,6 +12,8 @@ Optional mode:
     --auto-update-rules   Detect candidate update rules and append uncovered
                           candidates to data-cleaning.csv, with audit report.
     --scan-only           Run only auto-update scan (no verification report).
+    --strict              Exit with non-zero code if any verification failures
+                          are detected (useful for CI/automation).
 
 Runtime configuration:
     Set AUTO_UPDATE_RULES / AUTO_UPDATE_SCAN_ONLY below to True/False.
@@ -26,6 +28,7 @@ from datetime import datetime, timezone
 from io import StringIO
 import json
 import shutil
+import sys
 import tempfile
 import pandas as pd
 from pathlib import Path
@@ -501,20 +504,25 @@ def run_auto_update_corrections(mkt, seg, rules):
 def check_nlu_city(mkt, seg):
     """Correction 2.2: NLU city name 'Zumpango' -> 'Mexico City'"""
     print("\n--- 2.2 NLU City Name (Airport ID 16852) ---")
+    failures = 0
     for label, df in [("Market", mkt), ("Segment", seg)]:
         nlu = df[df["ORIGIN_AIRPORT_ID"] == 16852]
         nlu_d = df[df["DEST_AIRPORT_ID"] == 16852]
         zump_o = df[(df["ORIGIN_AIRPORT_ID"] == 16852) & (df["ORIGIN_CITY_NAME"] == "Zumpango, Mexico")]
         zump_d = df[(df["DEST_AIRPORT_ID"] == 16852) & (df["DEST_CITY_NAME"] == "Zumpango, Mexico")]
+        count = len(zump_o) + len(zump_d)
+        failures += count
         print(f"  {label}: {len(zump_o)} origin + {len(zump_d)} dest rows with 'Zumpango'")
         cities_o = df[df["ORIGIN_AIRPORT_ID"] == 16852]["ORIGIN_CITY_NAME"].unique()
         cities_d = df[df["DEST_AIRPORT_ID"] == 16852]["DEST_CITY_NAME"].unique()
         print(f"    Origin city variants: {list(cities_o)}")
         print(f"    Dest city variants:   {list(cities_d)}")
+    return failures
 
 
 def check_code_updates(mkt, seg):
     """Corrections 2.3a-c: Airport code changes"""
+    failures = 0
     checks = [
         ("2.3a", 12544, "JQF", "USA", "Concord, NC"),
         ("2.3b", 13788, "NZC", "VQQ", "Jacksonville, FL"),
@@ -529,15 +537,19 @@ def check_code_updates(mkt, seg):
             new_o = len(df[(df["ORIGIN_AIRPORT_ID"] == aid) & (df["ORIGIN"] == new_code)])
             new_d = len(df[(df["DEST_AIRPORT_ID"] == aid) & (df["DEST"] == new_code)])
             total_old = old_o + old_d
+            failures += total_old
             print(f"  {label}: {old_code}={total_old} rows ({old_o}o+{old_d}d), {new_code}={new_o + new_d} rows")
+    return failures
 
 
 def check_t4x_conflict(mkt, seg):
     """Correction 2.4: T4X code conflict"""
     print("\n--- 2.4 T4X Code Conflict ---")
+    failures = 0
     for label, df in [("Market", mkt), ("Segment", seg)]:
         t4x_o = df[df["ORIGIN"] == "T4X"]
         t4x_d = df[df["DEST"] == "T4X"]
+        failures += len(t4x_o) + len(t4x_d)
         ids_o = t4x_o["ORIGIN_AIRPORT_ID"].unique() if len(t4x_o) > 0 else []
         ids_d = t4x_d["DEST_AIRPORT_ID"].unique() if len(t4x_d) > 0 else []
         print(f"  {label} T4X as origin: {len(t4x_o)} rows, IDs: {list(ids_o)}")
@@ -551,11 +563,13 @@ def check_t4x_conflict(mkt, seg):
         # 2.4b: Austin (16706) - should be deleted
         austin_o = len(df[(df["ORIGIN_AIRPORT_ID"] == 16706)])
         austin_d = len(df[(df["DEST_AIRPORT_ID"] == 16706)])
+        failures += austin_o + austin_d
         print(f"  {label} ID 16706 (Austin): {austin_o + austin_d} total rows (to delete)")
+    return failures
 
 
 def check_missing_states(mkt, seg):
-    """Correction 2.1: Missing state names"""
+    """Correction 2.1: Missing state names (informational — international airports lack states)."""
     print("\n--- 2.1 Missing State Names ---")
     for label, df in [("Market", mkt), ("Segment", seg)]:
         miss_o = df["ORIGIN_STATE_NM"].isna().sum()
@@ -567,6 +581,7 @@ def check_missing_states(mkt, seg):
         if len(miss_o_df) > 0:
             top = miss_o_df["ORIGIN_COUNTRY_NAME"].value_counts().head(5)
             print(f"    Top countries (origin): {dict(top)}")
+    return 0  # Informational only
 
 
 def check_missing_states_coverage(mkt, seg):
@@ -610,38 +625,45 @@ def check_missing_states_coverage(mkt, seg):
     if uncovered_all:
         print(f"\n  [ACTION] Add the uncovered pairs above to {MISSING_STATES_CSV.name}")
         print(f"           then re-run Apply_Data_Cleaning.py to fill the state names.")
+    return len(uncovered_all)  # Warning count (coverage gaps)
 
 
 def check_zero_distance(mkt, seg):
     """Correction 3.1: Zero-distance rows (origin = dest)"""
     print("\n--- 3.1 Self-Flight Rows (ORIGIN=DEST) ---")
+    failures = 0
     for label, df in [("Market", mkt), ("Segment", seg)]:
         zero_dist = df[df["ORIGIN"] == df["DEST"]]
+        failures += len(zero_dist)
         print(f"  {label}: {len(zero_dist)} zero-distance rows")
         if len(zero_dist) > 0:
             by_class = zero_dist["CLASS"].value_counts().to_dict()
             with_pax = len(zero_dist[zero_dist["PASSENGERS"] > 0])
             print(f"    By class: {by_class}")
             print(f"    With passengers > 0: {with_pax}")
+    return failures
 
 
 def check_all_zero_activity(mkt, seg):
     """Correction 3.2: All-zero activity rows"""
     print("\n--- 3.2 All-Zero Activity Rows (PAX=0, FREIGHT=0, MAIL=0) ---")
+    failures = 0
     for label, df in [("Market", mkt), ("Segment", seg)]:
         zero_all = df[
             (df["PASSENGERS"] == 0) & (df["FREIGHT"] == 0) & (df["MAIL"] == 0)
         ]
+        failures += len(zero_all)
         print(f"  {label}: {len(zero_all):,} all-zero rows ({len(zero_all)/len(df)*100:.1f}%)")
         if len(zero_all) > 0:
             by_class = zero_all["CLASS"].value_counts().to_dict()
             by_source = zero_all["DATA_SOURCE"].value_counts().to_dict()
             print(f"    By class: {by_class}")
             print(f"    By source: {by_source}")
+    return failures
 
 
 def check_missing_carrier(mkt, seg):
-    """Correction 4.1: Missing carrier names"""
+    """Correction 4.1: Missing carrier names (informational — known low-priority issue)."""
     print("\n--- 4.1 Missing Carrier Names ---")
     for label, df in [("Market", mkt), ("Segment", seg)]:
         missing = df[df["CARRIER_NAME"].isna()]
@@ -650,13 +672,16 @@ def check_missing_carrier(mkt, seg):
             years = missing["YEAR"].unique()
             classes = missing["CLASS"].unique()
             print(f"    Years: {sorted(years)}, Classes: {sorted(classes)}")
+    return 0  # Informational only
 
 
 def check_duplicate_rows(mkt, seg):
     """Check for exact duplicate rows (all columns identical)."""
     print("\n--- 3.3 Duplicate Rows ---")
+    failures = 0
     for label, df in [("Market", mkt), ("Segment", seg)]:
         dup_count = df.duplicated().sum()
+        failures += dup_count
         print(f"  {label}: {dup_count:,} exact duplicate rows ({dup_count/len(df)*100:.2f}%)")
         if dup_count > 0:
             # Show a sample of the duplicated rows
@@ -664,21 +689,25 @@ def check_duplicate_rows(mkt, seg):
             sample = dups.head(3)
             carriers = dups["CARRIER_NAME"].value_counts().head(5).to_dict()
             print(f"    Top carriers with duplicates: {carriers}")
+    return failures
 
 
 def check_passengers_exceed_seats(mkt, seg):
     """Check for rows where PASSENGERS > SEATS (segment only)."""
     print("\n--- 3.4 Passengers Exceeding Seats ---")
+    failures = 0
     for label, df in [("Market", mkt), ("Segment", seg)]:
         if "SEATS" not in df.columns:
             print(f"  {label}: skipped (no SEATS column)")
             continue
         exceed = df[(df["PASSENGERS"] > df["SEATS"]) & (df["SEATS"] > 0)]
+        failures += len(exceed)
         print(f"  {label}: {len(exceed):,} rows where PASSENGERS > SEATS")
         if len(exceed) > 0:
             avg_diff = (exceed["PASSENGERS"] - exceed["SEATS"]).mean()
             max_diff = (exceed["PASSENGERS"] - exceed["SEATS"]).max()
             print(f"    Avg excess: {avg_diff:.1f}, Max excess: {max_diff:.0f}")
+    return failures
 
 
 def check_departure_anomalies(mkt, seg):
@@ -705,11 +734,13 @@ def check_departure_anomalies(mkt, seg):
 
         print(f"    Scheduled>0, Performed=0: {len(sched_no_perf):,} ({len(sched_no_perf)/total*100:.1f}%)")
         print(f"    Performed > Scheduled (sched>0): {len(perf_gt_sched):,} ({len(perf_gt_sched)/total*100:.1f}%)")
+    return 0  # Informational only
 
 
 def check_departure_outliers(mkt, seg):
     """Verify DEPARTURES_SCHEDULED outlier corrections (both >100 and charter >10)."""
     print("\n--- 3.6 DEPARTURES_SCHEDULED Outlier Verification ---")
+    failures = 0
     for label, df in [("Market", mkt), ("Segment", seg)]:
         if "DEPARTURES_SCHEDULED" not in df.columns:
             print(f"  {label}: skipped (no departure columns)")
@@ -721,6 +752,7 @@ def check_departure_outliers(mkt, seg):
         # General outliers: ratio > 100 (all classes)
         broad_mask = (performed > 0) & (scheduled / performed > 100)
         broad_count = broad_mask.sum()
+        failures += broad_count
         print(f"  {label}: {broad_count} rows with SCHED/PERF ratio > 100 (should be 0 after cleaning)")
 
         # Charter outliers: Class P/L with ratio > 10
@@ -728,6 +760,7 @@ def check_departure_outliers(mkt, seg):
             is_charter = df["CLASS"].isin(["P", "L"])
             charter_mask = is_charter & (performed > 0) & (scheduled / performed > 10)
             charter_count = charter_mask.sum()
+            failures += charter_count
             print(f"  {label}: {charter_count} Class P/L rows with SCHED/PERF ratio > 10 (should be 0 after cleaning)")
             if charter_count > 0:
                 remaining = df[charter_mask]
@@ -735,11 +768,13 @@ def check_departure_outliers(mkt, seg):
                 print(f"    Top carriers: {carriers}")
         else:
             print(f"  {label}: skipped charter check (no CLASS column)")
+    return failures
 
 
 def check_geojson_updates(features, rules):
     """Verify GeoJSON-targeted update rules (code and city name fixes)."""
     print("\n--- 5.1 GeoJSON Update Rules ---")
+    failures = 0
     update_rules = rules[rules["action"] == "update"]
     found_any = False
 
@@ -773,17 +808,20 @@ def check_geojson_updates(features, rules):
             if f["properties"].get("AIRPORT_ID") == airport_id
         )
 
+        failures += old_count
         status = "[OK]" if old_count > 0 else "[CLEAN]"
         print(f"  {status} ID {airport_id} {field} {old_val}->{new_val}: "
               f"old={old_count}, new={new_count}, total={total} features")
 
     if not found_any:
         print("  No GeoJSON-targeted update rules found")
+    return failures
 
 
 def check_geojson_deletes(features, rules):
     """Verify GeoJSON-targeted delete rules."""
     print("\n--- 5.2 GeoJSON Delete Rules ---")
+    failures = 0
     delete_rules = rules[rules["action"] == "delete"]
     found_any = False
 
@@ -800,12 +838,14 @@ def check_geojson_deletes(features, rules):
             if f["properties"].get("AIRPORT_ID") == airport_id
         )
 
+        failures += count
         status = "[OK]" if count > 0 else "[CLEAN]"
         print(f"  {status} ID {airport_id}: {count} features present "
               f"({'to be removed' if count > 0 else 'already absent'})")
 
     if not found_any:
         print("  No GeoJSON-targeted delete rules found")
+    return failures
 
 
 def check_geojson_latest(features):
@@ -818,6 +858,7 @@ def check_geojson_latest(features):
     print(f"  IS_LATEST=0: {not_latest:,} features (removed during cleaning)")
     if other > 0:
         print(f"  Other/null:  {other:,} features")
+    return 0  # Informational only
 
 
 def check_geojson_csv_alignment(features, mkt, seg):
@@ -853,6 +894,7 @@ def check_geojson_csv_alignment(features, mkt, seg):
             print(f"    ... and {len(in_csv_not_geo) - 15} more")
 
     print(f"  In GeoJSON but not CSVs: {len(in_geo_not_csv)} (removed as orphans during cleaning)")
+    return len(in_csv_not_geo)  # Misaligned IDs count as failures
 
 
 def build_known_issue_sets(rules):
@@ -884,12 +926,13 @@ def build_known_issue_sets(rules):
 
 
 def scan_new_issues(mkt, seg, rules):
-    """Detect issues not in current corrections"""
+    """Detect issues not in current corrections. Returns count of new issues found."""
     print("\n" + "=" * 60)
     print("  NEW ISSUE SCAN")
     print("=" * 60)
 
     known_multi, known_old_codes, known_city = build_known_issue_sets(rules)
+    new_issues = 0
 
     for label, df in [("Market", mkt), ("Segment", seg)]:
         print(f"\n--- {label} ---")
@@ -900,6 +943,7 @@ def scan_new_issues(mkt, seg, rules):
         multi_o = o_map[o_map > 1].index.tolist()
         multi_d = d_map[d_map > 1].index.tolist()
         multi_ids = set(multi_o + multi_d) - known_multi
+        new_issues += len(multi_ids)
         if multi_ids:
             print(f"  NEW multi-code Airport IDs: {sorted(multi_ids)}")
             for aid in sorted(multi_ids):
@@ -925,6 +969,7 @@ def scan_new_issues(mkt, seg, rules):
             return ids_o.union(ids_d).issubset(known_multi)
 
         multi_codes = [c for c in raw_multi_codes if not code_is_known_resolved(c)]
+        new_issues += len(multi_codes)
         if multi_codes:
             print(f"  NEW multi-ID codes: {sorted(multi_codes)}")
         else:
@@ -936,6 +981,7 @@ def scan_new_issues(mkt, seg, rules):
         multi_city_o = o_cities[o_cities > 1].index.tolist()
         multi_city_d = d_cities[d_cities > 1].index.tolist()
         multi_city_ids = set(multi_city_o + multi_city_d) - known_city
+        new_issues += len(multi_city_ids)
         if multi_city_ids:
             print(f"  NEW city name inconsistencies: {sorted(multi_city_ids)}")
             for aid in sorted(multi_city_ids):
@@ -953,9 +999,12 @@ def scan_new_issues(mkt, seg, rules):
         )
         neg_counts = {c: int((df[c] < 0).sum()) for c in num_cols if (df[c] < 0).any()}
         if neg_counts:
+            new_issues += sum(neg_counts.values())
             print(f"  NEGATIVE VALUES: {neg_counts}")
         else:
             print("  No negative values in numeric columns")
+
+    return new_issues
 
 
 def parse_args(argv=None):
@@ -991,6 +1040,12 @@ def parse_args(argv=None):
         action="store_false",
         help="Disable scan-only mode (overrides config).",
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        default=False,
+        help="Exit with non-zero code if any verification failures are detected.",
+    )
     return parser.parse_args(argv)
 
 
@@ -1018,33 +1073,50 @@ def main(argv=None):
             print("=" * 60)
             return
 
-    check_missing_states(mkt, seg)
-    check_missing_states_coverage(mkt, seg)
-    check_nlu_city(mkt, seg)
-    check_code_updates(mkt, seg)
-    check_t4x_conflict(mkt, seg)
-    check_zero_distance(mkt, seg)
-    check_all_zero_activity(mkt, seg)
-    check_duplicate_rows(mkt, seg)
-    check_passengers_exceed_seats(mkt, seg)
-    check_departure_anomalies(mkt, seg)
-    check_departure_outliers(mkt, seg)
-    check_missing_carrier(mkt, seg)
+    # --- Collect failure counts from each check ---
+    failures = {}
+    failures["missing_states"] = check_missing_states(mkt, seg)
+    failures["missing_states_coverage"] = check_missing_states_coverage(mkt, seg)
+    failures["nlu_city"] = check_nlu_city(mkt, seg)
+    failures["code_updates"] = check_code_updates(mkt, seg)
+    failures["t4x_conflict"] = check_t4x_conflict(mkt, seg)
+    failures["self_flights"] = check_zero_distance(mkt, seg)
+    failures["all_zero_activity"] = check_all_zero_activity(mkt, seg)
+    failures["duplicate_rows"] = check_duplicate_rows(mkt, seg)
+    failures["passengers_exceed_seats"] = check_passengers_exceed_seats(mkt, seg)
+    failures["departure_anomalies"] = check_departure_anomalies(mkt, seg)
+    failures["departure_outliers"] = check_departure_outliers(mkt, seg)
+    failures["missing_carrier"] = check_missing_carrier(mkt, seg)
 
     # GeoJSON verification
     print("\n" + "=" * 60)
     print("  GEOJSON VERIFICATION")
     print("=" * 60)
-    check_geojson_updates(features, rules)
-    check_geojson_deletes(features, rules)
-    check_geojson_latest(features)
-    check_geojson_csv_alignment(features, mkt, seg)
+    failures["geojson_updates"] = check_geojson_updates(features, rules)
+    failures["geojson_deletes"] = check_geojson_deletes(features, rules)
+    failures["geojson_latest"] = check_geojson_latest(features)
+    failures["geojson_csv_alignment"] = check_geojson_csv_alignment(features, mkt, seg)
 
-    scan_new_issues(mkt, seg, rules)
+    failures["new_issues"] = scan_new_issues(mkt, seg, rules)
+
+    # --- Summary ---
+    total_failures = sum(failures.values())
+    failed_checks = {k: v for k, v in failures.items() if v > 0}
 
     print("\n" + "=" * 60)
-    print("  VERIFICATION COMPLETE")
+    if total_failures == 0:
+        print("  VERIFICATION COMPLETE — ALL CHECKS PASSED")
+    else:
+        print("  VERIFICATION COMPLETE — ISSUES DETECTED")
+        print("=" * 60)
+        print(f"\n  Total issues: {total_failures:,}")
+        for check_name, count in failed_checks.items():
+            print(f"    {check_name}: {count:,}")
     print("=" * 60)
+
+    if args.strict and total_failures > 0:
+        print(f"\n[FAIL] --strict mode: exiting with code 1 ({total_failures:,} issues)")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

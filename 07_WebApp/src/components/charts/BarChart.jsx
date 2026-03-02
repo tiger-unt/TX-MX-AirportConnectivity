@@ -67,7 +67,7 @@
 import { useRef, useEffect } from 'react'
 import * as d3 from 'd3'
 import { useChartResize, getResponsiveFontSize } from '@/lib/useChartResize'
-import { CHART_COLORS, formatCurrency } from '@/lib/chartColors'
+import { CHART_COLORS, formatCompact } from '@/lib/chartColors'
 
 /** Half-length of axis tick marks (extends TICK_HALF px above and below the axis line). */
 const TICK_HALF = 5
@@ -78,7 +78,7 @@ export default function BarChart({
   yKey = 'value',
   color = CHART_COLORS[0],
   horizontal = false,
-  formatValue = formatCurrency,
+  formatValue = formatCompact,
   onBarClick,
   selectedBar,
   maxBars = 15,

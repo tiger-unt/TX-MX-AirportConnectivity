@@ -58,13 +58,13 @@
 import { useRef, useEffect } from 'react'
 import * as d3 from 'd3'
 import { useChartResize, getResponsiveFontSize } from '@/lib/useChartResize'
-import { CHART_COLORS, formatCurrency, getAxisFormatter } from '@/lib/chartColors'
+import { CHART_COLORS, formatCompact } from '@/lib/chartColors'
 
 export default function StackedBarChart({
   data = [],
   xKey = 'year',
   stackKeys = [],
-  formatValue = formatCurrency,
+  formatValue = formatCompact,
   animate = true,
 }) {
   const containerRef = useRef(null)
@@ -285,9 +285,8 @@ export default function StackedBarChart({
 
     // Y Axis — dynamic unit (centered tick marks, skip zero)
     const yMax = d3.max(stacked, (layer) => d3.max(layer, (d) => d[1])) || 1
-    const axisFormat = getAxisFormatter(yMax)
     const yAxisG = g.append('g')
-      .call(d3.axisLeft(y).ticks(5).tickFormat(axisFormat).tickSize(0))
+      .call(d3.axisLeft(y).ticks(5).tickFormat((v) => v === 0 ? '' : formatValue(v)).tickSize(0))
     yAxisG.select('.domain').remove()
     yAxisG.selectAll('.tick').append('line')
       .attr('x1', -TICK_HALF).attr('x2', TICK_HALF)

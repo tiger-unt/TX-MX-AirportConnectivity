@@ -7,7 +7,8 @@ import {
 import { useAviationStore } from '@/stores/aviationStore'
 import {
   fmtCompact, isTxOrigin, isTxMx, isTxToMx, isMxToTx,
-  isTxDomestic, isTxIntl, isUsToMx, isMxToUs
+  isTxDomestic, isTxIntl, isUsToMx, isMxToUs,
+  BORDER_AIRPORTS, BORDER_AIRPORT_LIST
 } from '@/lib/aviationHelpers'
 import { aggregateAirportVolumes } from '@/lib/airportUtils'
 import StatCard from '@/components/ui/StatCard'
@@ -238,6 +239,12 @@ export default function OverviewPage() {
                     topN={0}
                     selectedAirport={selectedAirport}
                     onAirportSelect={setSelectedAirport}
+                    highlightAirports={BORDER_AIRPORTS}
+                    legendItems={[
+                      { color: '#0056a9', label: 'Texas' },
+                      { color: '#df5c16', label: 'Mexico' },
+                      { color: '#0056a9', borderColor: '#E8B923', label: 'Texas Border' },
+                    ]}
                     height="100%"
                     center={[25.5, -99.5]}
                     zoom={5}
@@ -263,6 +270,39 @@ export default function OverviewPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-border-light shadow-sm p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <MapPin size={16} className="text-brand-blue" />
+                  <h4 className="text-base font-bold text-text-primary">Border Airports</h4>
+                </div>
+                <p className="text-base text-text-secondary leading-relaxed mb-3">
+                  Six Texas airports located within a TxDOT border district play a key role in
+                  cross-border connectivity, highlighted on the map with a gold ring.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {BORDER_AIRPORT_LIST.map((b) => (
+                    <span
+                      key={b.code}
+                      className="inline-flex items-center gap-1.5 bg-brand-blue/5 border border-brand-blue/15 rounded-md px-2.5 py-1"
+                    >
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ background: '#0056a9', border: '1.5px solid #E8B923' }}
+                      />
+                      <span className="text-base font-semibold text-brand-blue">{b.code}</span>
+                      <span className="text-base text-text-secondary">{b.city}</span>
+                    </span>
+                  ))}
+                </div>
+                <Link
+                  to="/texas-mexico"
+                  className="inline-flex items-center gap-1.5 mt-3 text-base font-semibold text-brand-blue hover:underline"
+                >
+                  Border airport analysis
+                  <ArrowRight size={14} />
+                </Link>
               </div>
 
               <div className="bg-white rounded-xl border border-border-light shadow-sm p-5">
