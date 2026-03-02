@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Plane, Users, Globe, Award } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, isTxIntl, computeAdherenceData } from '@/lib/aviationHelpers'
+import { fmtCompact, isTxIntl, isTxToIntl, isIntlToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType } from '@/lib/aviationHelpers'
+import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { CHART_COLORS } from '@/lib/chartColors'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
+import FilterMultiSelect from '@/components/filters/FilterMultiSelect'
 import StatCard from '@/components/ui/StatCard'
 import ChartCard from '@/components/ui/ChartCard'
 import SectionBlock from '@/components/ui/SectionBlock'
@@ -14,8 +16,35 @@ import DonutChart from '@/components/charts/DonutChart'
 import BarChart from '@/components/charts/BarChart'
 import AirportMap from '@/components/maps/AirportMap'
 
+/* ── cascading-filter config (stable refs, defined once) ───────────── */
+const buildApplicators = (f) => ({
+  year: (data) => f.year.length ? data.filter((d) => f.year.includes(String(d.YEAR))) : data,
+  direction: (data) => {
+    if (f.direction === 'TX_TO_INTL') return data.filter(isTxToIntl)
+    if (f.direction === 'INTL_TO_TX') return data.filter(isIntlToTx)
+    return data
+  },
+  serviceClass: (data) => f.serviceClass.length ? data.filter((d) => f.serviceClass.includes(d.CLASS)) : data,
+  carrierType: (data) => f.carrierType ? data.filter((d) => getCarrierType(d) === f.carrierType) : data,
+  carrier: (data) => f.carrier.length ? data.filter((d) => f.carrier.includes(d.CARRIER_NAME)) : data,
+  originAirport: (data) => f.originAirport.length ? data.filter((d) => f.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN)) : data,
+  destAirport: (data) => f.destAirport.length ? data.filter((d) => f.destAirport.includes(d.DEST_FULL_LABEL || d.DEST)) : data,
+  originCountry: (data) => f.originCountry.length ? data.filter((d) => f.originCountry.includes(d.ORIGIN_COUNTRY_NAME)) : data,
+  destCountry: (data) => f.destCountry.length ? data.filter((d) => f.destCountry.includes(d.DEST_COUNTRY_NAME)) : data,
+})
+
+const EXTRACTORS = {
+  year: (d) => String(d.YEAR),
+  serviceClass: (d) => d.CLASS,
+  carrier: (d) => d.CARRIER_NAME,
+  originAirport: (d) => d.ORIGIN_FULL_LABEL || d.ORIGIN,
+  destAirport: (d) => d.DEST_FULL_LABEL || d.DEST,
+  originCountry: (d) => d.ORIGIN_COUNTRY_NAME,
+  destCountry: (d) => d.DEST_COUNTRY_NAME,
+}
+
 export default function TexasInternationalPage() {
-  const { marketData, segmentData, airportIndex, loading, filters, setFilter, resetFilters } = useAviationStore()
+  const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
   const [selectedCountry, setSelectedCountry] = useState(null)
 
@@ -30,68 +59,146 @@ export default function TexasInternationalPage() {
     return segmentData.filter(isTxIntl)
   }, [segmentData])
 
-  /* ── filter options ────────────────────────────────────────────────── */
+  /* ── cascading filter pools ────────────────────────────────────────── */
+  const pools = useCascadingFilters(baseMarket, buildApplicators, EXTRACTORS, filters, setFilters)
+
+  /* ── filter options (cascading — derived from cross-filtered pools) ── */
   const yearOptions = useMemo(() => {
-    return [...new Set(baseMarket.map((d) => d.YEAR))].filter(Number.isFinite).sort().map(String)
-  }, [baseMarket])
+    return [...new Set(pools.year.map((d) => d.YEAR))].filter(Number.isFinite).sort().map(String)
+  }, [pools])
 
-  const carrierOptions = useMemo(() => {
-    return [...new Set(baseMarket.map((d) => d.CARRIER_NAME))].filter(Boolean).sort()
-  }, [baseMarket])
+  const serviceClassOptions = useMemo(() => {
+    return [...new Set(pools.serviceClass.map((d) => d.CLASS))].filter(Boolean).sort()
+      .map((c) => ({ value: c, label: CLASS_LABELS[c] || c }))
+  }, [pools])
 
-  const originOptions = useMemo(() => {
-    return [...new Set(baseMarket.map((d) => d.ORIGIN_FULL_LABEL || d.ORIGIN))].filter(Boolean).sort()
-  }, [baseMarket])
+  const carrierGrouped = useMemo(() => {
+    const classMap = new Map()
+    pools.carrier.forEach((d) => {
+      if (!d.CARRIER_NAME) return
+      const cls = d.CLASS || 'Unknown'
+      const isUS = d.DATA_SOURCE?.endsWith('U')
+      if (!classMap.has(cls)) classMap.set(cls, { us: new Set(), foreign: new Set() })
+      const bucket = classMap.get(cls)
+      if (isUS) bucket.us.add(d.CARRIER_NAME)
+      else bucket.foreign.add(d.CARRIER_NAME)
+    })
+    return [...classMap.entries()]
+      .sort(([a], [b]) => (CLASS_LABELS[a] || a).localeCompare(CLASS_LABELS[b] || b))
+      .map(([cls, { us, foreign }]) => {
+        const subgroups = []
+        if (us.size) subgroups.push({ label: 'U.S. Carriers', options: [...us].sort() })
+        if (foreign.size) subgroups.push({ label: 'Foreign Carriers', options: [...foreign].sort() })
+        return { label: CLASS_LABELS[cls] || cls, subgroups }
+      })
+      .filter((g) => g.subgroups.length > 0)
+  }, [pools])
 
-  const destOptions = useMemo(() => {
-    return [...new Set(baseMarket.map((d) => d.DEST_FULL_LABEL || d.DEST))].filter(Boolean).sort()
-  }, [baseMarket])
+  /* ── grouped airport options (by country, cascading) ────────────── */
+  const originGrouped = useMemo(() => {
+    const countryMap = new Map()
+    pools.originAirport.forEach((d) => {
+      const label = d.ORIGIN_FULL_LABEL || d.ORIGIN
+      const country = d.ORIGIN_COUNTRY_NAME || 'Unknown'
+      if (!label) return
+      if (!countryMap.has(country)) countryMap.set(country, new Set())
+      countryMap.get(country).add(label)
+    })
+    return [...countryMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([country, airports]) => ({ label: country, options: [...airports].sort() }))
+  }, [pools])
+
+  const destGrouped = useMemo(() => {
+    const countryMap = new Map()
+    pools.destAirport.forEach((d) => {
+      const label = d.DEST_FULL_LABEL || d.DEST
+      const country = d.DEST_COUNTRY_NAME || 'Unknown'
+      if (!label) return
+      if (!countryMap.has(country)) countryMap.set(country, new Set())
+      countryMap.get(country).add(label)
+    })
+    return [...countryMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([country, airports]) => ({ label: country, options: [...airports].sort() }))
+  }, [pools])
+
+  const originCountryOptions = useMemo(() => {
+    return [...new Set(pools.originCountry.map((d) => d.ORIGIN_COUNTRY_NAME))].filter(Boolean).sort()
+  }, [pools])
 
   const destCountryOptions = useMemo(() => {
-    return [...new Set(baseMarket.map((d) => d.DEST_COUNTRY_NAME))].filter(Boolean).sort()
-  }, [baseMarket])
+    return [...new Set(pools.destCountry.map((d) => d.DEST_COUNTRY_NAME))].filter(Boolean).sort()
+  }, [pools])
 
   /* ── filtered datasets ─────────────────────────────────────────────── */
   const filtered = useMemo(() => {
     let data = baseMarket
-    if (filters.year) data = data.filter((d) => String(d.YEAR) === filters.year)
-    if (filters.carrier) data = data.filter((d) => d.CARRIER_NAME === filters.carrier)
-    if (filters.originAirport) {
-      data = data.filter((d) => (d.ORIGIN_FULL_LABEL || d.ORIGIN) === filters.originAirport)
+    if (filters.year.length) data = data.filter((d) => filters.year.includes(String(d.YEAR)))
+    if (filters.direction === 'TX_TO_INTL') data = data.filter(isTxToIntl)
+    if (filters.direction === 'INTL_TO_TX') data = data.filter(isIntlToTx)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
     }
-    if (filters.destAirport) {
-      data = data.filter((d) => (d.DEST_FULL_LABEL || d.DEST) === filters.destAirport)
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
     }
-    if (filters.destCountry) data = data.filter((d) => d.DEST_COUNTRY_NAME === filters.destCountry)
+    if (filters.originCountry.length) data = data.filter((d) => filters.originCountry.includes(d.ORIGIN_COUNTRY_NAME))
+    if (filters.destCountry.length) data = data.filter((d) => filters.destCountry.includes(d.DEST_COUNTRY_NAME))
     return data
   }, [baseMarket, filters])
 
   const filteredSegment = useMemo(() => {
     let data = baseSegment
-    if (filters.year) data = data.filter((d) => String(d.YEAR) === filters.year)
-    if (filters.carrier) data = data.filter((d) => d.CARRIER_NAME === filters.carrier)
-    if (filters.originAirport) {
-      data = data.filter((d) => (d.ORIGIN_FULL_LABEL || d.ORIGIN) === filters.originAirport)
+    if (filters.year.length) data = data.filter((d) => filters.year.includes(String(d.YEAR)))
+    if (filters.direction === 'TX_TO_INTL') data = data.filter(isTxToIntl)
+    if (filters.direction === 'INTL_TO_TX') data = data.filter(isIntlToTx)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
     }
-    if (filters.destAirport) {
-      data = data.filter((d) => (d.DEST_FULL_LABEL || d.DEST) === filters.destAirport)
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
     }
-    if (filters.destCountry) data = data.filter((d) => d.DEST_COUNTRY_NAME === filters.destCountry)
+    if (filters.originCountry.length) data = data.filter((d) => filters.originCountry.includes(d.ORIGIN_COUNTRY_NAME))
+    if (filters.destCountry.length) data = data.filter((d) => filters.destCountry.includes(d.DEST_COUNTRY_NAME))
     return data
   }, [baseSegment, filters])
 
   /* ── active filter count & tags ────────────────────────────────────── */
-  const activeCount = [
-    filters.year, filters.carrier, filters.originAirport, filters.destAirport, filters.destCountry,
-  ].filter(Boolean).length
+  const activeCount =
+    filters.year.length + (filters.direction ? 1 : 0) +
+    filters.serviceClass.length + (filters.carrierType ? 1 : 0) + filters.carrier.length + filters.originAirport.length +
+    filters.destAirport.length + filters.originCountry.length + filters.destCountry.length
 
   const activeTags = useMemo(() => {
     const tags = []
-    if (filters.year) tags.push({ group: 'Year', label: filters.year, onRemove: () => setFilter('year', '') })
-    if (filters.carrier) tags.push({ group: 'Carrier', label: filters.carrier, onRemove: () => setFilter('carrier', '') })
-    if (filters.originAirport) tags.push({ group: 'Origin', label: filters.originAirport, onRemove: () => setFilter('originAirport', '') })
-    if (filters.destAirport) tags.push({ group: 'Dest', label: filters.destAirport, onRemove: () => setFilter('destAirport', '') })
-    if (filters.destCountry) tags.push({ group: 'Country', label: filters.destCountry, onRemove: () => setFilter('destCountry', '') })
+    const push = (key, group, labelFn) =>
+      filters[key].forEach((v) =>
+        tags.push({ group, label: labelFn ? labelFn(v) : v, onRemove: () => setFilter(key, filters[key].filter((x) => x !== v)) })
+      )
+    push('year', 'Year')
+    if (filters.direction) tags.push({
+      group: 'Direction',
+      label: filters.direction === 'TX_TO_INTL' ? 'Texas \u2192 International' : 'International \u2192 Texas',
+      onRemove: () => setFilter('direction', ''),
+    })
+    push('serviceClass', 'Service Class', (v) => CLASS_LABELS[v] || v)
+    if (filters.carrierType) tags.push({
+      group: 'Carrier Type',
+      label: CARRIER_TYPE_LABELS[filters.carrierType] || filters.carrierType,
+      onRemove: () => setFilter('carrierType', ''),
+    })
+    push('carrier', 'Carrier')
+    push('originAirport', 'Origin Airport')
+    push('destAirport', 'Dest Airport')
+    push('originCountry', 'Origin Country')
+    push('destCountry', 'Dest Country')
     return tags
   }, [filters, setFilter])
 
@@ -114,12 +221,19 @@ export default function TexasInternationalPage() {
       .filter((d) => d.YEAR === latestYear)
       .reduce((s, d) => s + d.DEPARTURES_PERFORMED, 0)
 
-    const countries = new Set(latest.map((d) => d.DEST_COUNTRY_NAME)).size
+    // For bidirectional data, get the foreign (non-US) country from each record:
+    // TX→Intl: foreign country = DEST_COUNTRY_NAME
+    // Intl→TX: foreign country = ORIGIN_COUNTRY_NAME
+    const foreignCountry = (d) =>
+      isTxToIntl(d) ? d.DEST_COUNTRY_NAME : d.ORIGIN_COUNTRY_NAME
+
+    const countries = new Set(latest.map(foreignCountry).filter(Boolean)).size
 
     const byCountry = new Map()
     latest.forEach((d) => {
-      if (!d.DEST_COUNTRY_NAME) return
-      byCountry.set(d.DEST_COUNTRY_NAME, (byCountry.get(d.DEST_COUNTRY_NAME) || 0) + d.PASSENGERS)
+      const country = foreignCountry(d)
+      if (!country) return
+      byCountry.set(country, (byCountry.get(country) || 0) + d.PASSENGERS)
     })
     const topCountry = byCountry.size
       ? [...byCountry.entries()].sort((a, b) => b[1] - a[1])[0][0]
@@ -139,10 +253,13 @@ export default function TexasInternationalPage() {
 
   /* ── top countries (donut) ─────────────────────────────────────────── */
   const topCountries = useMemo(() => {
+    const foreignCountry = (d) =>
+      isTxToIntl(d) ? d.DEST_COUNTRY_NAME : d.ORIGIN_COUNTRY_NAME
     const byCountry = new Map()
     filtered.forEach((d) => {
-      if (!d.DEST_COUNTRY_NAME) return
-      byCountry.set(d.DEST_COUNTRY_NAME, (byCountry.get(d.DEST_COUNTRY_NAME) || 0) + d.PASSENGERS)
+      const country = foreignCountry(d)
+      if (!country) return
+      byCountry.set(country, (byCountry.get(country) || 0) + d.PASSENGERS)
     })
     return Array.from(byCountry, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
@@ -204,11 +321,31 @@ export default function TexasInternationalPage() {
 
   const filterControls = (
     <>
-      <FilterSelect label="Year" value={filters.year} options={yearOptions} onChange={(v) => setFilter('year', v)} />
-      <FilterSelect label="Carrier" value={filters.carrier} options={carrierOptions} onChange={(v) => setFilter('carrier', v)} />
-      <FilterSelect label="Origin Airport" value={filters.originAirport} options={originOptions} onChange={(v) => setFilter('originAirport', v)} />
-      <FilterSelect label="Dest Airport" value={filters.destAirport} options={destOptions} onChange={(v) => setFilter('destAirport', v)} />
-      <FilterSelect label="Dest Country" value={filters.destCountry} options={destCountryOptions} onChange={(v) => setFilter('destCountry', v)} />
+      <FilterMultiSelect label="Year" value={filters.year} options={yearOptions} onChange={(v) => setFilter('year', v)} />
+      <FilterSelect
+        label="Direction"
+        value={filters.direction}
+        options={[
+          { value: 'TX_TO_INTL', label: 'Texas \u2192 International' },
+          { value: 'INTL_TO_TX', label: 'International \u2192 Texas' },
+        ]}
+        onChange={(v) => setFilter('direction', v)}
+      />
+      <FilterMultiSelect label="Service Class" value={filters.serviceClass} options={serviceClassOptions} onChange={(v) => setFilter('serviceClass', v)} />
+      <FilterSelect
+        label="Carrier Type"
+        value={filters.carrierType}
+        options={[
+          { value: 'U', label: 'Domestic' },
+          { value: 'F', label: 'International' },
+        ]}
+        onChange={(v) => setFilter('carrierType', v)}
+      />
+      <FilterMultiSelect label="Carrier" value={filters.carrier} groups={carrierGrouped} onChange={(v) => setFilter('carrier', v)} searchable />
+      <FilterMultiSelect label="Origin Airport" value={filters.originAirport} groups={originGrouped} onChange={(v) => setFilter('originAirport', v)} searchable />
+      <FilterMultiSelect label="Destination Airport" value={filters.destAirport} groups={destGrouped} onChange={(v) => setFilter('destAirport', v)} searchable />
+      <FilterMultiSelect label="Origin Country" value={filters.originCountry} options={originCountryOptions} onChange={(v) => setFilter('originCountry', v)} searchable />
+      <FilterMultiSelect label="Destination Country" value={filters.destCountry} options={destCountryOptions} onChange={(v) => setFilter('destCountry', v)} searchable />
     </>
   )
 
@@ -271,8 +408,8 @@ export default function TexasInternationalPage() {
             topN={15}
             selectedAirport={selectedAirport}
             onAirportSelect={setSelectedAirport}
-            center={[20, -40]}
-            zoom={3}
+            center={[25, -90]}
+            zoom={4}
           />
         </ChartCard>
       </SectionBlock>
@@ -328,7 +465,7 @@ export default function TexasInternationalPage() {
           downloadData={{ summary: { data: adherenceData, filename: 'tx-intl-schedule-adherence' } }}
         >
           <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
-          <p className="text-xs text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
+          <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
         </ChartCard>
       </SectionBlock>
     </DashboardLayout>

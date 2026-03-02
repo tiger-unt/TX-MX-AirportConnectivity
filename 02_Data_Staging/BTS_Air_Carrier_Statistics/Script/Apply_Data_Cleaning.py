@@ -63,7 +63,7 @@ GEO_STATE_KEYS = ("AIRPORT", "DISPLAY_AIRPORT_CITY_NAME_FULL", "AIRPORT_STATE_NA
 
 # Metric columns used for post-cleaning re-aggregation after code/city normalization
 CSV_METRIC_COLUMNS = {
-    "market": ["PASSENGERS", "FREIGHT", "MAIL", "DISTANCE"],
+    "market": ["PASSENGERS", "FREIGHT", "MAIL"],
     "segment": [
         "DEPARTURES_SCHEDULED",
         "DEPARTURES_PERFORMED",
@@ -72,9 +72,6 @@ CSV_METRIC_COLUMNS = {
         "PASSENGERS",
         "FREIGHT",
         "MAIL",
-        "DISTANCE",
-        "RAMP_TO_RAMP",
-        "AIR_TIME",
     ],
 }
 
@@ -210,6 +207,30 @@ def apply_csv_corrections(df, rules, csv_type):
                 total_corrected += count
                 print(f"  [CORRECT] {field}: fixed {count} rows (set DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED)")
 
+        elif field == "DEPARTURES_SCHEDULED_CHARTER_OUTLIER":
+            # Fix Class P/L (charter/non-scheduled) rows where DEPARTURES_SCHEDULED
+            # is implausibly higher than DEPARTURES_PERFORMED.
+            # 99.4% of Class P rows have SCHED=0 (correct for charters). The few with
+            # non-zero SCHED and ratio > 10 are systematic data entry errors (e.g.
+            # Kalitta Charters II, Planet Airways) — same pattern as the > 100 outliers.
+            if "CLASS" in df.columns:
+                performed = df["DEPARTURES_PERFORMED"]
+                scheduled = df["DEPARTURES_SCHEDULED"]
+                is_charter = df["CLASS"].isin(["P", "L"])
+                mask = is_charter & (performed > 0) & (scheduled / performed > 10)
+                # Exclude rows already caught by the broader >100 rule
+                broad_mask = (performed > 0) & (scheduled / performed > 100)
+                mask = mask & ~broad_mask
+                count = mask.sum()
+                if count > 0:
+                    df.loc[mask, "DEPARTURES_SCHEDULED"] = df.loc[mask, "DEPARTURES_PERFORMED"]
+                    total_corrected += count
+                    print(f"  [CORRECT] {field}: fixed {count} rows (Class P/L, ratio 10-100, set DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED)")
+                else:
+                    print(f"  [CORRECT] {field}: no rows to fix")
+            else:
+                print(f"  [CORRECT] {field}: skipped (no CLASS column in {csv_type})")
+
         elif field == "PASSENGERS_EXCEED_SEATS":
             # Cap PASSENGERS at SEATS where passengers exceed available seats
             # These are reporting errors (only applies to segment data which has SEATS)
@@ -264,7 +285,7 @@ def apply_csv_filters(df, rules, csv_type):
         before = len(df)
 
         if field == "ZERO_DISTANCE":
-            mask = (df["ORIGIN"] == df["DEST"]) & (df["DISTANCE"] == 0)
+            mask = df["ORIGIN"] == df["DEST"]
             df = df[~mask].copy()
         elif field == "ALL_ZERO_ACTIVITY":
             mask = (df["PASSENGERS"] == 0) & (df["FREIGHT"] == 0) & (df["MAIL"] == 0)
@@ -448,6 +469,14 @@ def main():
     states_lookup_path = resolve_states_lookup_path(rules)
     if states_lookup_path is not None:
         states_df = pd.read_csv(states_lookup_path)
+        # Guard: duplicate (Airport, City-Name) pairs would multiply rows during merge
+        dup_keys = states_df.duplicated(subset=["Airport", "City-Name"], keep=False)
+        if dup_keys.any():
+            dupes = states_df.loc[dup_keys, ["Airport", "City-Name", "State-Name"]]
+            raise ValueError(
+                f"Duplicate (Airport, City-Name) entries in {states_lookup_path.name} — "
+                f"these would multiply rows during state fill:\n{dupes.to_string(index=False)}"
+            )
         print(f"[SUCCESS] Loaded {len(states_df)} state lookup entries from {states_lookup_path.name}")
         print()
     else:
@@ -504,8 +533,11 @@ def main():
         ids = set(df["ORIGIN_AIRPORT_ID"].unique()) | set(df["DEST_AIRPORT_ID"].unique())
         all_csv_airport_ids.update(ids)
 
-        # Save
+        # Save (convert whole-number floats to clean integers)
         out_path = output_dir / filename
+        for col in df.select_dtypes('float64'):
+            if df[col].dropna().mod(1).eq(0).all():
+                df[col] = df[col].astype('Int64')
         df.to_csv(out_path, index=False)
         print(f"  [SUCCESS] Saved {len(df):,} rows to {out_path}")
         print(f"  Removed {before_count - len(df):,} rows total ({before_count:,} -> {len(df):,})")
@@ -548,16 +580,8 @@ def main():
     print(f"  [FILTER] Scoped to CSV IDs: removed {removed} orphan airports ({before} -> {len(features)})")
     print()
 
-    # Step 5: Fill state names
-    print("  Step 5: Filling state names...")
-    if states_df is not None and has_state_fill_rule(rules, target_kind="geojson"):
-        apply_geojson_state_fill(features, states_df)
-    else:
-        print("  [FILL] skipped (no matching fill rule for geojson)")
-    print()
-
-    # Step 6: Strip properties to essential fields only
-    print("  Step 6: Stripping to essential properties...")
+    # Step 5: Strip properties to essential fields only
+    print("  Step 5: Stripping to essential properties...")
     KEEP_FIELDS = {"AIRPORT", "DISPLAY_AIRPORT_NAME", "LATITUDE", "LONGITUDE"}
     RENAME_FIELDS = {"DISPLAY_AIRPORT_NAME": "AIRPORT_NAME"}
     for feat in features:

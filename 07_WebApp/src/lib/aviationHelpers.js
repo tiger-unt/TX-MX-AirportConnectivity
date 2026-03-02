@@ -26,11 +26,33 @@ export const fmtLbs = (v) => {
   return `${sign}${abs.toFixed(0)} lbs`
 }
 
+/* ── CLASS labels ─────────────────────────────────────────────────── */
+
+export const CLASS_LABELS = {
+  F: 'Class F – Scheduled Service',
+  G: 'Class G – Cargo-Only Service',
+  L: 'Class L – Charter Service',
+  P: 'Class P – Non-Scheduled Civilian',
+}
+
+/* ── Carrier type labels (derived from DATA_SOURCE second letter) ─── */
+
+export const CARRIER_TYPE_LABELS = {
+  U: 'Domestic',
+  F: 'International',
+}
+
+export const getCarrierType = (d) => d.DATA_SOURCE?.[1] || 'Unknown'
+
 /* ── Record predicates ─────────────────────────────────────────────── */
 
 /** TX origin going to any destination */
 export const isTxOrigin = (d) =>
   d.ORIGIN_COUNTRY_NAME === 'United States' && d.ORIGIN_STATE_NM === 'Texas'
+
+/** Any origin coming to TX */
+export const isTxDest = (d) =>
+  d.DEST_COUNTRY_NAME === 'United States' && d.DEST_STATE_NM === 'Texas'
 
 /** TX → Mexico */
 export const isTxToMx = (d) =>
@@ -52,13 +74,27 @@ export const isUsToMx = (d) =>
 export const isMxToUs = (d) =>
   d.ORIGIN_COUNTRY_NAME === 'Mexico' && d.DEST_COUNTRY_NAME === 'United States'
 
-/** TX origin → international (non-US) destination */
-export const isTxIntl = (d) =>
+/** TX → international (non-US) */
+export const isTxToIntl = (d) =>
   isTxOrigin(d) && d.DEST_COUNTRY_NAME !== 'United States'
 
-/** TX origin → US domestic destination */
-export const isTxDomestic = (d) =>
+/** International (non-US) → TX */
+export const isIntlToTx = (d) =>
+  isTxDest(d) && d.ORIGIN_COUNTRY_NAME !== 'United States'
+
+/** TX ↔ international (non-US) — either direction */
+export const isTxIntl = (d) => isTxToIntl(d) || isIntlToTx(d)
+
+/** TX → other US states */
+export const isTxToUs = (d) =>
   isTxOrigin(d) && d.DEST_COUNTRY_NAME === 'United States'
+
+/** Other US states → TX */
+export const isUsToTx = (d) =>
+  isTxDest(d) && d.ORIGIN_COUNTRY_NAME === 'United States'
+
+/** TX ↔ US domestic — either direction (TX as origin or destination) */
+export const isTxDomestic = (d) => isTxToUs(d) || isUsToTx(d)
 
 /* ── Schedule adherence ──────────────────────────────────────────── */
 

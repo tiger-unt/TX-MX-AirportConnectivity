@@ -69,47 +69,49 @@ export default function StatCard({
 
   return (
     <div
-      className={`rounded-xl p-5 transition-all duration-300 animate-fade-up h-full ${cardClass}`}
+      className={`rounded-xl p-5 transition-all duration-300 animate-fade-up row-span-3 grid grid-rows-subgrid gap-y-0 relative ${cardClass}`}
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div className="flex items-start justify-between gap-3 h-full">
-        <div className="min-w-0 flex-1 flex flex-col">
-          <p
-            className={`text-base font-medium uppercase tracking-wider mb-2 flex-1 ${
-              highlight ? 'text-white/70' : 'text-text-secondary'
-            }`}
-          >
-            {label}
-          </p>
-          <p
-            className={`text-2xl md:text-3xl font-bold leading-none tracking-tight whitespace-nowrap ${
-              highlight ? 'text-white' : 'text-text-primary'
-            }`}
-          >
-            {value}
-          </p>
-          {trendLabel && (
-            <div className={`flex items-center gap-1 mt-2 text-base font-medium ${
-              highlight ? 'text-white/80' : trendColor
-            }`}>
-              <TrendIcon size={14} />
-              <span>{trendLabel}</span>
-            </div>
-          )}
-        </div>
-        {Icon && (
-          <div
-            className={`p-2 rounded-lg ${
-              highlight ? 'bg-white/10' : 'bg-surface-alt'
-            }`}
-          >
-            <Icon
-              size={20}
-              className={highlight ? 'text-white/80' : 'text-brand-blue'}
-            />
+      {/* Row 1 — label */}
+      <p
+        className={`text-base font-medium uppercase tracking-wider mb-2 pr-10 ${
+          highlight ? 'text-white/70' : 'text-text-secondary'
+        }`}
+      >
+        {label}
+      </p>
+      {/* Row 2 — value (pinned to bottom of its row) */}
+      <p
+        className={`text-2xl md:text-3xl font-bold leading-none tracking-tight whitespace-nowrap self-end ${
+          highlight ? 'text-white' : 'text-text-primary'
+        }`}
+      >
+        {value}
+      </p>
+      {/* Row 3 — trend (sized to tallest trend across sibling cards) */}
+      <div>
+        {trendLabel && (
+          <div className={`flex items-center gap-1 mt-2 text-base font-medium ${
+            highlight ? 'text-white/80' : trendColor
+          }`}>
+            <TrendIcon size={14} />
+            <span>{trendLabel}</span>
           </div>
         )}
       </div>
+      {/* Icon badge — absolutely positioned top-right */}
+      {Icon && (
+        <div
+          className={`absolute top-5 right-5 p-2 rounded-lg ${
+            highlight ? 'bg-white/10' : 'bg-surface-alt'
+          }`}
+        >
+          <Icon
+            size={20}
+            className={highlight ? 'text-white/80' : 'text-brand-blue'}
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -62,7 +62,7 @@ export function exportChartPng(container, filename = 'chart', title, subtitle) {
   const scale = 2 // 2× for retina-quality export (BOILERPLATE: change to 3 for 3× DPI)
   const padding = 20
   const titleFontSize = 18
-  const subtitleFontSize = 13
+  const subtitleFontSize = 16
   const titleLineHeight = titleFontSize * 1.3
   const subtitleLineHeight = subtitleFontSize * 1.4
   const gapAfterHeader = 12
@@ -175,7 +175,7 @@ function replaceForeignObjects(svgClone) {
       if (text) {
         leaves.push({
           text,
-          fontSize: div.style.fontSize || '12px',
+          fontSize: div.style.fontSize || '16px',
           fontWeight: div.style.fontWeight || 'normal',
           color: div.style.color || 'white',
         })
@@ -187,7 +187,7 @@ function replaceForeignObjects(svgClone) {
     let yPos = pad
 
     leaves.forEach((leaf) => {
-      const fs = parseFloat(leaf.fontSize) || 12
+      const fs = parseFloat(leaf.fontSize) || 16
       yPos += fs // move down to baseline
 
       const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text')

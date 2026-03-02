@@ -39,14 +39,17 @@ export const useAviationStore = create((set) => ({
   error: null,
 
   filters: {
-    year: '',
-    direction: '',      // '' = All, 'TX_TO_MX', 'MX_TO_TX'
-    carrier: '',
-    originAirport: '',
-    destAirport: '',
-    originState: '',
-    destState: '',
-    destCountry: '',
+    year: [],
+    direction: '',       // '' = All, single-select (only 2 options)
+    serviceClass: [],    // CLASS field: F, G, L, P
+    carrierType: '',     // '' = All, single-select: U (Domestic) or F (International) from DATA_SOURCE second letter
+    carrier: [],
+    originAirport: [],
+    destAirport: [],
+    originState: [],
+    destState: [],
+    originCountry: [],
+    destCountry: [],
   },
 
   setFilter: (key, value) => {
@@ -55,12 +58,18 @@ export const useAviationStore = create((set) => ({
     }))
   },
 
+  setFilters: (updates) => {
+    set((state) => ({
+      filters: { ...state.filters, ...updates },
+    }))
+  },
+
   resetFilters: () => {
     set({
       filters: {
-        year: '', direction: '', carrier: '',
-        originAirport: '', destAirport: '',
-        originState: '', destState: '', destCountry: '',
+        year: [], direction: '', serviceClass: [], carrierType: '',
+        carrier: [], originAirport: [], destAirport: [],
+        originState: [], destState: [], originCountry: [], destCountry: [],
       },
     })
   },

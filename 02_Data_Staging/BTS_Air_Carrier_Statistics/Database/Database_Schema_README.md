@@ -101,7 +101,6 @@ Market-level passenger, freight, and mail data.
 - ORIGIN/DEST: Origin/destination airport codes
 - PASSENGERS: Number of enplaned passengers
 - FREIGHT/MAIL: Weight in pounds
-- DISTANCE: Miles between airports
 - UNIQUE_CARRIER: Airline carrier code
 - DATA_SOURCE: Two-character code — first letter: D (Domestic route) or I (International route); second letter: U (U.S. carrier) or F (Foreign carrier). Values: DU, IU, DF, IF.
 
@@ -112,8 +111,6 @@ Flight segment data (each leg of a journey).
 - DEPARTURES_SCHEDULED/PERFORMED: Flight counts
 - SEATS: Available seats
 - AIRCRAFT_TYPE/CONFIG: Aircraft details
-- AIR_TIME: Flight duration in minutes
-- RAMP_TO_RAMP: Total time on ground
 
 ### TEMP_AIRPORTS (366 records, 2 columns)
 Simple airport reference table.

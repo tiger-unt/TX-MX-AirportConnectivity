@@ -46,14 +46,12 @@ DATA_TYPES = {
             "SUM(PASSENGERS) as PASSENGERS",
             "SUM(FREIGHT) as FREIGHT",
             "SUM(MAIL) as MAIL",
-            "SUM(DISTANCE) as DISTANCE",
         ],
         "raw_col_count": 41,
         "print_metrics": [
             ("Total Passengers", "PASSENGERS"),
             ("Total Freight (lbs)", "FREIGHT"),
             ("Total Mail (lbs)", "MAIL"),
-            ("Total Distance (miles)", "DISTANCE"),
         ],
     },
     "Segment": {
@@ -66,9 +64,6 @@ DATA_TYPES = {
             "SUM(PASSENGERS) as PASSENGERS",
             "SUM(FREIGHT) as FREIGHT",
             "SUM(MAIL) as MAIL",
-            "SUM(DISTANCE) as DISTANCE",
-            "SUM(RAMP_TO_RAMP) as RAMP_TO_RAMP",
-            "SUM(AIR_TIME) as AIR_TIME",
         ],
         "raw_col_count": 50,
         "print_metrics": [
@@ -79,9 +74,6 @@ DATA_TYPES = {
             ("Total Passengers", "PASSENGERS"),
             ("Total Freight (lbs)", "FREIGHT"),
             ("Total Mail (lbs)", "MAIL"),
-            ("Total Distance (miles)", "DISTANCE"),
-            ("Total Ramp-to-Ramp (minutes)", "RAMP_TO_RAMP"),
-            ("Total Air Time (minutes)", "AIR_TIME"),
         ],
     },
 }
@@ -249,6 +241,9 @@ def main():
         # Step 2: Save CSV
         csv_path = output_dir / f"BTS_T-100_{type_key}_{START_YEAR}-{END_YEAR}.csv"
         try:
+            for col in df.select_dtypes('float64'):
+                if df[col].dropna().mod(1).eq(0).all():
+                    df[col] = df[col].astype('Int64')
             df.to_csv(csv_path, index=False)
             print(f"[SUCCESS] Saved to: {csv_path.name}")
             print(f"  File size: {csv_path.stat().st_size / (1024*1024):.2f} MB")

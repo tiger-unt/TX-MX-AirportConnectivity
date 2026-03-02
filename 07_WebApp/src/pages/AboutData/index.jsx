@@ -26,7 +26,7 @@ export default function AboutDataPage() {
         {/* ── Data Source ────────────────────────────────────────────────── */}
         <section className="py-10">
           <h3 className="text-xl font-bold text-text-primary mb-2">Data Source</h3>
-          <p className="text-sm text-text-secondary mb-5">
+          <p className="text-base text-text-secondary mb-5">
             All data in this dashboard comes from the Bureau of Transportation Statistics (BTS),
             a division of the U.S. Department of Transportation.
           </p>
@@ -36,14 +36,14 @@ export default function AboutDataPage() {
               <Database size={18} className="text-brand-blue" />
               <h4 className="text-base font-bold text-text-primary">BTS T-100 Air Carrier Statistics</h4>
             </div>
-            <p className="text-sm text-text-secondary leading-relaxed mb-4">
+            <p className="text-base text-text-secondary leading-relaxed mb-4">
               The T-100 data program collects traffic and capacity information from air carriers operating
               flights to, from, or within the United States. U.S. carriers file under{' '}
               <strong>Schedule T-100</strong> (14 CFR Part 241), while foreign carriers file under{' '}
               <strong>Schedule T-100(f)</strong> (14 CFR Part 217). Data has been available since 1990 and is
               reported monthly, with the most recent data from November 2025.
             </p>
-            <p className="text-sm text-text-secondary leading-relaxed mb-5">
+            <p className="text-base text-text-secondary leading-relaxed mb-5">
               For this study, we use <strong>four data tables</strong> from the TranStats portal, covering the
               period <strong>2015&ndash;2024</strong>:
             </p>
@@ -56,8 +56,8 @@ export default function AboutDataPage() {
                 { label: 'T-100 International Segment (All Carriers)', desc: 'Nonstop segment operations for international routes, from both U.S. and foreign carriers.' },
               ].map((t) => (
                 <div key={t.label} className="bg-surface-alt rounded-lg p-4">
-                  <h5 className="text-sm font-semibold text-text-primary mb-1">{t.label}</h5>
-                  <p className="text-xs text-text-secondary leading-relaxed">{t.desc}</p>
+                  <h5 className="text-base font-semibold text-text-primary mb-1">{t.label}</h5>
+                  <p className="text-base text-text-secondary leading-relaxed">{t.desc}</p>
                 </div>
               ))}
             </div>
@@ -67,7 +67,7 @@ export default function AboutDataPage() {
                 href="https://transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FMF&QO_fu146_anzr=Nv4%20Pn44vr45"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-blue hover:underline"
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline"
               >
                 <ExternalLink size={14} />
                 Download Market Data (TranStats)
@@ -76,7 +76,7 @@ export default function AboutDataPage() {
                 href="https://transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FMG&QO_fu146_anzr="
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-blue hover:underline"
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline"
               >
                 <ExternalLink size={14} />
                 Download Segment Data (TranStats)
@@ -88,7 +88,7 @@ export default function AboutDataPage() {
         {/* ── Market vs Segment Data ─────────────────────────────────────── */}
         <section className="pb-10">
           <h3 className="text-xl font-bold text-text-primary mb-2">Market vs. Segment Data</h3>
-          <p className="text-sm text-text-secondary mb-5">
+          <p className="text-base text-text-secondary mb-5">
             The BTS T-100 program produces two complementary datasets. Understanding the difference
             is essential for interpreting passenger counts correctly.
           </p>
@@ -99,12 +99,12 @@ export default function AboutDataPage() {
                 <FileText size={18} className="text-brand-blue" />
                 <h4 className="text-base font-bold text-text-primary">Market Data</h4>
               </div>
-              <p className="text-sm text-text-secondary leading-relaxed mb-3">
+              <p className="text-base text-text-secondary leading-relaxed mb-3">
                 A passenger is <strong>"enplaned"</strong> and counted <strong>once</strong> as long as
                 they remain on the same flight number, regardless of intermediate stops.
                 Market data is what BTS uses for official passenger, freight, and mail totals.
               </p>
-              <p className="text-xs text-text-secondary">
+              <p className="text-base text-text-secondary">
                 <strong>Key fields:</strong> Passengers, Freight, Mail, Distance
               </p>
             </div>
@@ -114,12 +114,12 @@ export default function AboutDataPage() {
                 <Layers size={18} className="text-brand-blue" />
                 <h4 className="text-base font-bold text-text-primary">Segment Data</h4>
               </div>
-              <p className="text-sm text-text-secondary leading-relaxed mb-3">
+              <p className="text-base text-text-secondary leading-relaxed mb-3">
                 A passenger is <strong>"transported"</strong> and counted for{' '}
                 <strong>each up-and-down leg</strong> of their trip. Segment counts tend to be higher
                 than market counts because connecting passengers are counted on every leg.
               </p>
-              <p className="text-xs text-text-secondary">
+              <p className="text-base text-text-secondary">
                 <strong>Key fields:</strong> Passengers, Freight, Mail, Distance, Departures Scheduled,
                 Departures Performed, Seats, Payload, Ramp-to-Ramp Time, Air Time
               </p>
@@ -130,14 +130,14 @@ export default function AboutDataPage() {
           <div className="bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-5">
             <div className="flex gap-3">
               <Info size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-text-secondary leading-relaxed">
+              <div className="text-base text-text-secondary leading-relaxed">
                 <strong className="text-text-primary">Example:</strong> 250 people board a flight from
                 JFK (A) to BWI (B). At BWI, 200 deplane; the remaining 50 plus 70 new passengers
                 continue to MIA (C).
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                   <div>
                     <p className="font-semibold text-text-primary mb-1">Market counts:</p>
-                    <ul className="space-y-0.5 text-xs">
+                    <ul className="space-y-0.5 text-base">
                       <li>A &rarr; B: <strong>200</strong> (deplaned at B)</li>
                       <li>A &rarr; C: <strong>50</strong> (continued to C)</li>
                       <li>B &rarr; C: <strong>70</strong> (boarded at B)</li>
@@ -145,7 +145,7 @@ export default function AboutDataPage() {
                   </div>
                   <div>
                     <p className="font-semibold text-text-primary mb-1">Segment counts:</p>
-                    <ul className="space-y-0.5 text-xs">
+                    <ul className="space-y-0.5 text-base">
                       <li>A &rarr; B: <strong>250</strong> (all on board)</li>
                       <li>B &rarr; C: <strong>120</strong> (50 continuing + 70 new)</li>
                     </ul>
@@ -159,7 +159,7 @@ export default function AboutDataPage() {
         {/* ── Data Limitations: T-100 vs T-100(f) ────────────────────────── */}
         <section className="pb-10">
           <h3 className="text-xl font-bold text-text-primary mb-2">Data Limitations</h3>
-          <p className="text-sm text-text-secondary mb-5">
+          <p className="text-base text-text-secondary mb-5">
             U.S. carriers (T-100) and foreign carriers (T-100(f)) have different reporting requirements.
             This creates structural gaps in certain fields for foreign carrier records.
           </p>
@@ -169,7 +169,7 @@ export default function AboutDataPage() {
               T-100 vs. T-100(f) Reporting Comparison
             </h4>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border-light">
                     <th className="text-left py-2 pr-4 font-semibold text-text-primary">Field</th>
@@ -214,7 +214,7 @@ export default function AboutDataPage() {
             <div className="bg-brand-yellow/8 border border-brand-yellow/20 rounded-xl p-5">
               <div className="flex gap-3">
                 <AlertTriangle size={18} className="text-brand-yellow flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-text-secondary leading-relaxed">
+                <p className="text-base text-text-secondary leading-relaxed">
                   <strong className="text-text-primary">Scheduled departures gap:</strong> Foreign carriers
                   (DATA_SOURCE = IF, DF) do not report DEPARTURES_SCHEDULED under T-100(f) regulations.
                   All foreign carrier segment records have this field as 0. Schedule adherence analysis
@@ -225,7 +225,7 @@ export default function AboutDataPage() {
             <div className="bg-brand-yellow/8 border border-brand-yellow/20 rounded-xl p-5">
               <div className="flex gap-3">
                 <AlertTriangle size={18} className="text-brand-yellow flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-text-secondary leading-relaxed">
+                <p className="text-base text-text-secondary leading-relaxed">
                   <strong className="text-text-primary">Missing operational metrics:</strong> Foreign carriers
                   also do not report Ramp-to-Ramp time, Airborne time, or Mail volumes. These fields are
                   zero for all IF/DF records — not because there is no mail or flight time, but because
@@ -236,11 +236,11 @@ export default function AboutDataPage() {
             <div className="bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-5">
               <div className="flex gap-3">
                 <Info size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-text-secondary leading-relaxed">
+                <p className="text-base text-text-secondary leading-relaxed">
                   <strong className="text-text-primary">Non-scheduled service:</strong> Records with
                   CLASS = L (charter) or P (non-scheduled civilian) have DEPARTURES_SCHEDULED = 0 by
                   definition, regardless of carrier nationality. For schedule analysis, filter to{' '}
-                  <code className="bg-surface-alt px-1 py-0.5 rounded text-xs">CLASS = 'F' AND DEPARTURES_SCHEDULED &gt; 0</code>.
+                  <code className="bg-surface-alt px-1 py-0.5 rounded text-base">CLASS = 'F' AND DEPARTURES_SCHEDULED &gt; 0</code>.
                 </p>
               </div>
             </div>
@@ -250,7 +250,7 @@ export default function AboutDataPage() {
         {/* ── Data Pipeline ──────────────────────────────────────────────── */}
         <section className="py-10">
           <h3 className="text-xl font-bold text-text-primary mb-2">Data Pipeline</h3>
-          <p className="text-sm text-text-secondary mb-5">
+          <p className="text-base text-text-secondary mb-5">
             From raw BTS filings to the visualizations on this dashboard, the data passes through a
             multi-step extraction and cleaning pipeline.
           </p>
@@ -285,8 +285,8 @@ export default function AboutDataPage() {
                 <div className="w-9 h-9 rounded-lg bg-brand-blue/10 flex items-center justify-center flex-shrink-0">
                   <step.Icon size={18} className="text-brand-blue" />
                 </div>
-                <h4 className="text-sm font-bold text-text-primary">{step.title}</h4>
-                <p className="text-sm text-text-secondary leading-relaxed">{step.body}</p>
+                <h4 className="text-base font-bold text-text-primary">{step.title}</h4>
+                <p className="text-base text-text-secondary leading-relaxed">{step.body}</p>
               </div>
             ))}
           </div>
@@ -295,7 +295,7 @@ export default function AboutDataPage() {
         {/* ── BTS Data Glossary ──────────────────────────────────────────── */}
         <section className="pb-10">
           <h3 className="text-xl font-bold text-text-primary mb-2">BTS Data Glossary</h3>
-          <p className="text-sm text-text-secondary mb-5">
+          <p className="text-base text-text-secondary mb-5">
             Two categorical fields — <strong>CLASS</strong> and <strong>DATA_SOURCE</strong> — are
             key to understanding the structure of BTS T-100 data.
           </p>
@@ -307,7 +307,7 @@ export default function AboutDataPage() {
                 <BookOpen size={18} className="text-brand-blue" />
                 <h4 className="text-base font-bold text-text-primary">CLASS — Type of Air Service</h4>
               </div>
-              <table className="w-full text-sm">
+              <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border-light">
                     <th className="text-left py-2 pr-4 font-semibold text-text-primary">Code</th>
@@ -321,7 +321,7 @@ export default function AboutDataPage() {
                   <tr><td className="py-2 pr-4 font-mono font-semibold">P</td><td className="py-2">Non-scheduled civilian (other non-scheduled ops)</td></tr>
                 </tbody>
               </table>
-              <p className="text-xs text-text-secondary mt-3">
+              <p className="text-base text-text-secondary mt-3">
                 <strong>Class F</strong> dominates passenger traffic. <strong>Class G</strong> covers
                 freight-only carriers. <strong>Class L</strong> appears on lower-volume routes.
               </p>
@@ -333,7 +333,7 @@ export default function AboutDataPage() {
                 <BookOpen size={18} className="text-brand-blue" />
                 <h4 className="text-base font-bold text-text-primary">DATA_SOURCE — BTS Reporting Form</h4>
               </div>
-              <table className="w-full text-sm">
+              <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border-light">
                     <th className="text-left py-2 pr-4 font-semibold text-text-primary">Code</th>
@@ -347,7 +347,7 @@ export default function AboutDataPage() {
                   <tr><td className="py-2 pr-4 font-mono font-semibold">IF</td><td className="py-2">International route, Foreign carrier (T-100(f))</td></tr>
                 </tbody>
               </table>
-              <p className="text-xs text-text-secondary mt-3">
+              <p className="text-base text-text-secondary mt-3">
                 First letter: <strong>D</strong>omestic route vs <strong>I</strong>nternational route.
                 Second letter: <strong>U</strong>.S. carrier vs <strong>F</strong>oreign carrier.
                 U.S. carriers file T-100 (DU/IU); foreign carriers file T-100(f) (DF/IF).
@@ -358,7 +358,7 @@ export default function AboutDataPage() {
           <div className="mt-4 bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-5">
             <div className="flex gap-3">
               <Info size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-text-secondary leading-relaxed">
+              <p className="text-base text-text-secondary leading-relaxed">
                 <strong className="text-text-primary">Cross-border note:</strong> Texas-to-Mexico routes
                 can have <strong>both IU and IF records</strong> — U.S. carriers (e.g., American, United)
                 file as IU while foreign carriers (e.g., Aeromexico, Volaris) file as IF.
@@ -372,7 +372,7 @@ export default function AboutDataPage() {
         {/* ── Data Quality & Cleaning Insights ───────────────────────────── */}
         <section className="pb-10">
           <h3 className="text-xl font-bold text-text-primary mb-2">Data Quality Insights</h3>
-          <p className="text-sm text-text-secondary mb-5">
+          <p className="text-base text-text-secondary mb-5">
             Raw BTS data contains structural patterns that may appear anomalous but are explainable.
             Understanding these is critical for accurate analysis.
           </p>
@@ -384,7 +384,7 @@ export default function AboutDataPage() {
             </h4>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <table className="w-full text-sm mb-4">
+                <table className="w-full text-base mb-4">
                   <thead>
                     <tr className="border-b border-border-light">
                       <th className="text-left py-2 pr-4 font-semibold text-text-primary">Category</th>
@@ -410,17 +410,17 @@ export default function AboutDataPage() {
                     </tr>
                   </tbody>
                 </table>
-                <p className="text-sm text-text-secondary leading-relaxed">
+                <p className="text-base text-text-secondary leading-relaxed">
                   At first glance, 37% of records showing more performed than scheduled departures looks
                   alarming — but most of it is explainable by structural data reasons, not data errors.
                 </p>
               </div>
 
               <div>
-                <h5 className="text-sm font-bold text-text-primary mb-3">
+                <h5 className="text-base font-bold text-text-primary mb-3">
                   Why DEPARTURES_SCHEDULED = 0 for ~3.9M records
                 </h5>
-                <ul className="space-y-3 text-sm text-text-secondary">
+                <ul className="space-y-3 text-base text-text-secondary">
                   <li className="flex gap-2">
                     <AlertTriangle size={16} className="text-brand-yellow flex-shrink-0 mt-0.5" />
                     <span>
@@ -456,12 +456,12 @@ export default function AboutDataPage() {
             <h4 className="text-base font-bold text-text-primary mb-1">
               For True Scheduled Service (CLASS=F, sched &gt; 0): It's Actually Quite Clean
             </h4>
-            <p className="text-sm text-text-secondary mb-4">
+            <p className="text-base text-text-secondary mb-4">
               When we filter to only domestic scheduled flights with actual schedule data, the
               performed-vs-scheduled match is strong.
             </p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <table className="w-full text-sm">
+              <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-border-light">
                     <th className="text-left py-2 pr-4 font-semibold text-text-primary">Diff Bucket</th>
@@ -492,24 +492,113 @@ export default function AboutDataPage() {
               <div className="space-y-4">
                 <div className="flex gap-3 items-start">
                   <CheckCircle2 size={18} className="text-brand-green flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-text-secondary leading-relaxed">
+                  <p className="text-base text-text-secondary leading-relaxed">
                     <strong className="text-text-primary">67.2%</strong> of true scheduled service records
                     are an exact match between performed and scheduled departures.
                   </p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <ArrowDownRight size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-text-secondary leading-relaxed">
+                  <p className="text-base text-text-secondary leading-relaxed">
                     <strong className="text-text-primary">Performed &lt; Scheduled (28.4%)</strong> represents
                     normal flight cancellations — airlines scheduled flights but didn't operate all of them.
                   </p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <ArrowRight size={18} className="text-brand-green flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-text-secondary leading-relaxed">
+                  <p className="text-base text-text-secondary leading-relaxed">
                     <strong className="text-text-primary">Performed &gt; Scheduled (4.7%)</strong> indicates
                     extra-section flights, schedule changes mid-month, or charter additions to scheduled routes.
                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Repositioning & Empty Flights */}
+          <div className="bg-white rounded-xl border border-border-light shadow-sm p-6 mb-6">
+            <h4 className="text-base font-bold text-text-primary mb-3">
+              Repositioning &amp; Empty Flights
+            </h4>
+            <p className="text-base text-text-secondary leading-relaxed mb-4">
+              The cleaning pipeline filters out <strong>all-zero activity rows</strong> &mdash; records where
+              passengers, freight, and mail are all zero. However, a significant subset of these rows in the
+              segment data represent <strong>real flights that were operated but carried no commercial
+              traffic</strong>. These are primarily aircraft repositioning (ferry flights), empty cargo
+              returns, and charter deadhead legs.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div className="bg-surface-alt rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-brand-blue">14,221</p>
+                <p className="text-base text-text-secondary mt-1">Operated empty flight records</p>
+              </div>
+              <div className="bg-surface-alt rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-brand-blue">28,487</p>
+                <p className="text-base text-text-secondary mt-1">Departures performed</p>
+              </div>
+              <div className="bg-surface-alt rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-brand-blue">1.3B lbs</p>
+                <p className="text-base text-text-secondary mt-1">Payload capacity</p>
+              </div>
+            </div>
+
+            <p className="text-base text-text-secondary leading-relaxed mb-3">
+              These rows are excluded from the dashboard because they do not represent actual connectivity
+              (no passengers or goods moved). The breakdown by service class:
+            </p>
+
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full text-base">
+                <thead>
+                  <tr className="border-b border-border-light">
+                    <th className="text-left py-2 pr-4 font-semibold text-text-primary">Class</th>
+                    <th className="text-right py-2 pr-4 font-semibold text-text-primary">Records</th>
+                    <th className="text-right py-2 pr-4 font-semibold text-text-primary">Departures</th>
+                    <th className="text-right py-2 font-semibold text-text-primary">Payload (lbs)</th>
+                  </tr>
+                </thead>
+                <tbody className="text-text-secondary">
+                  <tr className="border-b border-border-light/50">
+                    <td className="py-2 pr-4">L &mdash; Charter</td>
+                    <td className="py-2 pr-4 text-right font-mono">7,768</td>
+                    <td className="py-2 pr-4 text-right font-mono">15,093</td>
+                    <td className="py-2 text-right font-mono">658.5M</td>
+                  </tr>
+                  <tr className="border-b border-border-light/50">
+                    <td className="py-2 pr-4">P &mdash; Non-scheduled</td>
+                    <td className="py-2 pr-4 text-right font-mono">4,293</td>
+                    <td className="py-2 pr-4 text-right font-mono">9,427</td>
+                    <td className="py-2 text-right font-mono">521.5M</td>
+                  </tr>
+                  <tr className="border-b border-border-light/50">
+                    <td className="py-2 pr-4">F &mdash; Scheduled</td>
+                    <td className="py-2 pr-4 text-right font-mono">2,065</td>
+                    <td className="py-2 pr-4 text-right font-mono">3,594</td>
+                    <td className="py-2 text-right font-mono">59.0M</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4">G &mdash; All-cargo</td>
+                    <td className="py-2 pr-4 text-right font-mono">95</td>
+                    <td className="py-2 pr-4 text-right font-mono">373</td>
+                    <td className="py-2 text-right font-mono">58.4M</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-5">
+              <div className="flex gap-3">
+                <Info size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
+                <div className="text-base text-text-secondary leading-relaxed">
+                  <strong className="text-text-primary">Cross-border context:</strong> In addition to the
+                  flights carrying cargo between Texas and Mexico shown in this dashboard,{' '}
+                  <strong>1,748 repositioning and empty cargo flights</strong> were operated on TX&ndash;Mexico
+                  routes (2015&ndash;2024), representing <strong>741 route-carrier-year records</strong>.
+                  Major operators include Turkish Airlines (NLU/MEX&rarr;IAH cargo returns), USA Jet Airlines
+                  (BJX&rarr;LRD), and Kalitta Charters (ELP&rarr;CUU). These flights highlight existing
+                  cross-border air cargo infrastructure that operates even on return legs with no commercial
+                  load.
                 </div>
               </div>
             </div>
@@ -546,8 +635,8 @@ export default function AboutDataPage() {
                 },
               ].map((rule) => (
                 <div key={rule.title} className="bg-surface-alt rounded-lg p-4">
-                  <h5 className="text-sm font-semibold text-text-primary mb-1">{rule.title}</h5>
-                  <p className="text-sm text-text-secondary leading-relaxed">{rule.body}</p>
+                  <h5 className="text-base font-semibold text-text-primary mb-1">{rule.title}</h5>
+                  <p className="text-base text-text-secondary leading-relaxed">{rule.body}</p>
                 </div>
               ))}
             </div>

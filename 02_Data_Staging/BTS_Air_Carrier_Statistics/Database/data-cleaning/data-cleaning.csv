@@ -6,10 +6,12 @@ update,all,16879,CODE,T4X,AQO,Llano TX - T4X is not a real FAA/IATA code
 update,segment,15081,CODE,SXF,BER,Berlin - Schoenefeld absorbed into Brandenburg 2020
 update,geojson,15968,CODE,XJD,IUD,Al Udeid AB Qatar - GeoJSON master list code mismatch
 update,csv,16852,CITY_NAME,"Zumpango, Mexico","Mexico City, Mexico",NLU Felipe Angeles Airport - per Jolanda
+update,csv,16755,CITY_NAME,"Dallas, TX","McKinney, TX",T8X Collin County Regional - actual location is McKinney not Dallas
 delete,all,16706,,,,Austin TX ID 16706 - unidentifiable facility
-filter,csv,,ZERO_DISTANCE,,,Remove rows where ORIGIN=DEST AND DISTANCE=0
+filter,csv,,ZERO_DISTANCE,,,Remove self-flight rows where ORIGIN=DEST
 filter,csv,,ALL_ZERO_ACTIVITY,,,Remove rows where PASSENGERS=0 AND FREIGHT=0 AND MAIL=0
 correct,segment,,DEPARTURES_SCHEDULED_OUTLIER,,,Set DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED where scheduled/performed ratio > 100 (data entry errors)
+correct,segment,,DEPARTURES_SCHEDULED_CHARTER_OUTLIER,,,Set DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED for Class P/L carriers where scheduled/performed ratio > 10 (charter carriers should not report scheduled departures)
 filter,csv,,DUPLICATE_ROWS,,,Remove exact duplicate rows (all columns identical)
 correct,segment,,PASSENGERS_EXCEED_SEATS,,,Cap PASSENGERS at SEATS where PASSENGERS > SEATS and SEATS > 0
 fill,all,,STATE_NAME,missing-states.csv,,Fill null state names from lookup file

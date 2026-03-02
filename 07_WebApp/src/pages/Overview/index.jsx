@@ -227,7 +227,7 @@ export default function OverviewPage() {
               <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-hidden h-full flex flex-col">
                 <div className="px-5 pt-5 pb-3">
                   <h3 className="text-lg font-bold text-text-primary">Airports Analyzed</h3>
-                  <p className="text-sm text-text-secondary mt-0.5">
+                  <p className="text-base text-text-secondary mt-0.5">
                     Texas and Mexico airports in the TX–MX air connectivity dataset ({latestYear})
                   </p>
                 </div>
@@ -257,7 +257,7 @@ export default function OverviewPage() {
                         <h.Icon size={16} className="text-brand-blue" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-text-secondary leading-tight">{h.label}</p>
+                        <p className="text-base text-text-secondary leading-tight">{h.label}</p>
                         <p className="text-base font-bold text-text-primary">{h.value}</p>
                       </div>
                     </div>
@@ -268,9 +268,9 @@ export default function OverviewPage() {
               <div className="bg-white rounded-xl border border-border-light shadow-sm p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Database size={16} className="text-brand-blue" />
-                  <h4 className="text-sm font-bold text-text-primary">Data Source</h4>
+                  <h4 className="text-base font-bold text-text-primary">Data Source</h4>
                 </div>
-                <p className="text-sm text-text-secondary leading-relaxed">
+                <p className="text-base text-text-secondary leading-relaxed">
                   Bureau of Transportation Statistics (BTS) T-100 Air Carrier Statistics,
                   covering both <strong>market data</strong> (passenger journeys) and{' '}
                   <strong>segment data</strong> (individual flight legs). Includes reports
@@ -278,7 +278,7 @@ export default function OverviewPage() {
                 </p>
                 <Link
                   to="/about-data"
-                  className="inline-flex items-center gap-1.5 mt-3 text-sm font-semibold text-brand-blue hover:underline"
+                  className="inline-flex items-center gap-1.5 mt-3 text-base font-semibold text-brand-blue hover:underline"
                 >
                   Data details, methodology & limitations
                   <ArrowRight size={14} />
@@ -309,8 +309,8 @@ export default function OverviewPage() {
                       <h4 className="text-base font-bold text-text-primary">{p.title}</h4>
                       <ArrowRight size={14} className="text-text-secondary group-hover:text-brand-blue transition-colors" />
                     </div>
-                    <p className="text-sm text-text-secondary mt-1">{p.desc}</p>
-                    <p className="text-sm font-semibold text-brand-blue mt-2">
+                    <p className="text-base text-text-secondary mt-1">{p.desc}</p>
+                    <p className="text-base font-semibold text-brand-blue mt-2">
                       {p.stat} <span className="font-normal text-text-secondary">{p.statLabel}</span>
                     </p>
                   </div>

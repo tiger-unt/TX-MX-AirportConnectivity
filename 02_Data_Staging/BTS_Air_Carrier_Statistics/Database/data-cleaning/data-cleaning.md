@@ -1,13 +1,13 @@
 # BTS T-100 Data — Data Quality Report & Cleaning Rules
 
 **Applies to:**
-- `03_Process_Data/BTS/BTS_T-100_Market_2015-2024.csv` (106,218 raw → 94,120 cleaned rows)
-- `03_Process_Data/BTS/BTS_T-100_Segment_2015-2024.csv` (108,964 raw → 94,234 cleaned rows)
+- `03_Process_Data/BTS/BTS_T-100_Market_2015-2024.csv` (106,218 raw → 94,115 cleaned rows)
+- `03_Process_Data/BTS/BTS_T-100_Segment_2015-2024.csv` (108,964 raw → 94,228 cleaned rows)
 - `03_Process_Data/BTS/BTS_T-100_Airports_2015-2024.geojson` (4,981 raw → 1,275 cleaned features)
 
 **Years covered:** 2015–2024
 **Date of audit:** 2026-02-28
-**Last updated:** 2026-02-28
+**Last updated:** 2026-03-01 (removed DISTANCE, RAMP_TO_RAMP, AIR_TIME columns from pipeline output; added repositioning/empty flights analysis, T8X city name correction, T-prefix FAA LID documentation)
 
 ---
 
@@ -20,14 +20,23 @@
    - 2.3 Airport Code Updates (Same Airport ID, Multiple Codes)
    - 2.4 T4X Code Conflict (Same Code, Multiple Airport IDs)
    - 2.5 DEPARTURES_SCHEDULED Outliers (Segment Only)
+   - 2.6 DEPARTURES_SCHEDULED Charter Carrier Outliers (Segment Only)
+   - 2.7 PASSENGERS Exceeding SEATS (Segment Only)
+   - 2.8 T8X City Name Correction (McKinney, TX)
 3. [Issues Filtered Out](#3-issues-filtered-out)
-   - 3.1 Zero-Distance Rows (Same Origin and Destination)
+   - 3.1 Self-Flight Rows (Same Origin and Destination)
    - 3.2 All-Zero Activity Rows
+     - Repositioning & Empty Flights (Segment Detail)
+   - 3.3 Exact Duplicate Rows
 4. [Issues Acknowledged but Not Corrected](#4-issues-acknowledged-but-not-corrected)
    - 4.1 Missing Carrier Names (2015 Charter Flights)
 4b. [Known Anomalies (No Action Required)](#4b-known-anomalies-no-action-required)
    - 4b.1 Aeromexico VSA→IAH Cumulative Filing (2004/09)
    - 4b.2 BTS_SEGMENT Record Granularity (Split by Aircraft Type)
+   - 4b.3 Performed > Scheduled (Within Valid Range)
+   - 4b.4 PASSENGERS > 0 with SEATS = 0 (Class P Edge Case)
+   - 4b.5 Semantic Duplicates After Normalization
+   - 4b.6 T-Prefix FAA LID Airport Codes (7 Small TX Airports)
 5. [GeoJSON Cleaning](#5-geojson-cleaning)
    - 5.1 Filter to Latest Records
    - 5.2 Scope to Corrected CSV Airport IDs
@@ -60,10 +69,9 @@ Both datasets contain BTS T-100 data for air routes involving Texas airports or 
 | PASSENGERS | Annual passenger count | 0 |
 | FREIGHT | Annual freight (lbs) | 0 |
 | MAIL | Annual mail (lbs) | 0 |
-| DISTANCE | Non-stop distance (miles) | 0 |
 | DATA_SOURCE | BTS reporting source — first letter: D=Domestic route, I=International route; second letter: U=U.S. carrier, F=Foreign carrier | 0 |
 
-**Segment data** represents individual flight legs with operational metrics (24 columns). It includes the same 18 columns as market plus six additional:
+**Segment data** represents individual flight legs with operational metrics (21 columns). It includes the same 17 columns as market plus four additional:
 
 | Column | Description | Missing |
 |--------|-------------|---------|
@@ -71,8 +79,6 @@ Both datasets contain BTS T-100 data for air routes involving Texas airports or 
 | DEPARTURES_PERFORMED | Annual performed departures | 0 |
 | PAYLOAD | Annual payload capacity (lbs) | 0 |
 | SEATS | Annual seat capacity | 0 |
-| RAMP_TO_RAMP | Annual gate-to-gate time (minutes) | 0 |
-| AIR_TIME | Annual air time (minutes) | 0 |
 
 Segment-specific missing values: ORIGIN_STATE_NM 13,431 (12.33%), DEST_STATE_NM 12,860 (11.80%), CARRIER_NAME 27 (0.02%).
 
@@ -265,6 +271,58 @@ Rows where `DEPARTURES_PERFORMED > 0` and `DEPARTURES_SCHEDULED / DEPARTURES_PER
 Set `DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED` for affected rows. The assumption is that the scheduled count was a data entry error and the performed count is reliable.
 
 > **Note:** The three known examples above are from years 1999–2004, outside the current 2015–2024 extraction range. The rule is applied generically so it will catch any similar outliers in the current data or if the year range is expanded.
+>
+> **In the current 2015–2024 extract:** All 16 rows matching ratio > 100 belong to **Kalitta Charters II** (Class P, years 2015 and 2017). These same rows are also caught by the charter-specific ratio > 10 rule in Section 2.6 — the general rule fires first, so in practice the two rules overlap on these 16 rows.
+
+### 2.6 DEPARTURES_SCHEDULED Charter Carrier Outliers (Segment Only)
+
+**Anomaly:**
+Class P (non-scheduled civilian) and Class L (charter) carriers should not report scheduled departures — 99.4% of Class P rows correctly have `DEPARTURES_SCHEDULED = 0`. However, a small number of charter carrier rows report non-zero `DEPARTURES_SCHEDULED` with implausibly high ratios to `DEPARTURES_PERFORMED`, showing the same systematic data entry error pattern as the >100x outliers in Section 2.5.
+
+**Affected carriers (in the 2015–2024 extract):**
+
+| Carrier | Class | Rows | Ratio Range | Passengers | Freight (lbs) |
+|---------|-------|------|------------|-----------|--------------|
+| Kalitta Charters II | P | ~22 | 40–95x | 0 | 561,541 |
+| Planet Airways | L | ~10 | 44–85x | 983 | 0 |
+
+These are freight-only charter operators (Kalitta) and defunct charter carriers (Planet Airways, ceased 2004) where the `DEPARTURES_SCHEDULED` values are clearly misreported. The ratio range of 10–100x sits just below the general >100x threshold but exhibits the same implausible pattern.
+
+**Why a targeted rule instead of lowering the general threshold:**
+The 10–100x ratio range for mainstream Class F carriers (392 total rows) contains many legitimate entries — route startups, COVID-era cancellations, aircraft type substitutions on codeshare routes (Comair, ExpressJet). BTS_SEGMENT is split by aircraft type, so a route served by multiple aircraft types can show high ratios per type while the route-level ratio is normal. Lowering the general threshold to 10x would incorrectly erase valid schedule data for these carriers.
+
+**Detection rule:**
+Rows where `CLASS IN ('P', 'L')` and `DEPARTURES_PERFORMED > 0` and `DEPARTURES_SCHEDULED / DEPARTURES_PERFORMED > 10`.
+
+**Correction:**
+Set `DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED` for affected rows. Applied after the general >100x correction (Section 2.5) to avoid double-counting.
+
+### 2.7 PASSENGERS Exceeding SEATS (Segment Only)
+
+**Anomaly:**
+A small number of segment rows report `PASSENGERS > SEATS` where `SEATS > 0`. These are reporting errors — passengers cannot exceed available seat capacity.
+
+**Detection rule:**
+Rows where `PASSENGERS > SEATS` and `SEATS > 0`.
+
+**Correction:**
+Cap `PASSENGERS` at `SEATS` for affected rows. Only applies to segment data (market data does not have a SEATS column).
+
+### 2.8 T8X City Name Correction (McKinney, TX)
+
+**Anomaly:**
+Airport ID 16755 (T8X — Collin County Regional Airport at McKinney) is labeled `"Dallas, TX"` by BTS, but the airport is located in McKinney, TX (~35 miles north of Dallas).
+
+**Correction:**
+Change all `ORIGIN_CITY_NAME` and `DEST_CITY_NAME` values from `"Dallas, TX"` to `"McKinney, TX"` where Airport ID = 16755.
+
+| Field | Old Value | New Value |
+|-------|-----------|-----------|
+| City Name | Dallas, TX | McKinney, TX |
+
+Affected rows: Market 46, Segment 47
+
+> **Context:** T8X is one of seven T-prefix FAA LID codes for small Texas airports in the data (see Section 4b.6). It is the only one with a factual city-name error — the others have correct city labels. T8X is also the most active of the group, with charter passenger service and cargo operations (Ameristar Air Cargo) spanning 2019–2025.
 
 ---
 
@@ -272,14 +330,14 @@ Set `DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED` for affected rows. The assumpt
 
 These rows are not corrected but should be excluded during analysis. They are flagged in `data-cleaning.csv` with `Action = filter`.
 
-### 3.1 Zero-Distance Rows (Same Origin and Destination)
+### 3.1 Self-Flight Rows (Same Origin and Destination)
 
 **Anomaly:**
-Rows with `DISTANCE = 0` where origin and destination airport are identical (e.g., DFW→DFW, AUS→AUS).
+Rows where origin and destination airport are identical (ORIGIN = DEST, e.g., DFW→DFW, AUS→AUS).
 
 | | Market | Segment |
 |---|--------|---------|
-| Total zero-distance rows | 237 | 316 |
+| Total self-flight rows | 237 | 316 |
 | By class F | 35 | 84 |
 | By class G | 26 | 27 |
 | By class L | 90 | 86 |
@@ -308,14 +366,85 @@ Rows where `PASSENGERS = 0`, `FREIGHT = 0`, and `MAIL = 0` simultaneously.
 | By source IU | 3,066 | 2,412 |
 
 **Interpretation:**
-These rows represent routes with no reported activity — likely codeshare placeholders, route authorization filings, or inactive route records. They carry no useful traffic or cargo information.
+These rows represent routes with no reported traffic activity — likely codeshare placeholders, route authorization filings, empty repositioning flights, or inactive route records.
+
+For this project, route activity is defined by traffic movement (`PASSENGERS`, `FREIGHT`, `MAIL`). If all three are zero, the row is excluded even when operational fields (for segment data) are nonzero.
 
 **Approach:**
 Filter out during analysis. These rows are flagged in `data-cleaning.csv` with `Action = filter` and `Correction_Type = All_Zero_Activity`.
 
-> **Note:** The zero-distance rows (Section 3.1) partially overlap with all-zero rows. Unique rows to filter:
-> - **Market:** 11,921 (all-zero) + 70 (zero-distance with activity) = **11,991 unique rows**
-> - **Segment:** 14,552 (all-zero) + 175 (zero-distance with activity) = **14,727 unique rows**
+> **Note:** The self-flight rows (Section 3.1) partially overlap with all-zero rows. Unique rows to filter:
+> - **Market:** 11,921 (all-zero) + 70 (self-flights with activity) = **11,991 unique rows**
+> - **Segment:** 14,552 (all-zero) + 175 (self-flights with activity) = **14,727 unique rows**
+>
+> In segment data, these all-zero rows still include a small share of operational totals (e.g., departures/seats/payload), but they remain intentionally excluded because they contain no passengers, freight, or mail.
+
+#### Repositioning & Empty Flights (Segment Detail)
+
+Of the 14,411 all-zero segment rows (excluding self-flights), **14,221 had DEPARTURES_PERFORMED > 0** — meaning real flights were operated but carried no commercial traffic. These are repositioning (ferry) flights, empty cargo returns, and charter deadhead legs. The remaining 190 rows had zero departures and represent pure filing placeholders.
+
+**Aggregate operational totals (operated empty flights):**
+
+| Metric | Total |
+|--------|-------|
+| Records | 14,221 |
+| Departures performed | 28,487 |
+| Departures scheduled | 3,613 |
+| Seats | 2,448,772 |
+| Payload capacity | 1,297,534,907 lbs (~1.3 billion lbs) |
+
+**Breakdown by service class:**
+
+| Class | Records | Departures | Seats | Payload (lbs) |
+|-------|---------|-----------|-------|---------------|
+| L — Charter | 7,768 (54.6%) | 15,093 | 2,211,643 | 658,513,260 |
+| P — Non-scheduled | 4,293 (30.2%) | 9,427 | 4,207 | 521,549,680 |
+| F — Scheduled | 2,065 (14.5%) | 3,594 | 232,106 | 59,033,883 |
+| G — All-cargo | 95 (0.7%) | 373 | 816 | 58,438,084 |
+
+**Breakdown by aircraft type (SEATS as proxy):**
+
+| Category | Records | Departures | Payload (lbs) |
+|----------|---------|-----------|---------------|
+| SEATS = 0 (cargo/charter aircraft) | 4,583 | 10,054 | 608,408,278 |
+| SEATS > 0 (passenger aircraft flying empty) | 9,638 | 18,433 | 689,126,629 |
+
+Charter repositioning (Class L) dominates, led by Caribbean Sun Airlines running empty return legs on BRO–AEX and BRO–Central America routes with 155-seat aircraft. Non-scheduled cargo (Class P) includes operators like USA Jet Airlines, Kalitta Charters, and Gulf & Caribbean Cargo running cross-border freight routes.
+
+**Cross-border context (TX ↔ Mexico):**
+
+In addition to the flights carrying cargo between Texas and Mexico included in the cleaned dataset, **1,748 repositioning and empty cargo departures** were operated on TX–Mexico routes (741 route-carrier-year records, 2015–2024). Notable operators:
+
+| Route | Carrier | Year | Departures | Payload (lbs) |
+|-------|---------|------|-----------|---------------|
+| NLU→IAH | Turkish Airlines | 2024 | 72 | 16,158,384 |
+| MEX→IAH | Turkish Airlines | 2023 | 70 | 15,709,540 |
+| BJX→LRD | USA Jet Airlines | 2022 | 45 | 1,509,700 |
+| HMO→ELP | USA Jet Airlines | 2022 | 37 | 1,058,200 |
+| BJX→LRD | USA Jet Airlines | 2021 | 28 | 1,299,500 |
+| ADS→QRO | Ameristar Air Cargo | 2022 | 24 | 511,440 |
+
+These flights highlight existing cross-border air cargo infrastructure that operates even on return legs with no commercial load. They are excluded from the dashboard because they do not represent actual connectivity (no passengers or goods moved), but they demonstrate the scope of operational capacity on these corridors.
+
+**Why market data also has all-zero rows (11,860 rows):**
+
+Market data has no departure columns — only PASSENGERS, FREIGHT, MAIL. A zero-activity market row means a carrier filed a route/class/year but reported zero traffic moved end-to-end. Cross-referencing with segment data reveals three scenarios:
+
+| Scenario | Approx. % | Explanation |
+|----------|----------|-------------|
+| Segment also zero traffic | ~57% | Route filed/authorized but never carried commercial traffic |
+| Segment HAS traffic | ~24% | Multi-leg journeys where segments were active but the market O-D pair itself had no through-traffic |
+| No segment match at all | ~19% | Reporting artifacts — carrier filed market data without corresponding segment records |
+
+The 24% with segment traffic reflects how BTS market data counts passengers at the journey level: if a plane flew a leg empty but that leg was part of a larger routing, the market row for that specific O-D pair shows zero.
+
+### 3.3 Exact Duplicate Rows
+
+**Anomaly:**
+Rows where every column is identical to another row. These are data artifacts from the extraction or BTS source.
+
+**Approach:**
+Filter out during analysis. The cleaning pipeline drops exact duplicate rows using pandas `drop_duplicates()`. As of the current extract, no exact duplicates were found in either dataset — the rule is a safety net for future extracts or expanded year ranges.
 
 ---
 
@@ -404,6 +533,65 @@ This is by design, not duplication. BTS reports segment-level statistics per air
 **Why no action is needed:**
 The extraction scripts already aggregate across aircraft types when rolling up to yearly totals. This note is recorded so that analysts working with the raw monthly data or the source database understand why multiple rows may appear for what looks like the same carrier-route-month.
 
+### 4b.3 Performed > Scheduled (Within Valid Range)
+
+**Anomaly (observed in BTS_SEGMENT raw extract):**
+Some rows have `DEPARTURES_PERFORMED > DEPARTURES_SCHEDULED` even when scheduled > 0.
+
+**Current profile (2015–2024 extract):**
+- `performed > scheduled` (where scheduled > 0): 1,417 rows
+- High-ratio tail (`performed/scheduled >= 5`): 10 rows
+
+**Why no action is needed:**
+Most cases are modest deviations and are treated as operational/reporting variance. Only extreme scheduled-outlier cases (scheduled/performed > 100) are corrected.
+
+### 4b.4 PASSENGERS > 0 with SEATS = 0 (Class P Edge Case)
+
+**Anomaly (observed in BTS_SEGMENT raw extract):**
+A very small number of rows report `PASSENGERS > 0` while `SEATS = 0`, all in `CLASS = P`.
+
+**Current profile (2015–2024 extract):**
+- `PASSENGERS > 0 & SEATS = 0 & DEPARTURES_PERFORMED > 0`: 4 rows
+
+**Why no action is needed:**
+The cases are rare, low-impact, and outside scheduled-service adherence logic. They are tracked as an edge-case anomaly.
+
+### 4b.5 Semantic Duplicates After Normalization
+
+**Anomaly (transformation artifact):**
+After applying code/city standardization updates (for example, NLU city normalization), some rows can collapse into identical descriptor keys while retaining split metric values.
+
+**Current profile before re-aggregation (2015–2024 extract):**
+- Market: 5 duplicate descriptor groups
+- Segment: 6 duplicate descriptor groups
+
+**Action in pipeline:**
+`Apply_Data_Cleaning.py` now re-aggregates metrics by descriptor keys after updates/corrections/filters/fill so normalized duplicates are collapsed deterministically.
+
+### 4b.6 T-Prefix FAA LID Airport Codes (7 Small TX Airports)
+
+**Anomaly:**
+Seven airport codes beginning with "T" followed by a digit or alphanumeric suffix (T6X, T8X, T82, T2X, T3X, T5X, T9X) appear in the data. These are FAA Location Identifiers (FAA LIDs) for small Texas airports that do not have IATA codes. Combined: 88 market + 92 segment rows.
+
+| Code | Airport ID | Airport Name | City | Activity | Years | Rows (M+S) |
+|------|-----------|-------------|------|----------|-------|-------------|
+| T6X | 16745 | Houston Executive | Houston, TX | Charter (151 PAX) | 2016–2024 | 28+30 |
+| T8X | 16755 | Collin County Regional | McKinney, TX | Charter + cargo (75 PAX, 25K lbs FRT) | 2019–2025 | 46+47 |
+| T82 | 16947 | Gillespie County | Fredericksburg, TX | Charter + FedEx feeder | 2022–2025 | 8+8 |
+| T2X | 16694 | Hereford Municipal | Hereford, TX | Charter (10 PAX) | 2015 | 0+2 |
+| T3X | 16702 | El Coyote Ranch (private) | Encino, TX | Int'l charter (4 PAX) | 2016 | 2+3 |
+| T5X | 16709 | Castroville Municipal | Castroville, TX | FedEx feeder (3,688 lbs FRT) | 2016 | 2+2 |
+| T9X | 16785 | Dimmit County | Carrizo Springs, TX | FedEx feeder (2,434 lbs FRT) | 2017 | 2+2 |
+
+**Why no action is needed:**
+
+1. **Valid FAA codes** — Unlike T1X/T4X (Section 2.3c/2.4), which had dual codes for the same airport ID, these T-codes are the *sole* identifier for their airport ID. There is no "correct" IATA code to normalize to.
+2. **Negligible volume** — ~250 total passengers and ~33K lbs freight across all 7 airports over 10 years. This is noise-level data.
+3. **Legitimate activity** — all rows are CLASS=L (charter), CLASS=P (non-scheduled cargo), CLASS=G (all-cargo), or CLASS=F (commuter). These represent real charter flights, air taxi operations, and FedEx feeder routes.
+4. **T8X city name corrected** — the only factual error (BTS labeling McKinney as "Dallas") is addressed in Section 2.8.
+
+> **Note for future agents:** If new T-prefix codes appear in expanded data, check whether they share an Airport ID with an existing IATA/FAA code (like T1X/T4X did). If so, normalize. If the T-code is the sole identifier, leave it as-is.
+
 ---
 
 ## 5. GeoJSON Cleaning
@@ -439,7 +627,7 @@ Affected features: 1
 
 ## 6. data-cleaning.csv Format Reference
 
-The machine-parsable `data-cleaning.csv` file defines all cleaning rules. It is read by `Script/_helper/Apply_Data_Cleaning.py`.
+The machine-parsable `data-cleaning.csv` file defines all cleaning rules. It is read by `Script/Apply_Data_Cleaning.py`.
 
 **Columns:**
 
@@ -448,7 +636,7 @@ The machine-parsable `data-cleaning.csv` file defines all cleaning rules. It is 
 | `action` | `update`, `correct`, `delete`, `filter`, `fill` | Operation type |
 | `target` | `csv`, `market`, `segment`, `geojson`, `all` | Which output file(s) |
 | `airport_id` | Integer or blank | Match key for record-level ops |
-| `field` | `CODE`, `CITY_NAME`, `STATE_NAME`, `ZERO_DISTANCE`, `ALL_ZERO_ACTIVITY`, `DEPARTURES_SCHEDULED_OUTLIER` | Abstract field name, filter type, or correction type |
+| `field` | `CODE`, `CITY_NAME`, `STATE_NAME`, `ZERO_DISTANCE`, `ALL_ZERO_ACTIVITY`, `DEPARTURES_SCHEDULED_OUTLIER`, `DEPARTURES_SCHEDULED_CHARTER_OUTLIER`, `PASSENGERS_EXCEED_SEATS`, `DUPLICATE_ROWS` | Abstract field name, filter type, or correction type |
 | `old_value` | String or blank | Value to match (updates) or lookup file path (fills) |
 | `new_value` | String or blank | Replacement value |
 | `notes` | Free text | Human-readable documentation |
@@ -465,7 +653,7 @@ For GeoJSON, each abstract field maps to a single column:
 - `CITY_NAME` → DISPLAY_AIRPORT_CITY_NAME_FULL
 - `STATE_NAME` → AIRPORT_STATE_NAME
 
-**Processing order:** updates → corrections → deletes → filters → fills
+**Processing order (CSV):** updates → corrections → deletes → filters → fills (if `fill` rule exists) → re-aggregate normalized duplicate keys
 
 ---
 
@@ -482,9 +670,17 @@ For GeoJSON, each abstract field maps to a single column:
 | 2.4a | Llano, TX (T4X → AQO) | Code update | 49 | 49 | 1 | Update code |
 | 2.4b | Austin, TX (ID 16706) | Unreliable data | 2 | 4 | 3 | Delete |
 | 2.5 | DEPARTURES_SCHEDULED outliers | Data entry error | — | ratio > 100 | — | Correct (set = performed) |
-| 3.1 | Zero-distance rows | Not real routes | 237 | 316 | — | Filter out |
+| 2.6 | DEPARTURES_SCHEDULED charter outliers | Charter data entry error | — | Class P/L, ratio > 10 | — | Correct (set = performed) |
+| 2.7 | PASSENGERS exceeding SEATS | Reporting error | — | PAX > SEATS | — | Correct (cap at SEATS) |
+| 2.8 | T8X city name (Dallas → McKinney) | City name error | 46 | 47 | — | Update city name |
+| 3.1 | Self-flight rows (ORIGIN=DEST) | Not real routes | 237 | 316 | — | Filter out |
 | 3.2 | All-zero activity | No activity | 11,921 | 14,552 | — | Filter out |
+| 3.3 | Exact duplicate rows | Data artifact | 0 | 0 | — | Filter out (safety net) |
 | 4.1 | Missing carrier names | Unresolvable | 27 | 27 | — | Acknowledged |
+| 4b.3 | Performed > scheduled (sched>0) | Operational variance | — | 1,417 | — | Documented; no correction |
+| 4b.4 | PASSENGERS > 0 with SEATS = 0 | Edge case | — | 4 | — | Documented; monitor |
+| 4b.5 | Semantic duplicates after normalization | Transformation artifact | 5 groups | 6 groups | — | Re-aggregate in cleaner |
+| 4b.6 | T-prefix FAA LID codes (7 small TX airports) | Valid FAA identifiers | 88 | 92 | — | No action; documented |
 | 5.1 | GeoJSON multi-version | Processing | — | — | 3,627 | Filter to IS_LATEST=1 |
 | 5.2 | GeoJSON orphan airports | Processing | — | — | 79 | Scope to CSV IDs |
 | 5.3 | Al Udeid (XJD → IUD) | Code mismatch | — | — | 1 | Update code |

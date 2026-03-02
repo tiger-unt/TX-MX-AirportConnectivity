@@ -19,9 +19,16 @@ import 'leaflet/dist/leaflet.css'
 const COLORS = {
   us: '#0056a9',
   mx: '#df5c16',
-  other: '#c5bbaa',
+  other: '#5a7a7a',
   arc: '#0056a9',
   arcHover: '#df5c16',
+}
+
+/* Darker stroke for each category so dots pop against the light basemap */
+const STROKE = {
+  us: '#003d75',
+  mx: '#a84410',
+  other: '#3a5252',
 }
 
 function radiusScale(volume, maxVolume) {
@@ -35,6 +42,14 @@ function markerColor(country) {
   if (c === 'mexico') return COLORS.mx
   if (c === 'united states') return COLORS.us
   return COLORS.other
+}
+
+function markerStroke(country) {
+  if (!country) return STROKE.other
+  const c = country.toLowerCase()
+  if (c === 'mexico') return STROKE.mx
+  if (c === 'united states') return STROKE.us
+  return STROKE.other
 }
 
 function MapClickHandler({ onReset }) {
@@ -206,10 +221,10 @@ export default function AirportMap({
                   radius={isSelected ? r + 3 : r}
                   pathOptions={{
                     fillColor: markerColor(a.country),
-                    color: isSelected ? '#fff' : markerColor(a.country),
-                    weight: isSelected ? 3 : 1,
+                    color: isSelected ? '#fff' : markerStroke(a.country),
+                    weight: isSelected ? 3 : 1.5,
                     opacity: 0.9,
-                    fillOpacity: isSelected ? 1 : 0.7,
+                    fillOpacity: isSelected ? 1 : 0.75,
                   }}
                   eventHandlers={{
                     click: () => handleAirportClick(a.iata),
@@ -232,7 +247,7 @@ export default function AirportMap({
 
       {/* Legend — flex-shrink-0 keeps it at natural height; inline height overrides fullscreen CSS */}
       <div
-        className="flex items-center gap-4 px-3 py-2 bg-white/90 text-xs text-text-secondary border-t border-border-light flex-shrink-0"
+        className="flex items-center gap-4 px-3 py-2 bg-white/90 text-base text-text-secondary border-t border-border-light flex-shrink-0"
         style={{ height: 'auto' }}
       >
         <span className="flex items-center gap-1">
@@ -247,7 +262,7 @@ export default function AirportMap({
           <span className="inline-block w-3 h-3 rounded-full" style={{ background: COLORS.other }} />
           Other
         </span>
-        <span className="ml-auto text-xs">Click airport to explore connections</span>
+        <span className="ml-auto text-base">Click airport to explore connections</span>
       </div>
     </div>
   )
