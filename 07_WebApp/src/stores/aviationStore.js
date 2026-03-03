@@ -91,7 +91,7 @@ export const useAviationStore = create((set) => ({
       const segmentNumeric = [
         'DEPARTURES_SCHEDULED', 'DEPARTURES_PERFORMED',
         'PAYLOAD', 'SEATS',
-        'SCHED_REPORTED',
+        'SCHED_REPORTED', 'AIRCRAFT_GROUP',
       ]
       segment.forEach((d) => normalizeRow(d, segmentNumeric))
 

@@ -92,13 +92,18 @@
       "Bash(curl -s http://localhost:5173)",
       "Bash(npx tailwindcss --help)",
       "Bash(xargs -0 wc -l)",
-      "Bash(npx vite build --logLevel error)"
+      "Bash(npx vite build --logLevel error)",
+      "Bash(npm install -g @anthropic-ai/claude-code@latest)",
+      "Bash(C:UsersUNTAppDataLocalProgramsPythonPython313python.exe -c \":*)",
+      "WebFetch(domain:rosap.ntl.bts.gov)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\styles",
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate",
-      "C:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\$SRC"
+      "C:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\$SRC",
+      "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\02_Data_Staging\\BTS_Air_Carrier_Statistics\\Script\\_Archive\\Andrew_Sample_Code",
+      "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\07_WebApp\\screenshots"
     ]
   }
 }

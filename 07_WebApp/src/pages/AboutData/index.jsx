@@ -154,6 +154,49 @@ export default function AboutDataPage() {
               </div>
             </div>
           </div>
+
+          {/* When to Use Which */}
+          <div className="bg-white rounded-xl border border-border-light shadow-sm p-6 mt-6">
+            <h4 className="text-base font-bold text-text-primary mb-4">When to Use Which?</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-base">
+                <thead>
+                  <tr className="border-b border-border-light">
+                    <th className="text-left py-2 pr-4 font-semibold text-text-primary">Analysis Goal</th>
+                    <th className="text-center py-2 px-3 font-semibold text-text-primary">Use</th>
+                    <th className="text-left py-2 pl-4 font-semibold text-text-primary">Why</th>
+                  </tr>
+                </thead>
+                <tbody className="text-text-secondary">
+                  {[
+                    ['Total passenger demand between two cities', 'Market', 'Counts each passenger once per journey'],
+                    ['Total freight/mail volume between two cities', 'Market', 'Journey-level totals \u2014 the demand picture'],
+                    ['Passenger/freight connectivity patterns', 'Market', 'Origin-to-destination flows, not individual legs'],
+                    ['How many flights were operated on a route', 'Segment', 'Only source for departure counts'],
+                    ['Seat capacity and load factor', 'Segment', 'Only source for SEATS'],
+                    ['Freight/mail carried per flight leg', 'Segment', 'Leg-level detail \u2014 the operational picture'],
+                    ['Schedule reliability (scheduled vs. performed)', 'Segment', 'Only source for scheduled/performed departures'],
+                    ['Aircraft types serving a route', 'Segment', 'Only source for AIRCRAFT_GROUP'],
+                    ['Freight-only and charter flight operations', 'Segment', 'Service class detail + departure counts'],
+                  ].map(([goal, use, why]) => (
+                    <tr key={goal} className="border-b border-border-light/50">
+                      <td className="py-2 pr-4">{goal}</td>
+                      <td className="py-2 px-3 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-base font-semibold ${
+                          use === 'Market'
+                            ? 'bg-brand-blue/10 text-brand-blue'
+                            : 'bg-brand-yellow/15 text-brand-yellow-dark'
+                        }`}>
+                          {use}
+                        </span>
+                      </td>
+                      <td className="py-2 pl-4">{why}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         {/* ── Data Limitations: T-100 vs T-100(f) ────────────────────────── */}

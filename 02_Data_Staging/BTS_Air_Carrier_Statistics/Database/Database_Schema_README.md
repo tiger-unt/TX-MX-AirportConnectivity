@@ -59,7 +59,7 @@ Detailed information for each table:
 Each column contains:
 - `cid`: Column ID (internal SQLite identifier)
 - `name`: Column name
-- `type`: SQLite data type (TEXT, INTEGER, REAL, etc.)
+- `type`: SQLite type (TEXT, INTEGER, REAL, etc.)
 - `notnull`: 1 if NOT NULL constraint, 0 otherwise
 - `dflt_value`: Default value (null if none)
 - `pk`: 1 if primary key, 0 otherwise

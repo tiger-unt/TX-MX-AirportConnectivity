@@ -182,6 +182,49 @@ export default function USMexicoPage() {
 
   const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
 
+  /* ── seat capacity & load factor ───────────────────────────────────── */
+  const seatTrend = useMemo(() => {
+    const byYear = new Map()
+    filteredSegment.forEach((d) => {
+      byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.SEATS)
+    })
+    return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
+  }, [filteredSegment])
+
+  const loadFactorTrend = useMemo(() => {
+    const byYD = new Map()
+    filteredSegment.forEach((d) => {
+      if (d.SEATS <= 0) return
+      const dir = isUsToMx(d) ? 'U.S. \u2192 Mexico' : 'Mexico \u2192 U.S.'
+      const key = `${d.YEAR}|${dir}`
+      if (!byYD.has(key)) byYD.set(key, { year: d.YEAR, pax: 0, seats: 0, Direction: dir })
+      const row = byYD.get(key)
+      row.pax += d.PASSENGERS
+      row.seats += d.SEATS
+    })
+    return Array.from(byYD.values())
+      .map((d) => ({ year: d.year, value: d.seats ? +(d.pax / d.seats * 100).toFixed(1) : 0, Direction: d.Direction }))
+      .sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
+  }, [filteredSegment])
+
+  const loadFactorByRoute = useMemo(() => {
+    const byRoute = new Map()
+    filteredSegment.forEach((d) => {
+      if (d.SEATS <= 0) return
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} \u2192 ${d.DEST_FULL_LABEL || d.DEST}`
+      if (!byRoute.has(label)) byRoute.set(label, { label, pax: 0, seats: 0 })
+      const row = byRoute.get(label)
+      row.pax += d.PASSENGERS
+      row.seats += d.SEATS
+    })
+    const all = Array.from(byRoute.values())
+      .map((d) => ({ label: d.label, value: d.seats ? +(d.pax / d.seats * 100).toFixed(1) : 0, seats: d.seats }))
+      .filter((d) => d.value > 0)
+    const top = [...all].sort((a, b) => b.value - a.value).slice(0, 10)
+    const bottom = [...all].filter((d) => d.seats >= 100).sort((a, b) => a.value - b.value).slice(0, 10)
+    return { top, bottom }
+  }, [filteredSegment])
+
   /* ── active filter count & tags ────────────────────────────────────── */
   const activeCount =
     filters.year.length + (filters.direction ? 1 : 0) +
@@ -635,6 +678,40 @@ export default function USMexicoPage() {
           <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
           <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
         </ChartCard>
+      </SectionBlock>
+
+      {/* Seat Capacity & Load Factor */}
+      <SectionBlock>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <ChartCard
+            title="Seat Capacity Trends"
+            subtitle="Total seats by year (segment data)"
+            downloadData={{ summary: { data: seatTrend, filename: 'us-mx-seat-trends' } }}
+          >
+            <LineChart data={seatTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="Load Factor Trends"
+            subtitle="Passengers &divide; Seats (%) by year and direction"
+            downloadData={{ summary: { data: loadFactorTrend, filename: 'us-mx-load-factor-trend' } }}
+          >
+            <LineChart data={loadFactorTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+          <ChartCard
+            title="Highest Load Factor Routes"
+            subtitle="Top 10 routes by passenger/seat ratio"
+            downloadData={{ summary: { data: loadFactorByRoute.top, filename: 'us-mx-top-load-factor' } }}
+          >
+            <BarChart data={loadFactorByRoute.top} xKey="label" yKey="value" horizontal formatValue={(v) => `${v}%`} color={CHART_COLORS[0]} />
+          </ChartCard>
+          <ChartCard
+            title="Lowest Load Factor Routes"
+            subtitle="Bottom 10 routes (min 100 seats)"
+            downloadData={{ summary: { data: loadFactorByRoute.bottom, filename: 'us-mx-low-load-factor' } }}
+          >
+            <BarChart data={loadFactorByRoute.bottom} xKey="label" yKey="value" horizontal formatValue={(v) => `${v}%`} color={CHART_COLORS[8]} />
+          </ChartCard>
+        </div>
       </SectionBlock>
     </DashboardLayout>
   )

@@ -51,6 +51,19 @@ export const BORDER_AIRPORT_LIST = [
 
 export const BORDER_AIRPORTS = new Set(BORDER_AIRPORT_LIST.map((a) => a.code))
 
+/* ── Aircraft group labels (BTS AIRCRAFT_GROUP codes) ────────────── */
+
+export const AIRCRAFT_GROUP_LABELS = {
+  0: 'Unknown',
+  1: 'Piston',
+  3: 'Turbojet (3+ Engine)',
+  4: 'Turboprop',
+  5: 'Regional Jet',
+  6: 'Narrow-Body Jet',
+  7: 'Wide-Body Jet',
+  8: 'Wide-Body (3+ Engine)',
+}
+
 /* ── CLASS labels ─────────────────────────────────────────────────── */
 
 export const CLASS_LABELS = {

@@ -1,10 +1,17 @@
-# BTS T-100 Data Pipeline — Comprehensive Reference
+# Texas–Mexico Airport Connectivity — Data Pipeline Documentation
+### BTS T-100 Data Pipeline — Comprehensive Reference
 
-**Project:** TxDOT IAC 2025-26, Task 6 — Airport Connectivity
-**Organization:** UNT System (Interagency Contract with Texas Department of Transportation)
-**Purpose:** Analyze air connectivity between Texas and Mexico using federal aviation statistics
-**Data years covered:** 2015–2024
-**Last updated:** 2026-03-01
+**Project:** TxDOT IAC 2025-26, Task 6 — Airport Connectivity<br>
+**Organization:** UNT System (Interagency Contract with Texas Department of Transportation)<br>
+**Purpose:** This data pipeline processes federal aviation statistics (BTS T-100) into clean, analysis-ready datasets that feed the project's interactive data visualization web application for Texas–Mexico airport connectivity.<br>
+**Web App:** [https://tiger-unt.github.io/TX-MX-AirportConnectivity/](https://tiger-unt.github.io/TX-MX-AirportConnectivity/)<br>
+**Data years covered:** 2015–2024<br>
+**Last updated:** 2026-03-03
+
+**Contributors:**
+- **Jolanda Prozzi** — Project Manager (oversight and direction)
+- **Andrew Birt** — Raw data acquisition and database creation (Step 0)
+- **Adithya Ajith** — Data pipeline design and implementation (Steps 1–3)
 
 ---
 
@@ -22,41 +29,42 @@
    - 5.2 [BTS_SEGMENT Table](#52-bts_segment-table)
    - 5.3 [Reference Tables](#53-reference-tables)
 6. [Pipeline Overview](#6-pipeline-overview)
-7. [Step 1 — Extraction](#7-step-1--extraction)
-   - 7.1 [What Gets Extracted](#71-what-gets-extracted)
-   - 7.2 [Filtering Logic](#72-filtering-logic)
-   - 7.3 [Aggregation](#73-aggregation)
-   - 7.4 [Intermediate Output Files](#74-intermediate-output-files)
-8. [Step 2 — Verification & Rule Discovery](#8-step-2--verification--rule-discovery)
-9. [Step 3 — Data Cleaning](#9-step-3--data-cleaning)
-   - 9.1 [Cleaning Rule System](#91-cleaning-rule-system)
-   - 9.2 [Phase 1: Updates (Code & Name Standardization)](#92-phase-1-updates-code--name-standardization)
-   - 9.3 [Phase 2: Corrections (Value Fixes)](#93-phase-2-corrections-value-fixes)
-   - 9.4 [Phase 3: Deletes (Unreliable Data Removal)](#94-phase-3-deletes-unreliable-data-removal)
-   - 9.5 [Phase 4: Filters (Row Exclusion)](#95-phase-4-filters-row-exclusion)
-   - 9.6 [Phase 5: State Name Fill](#96-phase-5-state-name-fill)
-   - 9.7 [Phase 6: Re-Aggregation](#97-phase-6-re-aggregation)
-   - 9.8 [Phase 7: Derived Flags (Segment Only)](#98-phase-7-derived-flags-segment-only)
-   - 9.9 [GeoJSON Cleaning (5 Phases)](#99-geojson-cleaning-5-phases)
-10. [Detailed Data Quality Report & Cleaning Rules](#10-detailed-data-quality-report--cleaning-rules)
-    - 10.1 [Issues Corrected](#101-issues-corrected)
-    - 10.2 [Issues Filtered Out](#102-issues-filtered-out)
-    - 10.3 [Issues Acknowledged but Not Corrected](#103-issues-acknowledged-but-not-corrected)
-    - 10.4 [Known Anomalies (No Action Required)](#104-known-anomalies-no-action-required)
-    - 10.5 [GeoJSON-Specific Cleaning Details](#105-geojson-specific-cleaning-details)
-    - 10.6 [Cleaning Summary Table](#106-cleaning-summary-table)
-11. [Final Output Files (Process Data)](#11-final-output-files-process-data)
-    - 11.1 [Market CSV — Column Definitions](#111-market-csv--column-definitions)
-    - 11.2 [Segment CSV — Column Definitions](#112-segment-csv--column-definitions)
-    - 11.3 [Airport GeoJSON — Structure & Properties](#113-airport-geojson--structure--properties)
-    - 11.4 [CLASS Values (Service Class)](#114-class-values-service-class)
-    - 11.5 [DATA_SOURCE Values](#115-data_source-values)
-    - 11.6 [Output Statistics](#116-output-statistics)
-12. [Known Data Characteristics](#12-known-data-characteristics)
-13. [Directory Structure](#13-directory-structure)
-14. [How to Run the Pipeline](#14-how-to-run-the-pipeline)
-15. [Dependencies](#15-dependencies)
-16. [Supporting Files Reference](#16-supporting-files-reference)
+7. [Step 0 — Database Creation](#7-step-0--database-creation)
+8. [Step 1 — Extraction](#8-step-1--extraction)
+   - 8.1 [What Gets Extracted](#81-what-gets-extracted)
+   - 8.2 [Filtering Logic](#82-filtering-logic)
+   - 8.3 [Aggregation](#83-aggregation)
+   - 8.4 [Intermediate Output Files](#84-intermediate-output-files)
+9. [Step 2 — Verification & Rule Discovery](#9-step-2--verification--rule-discovery)
+10. [Step 3 — Data Cleaning](#10-step-3--data-cleaning)
+    - 10.1 [Cleaning Rule System](#101-cleaning-rule-system)
+    - 10.2 [Phase 1: Updates (Code & Name Standardization)](#102-phase-1-updates-code--name-standardization)
+    - 10.3 [Phase 2: Corrections (Value Fixes)](#103-phase-2-corrections-value-fixes)
+    - 10.4 [Phase 3: Deletes (Unreliable Data Removal)](#104-phase-3-deletes-unreliable-data-removal)
+    - 10.5 [Phase 4: Filters (Row Exclusion)](#105-phase-4-filters-row-exclusion)
+    - 10.6 [Phase 5: State Name Fill](#106-phase-5-state-name-fill)
+    - 10.7 [Phase 6: Re-Aggregation](#107-phase-6-re-aggregation)
+    - 10.8 [Phase 7: Derived Flags (Segment Only)](#108-phase-7-derived-flags-segment-only)
+    - 10.9 [GeoJSON Cleaning (5 Phases)](#109-geojson-cleaning-5-phases)
+11. [Detailed Data Quality Report & Cleaning Rules](#11-detailed-data-quality-report--cleaning-rules)
+    - 11.1 [Issues Corrected](#111-issues-corrected)
+    - 11.2 [Issues Filtered Out](#112-issues-filtered-out)
+    - 11.3 [Issues Acknowledged but Not Corrected](#113-issues-acknowledged-but-not-corrected)
+    - 11.4 [Known Anomalies (No Action Required)](#114-known-anomalies-no-action-required)
+    - 11.5 [GeoJSON-Specific Cleaning Details](#115-geojson-specific-cleaning-details)
+    - 11.6 [Cleaning Summary Table](#116-cleaning-summary-table)
+12. [Final Output Files (Process Data)](#12-final-output-files-process-data)
+    - 12.1 [Market CSV — Column Definitions](#121-market-csv--column-definitions)
+    - 12.2 [Segment CSV — Column Definitions](#122-segment-csv--column-definitions)
+    - 12.3 [Airport GeoJSON — Structure & Properties](#123-airport-geojson--structure--properties)
+    - 12.4 [CLASS Values (Service Class)](#124-class-values-service-class)
+    - 12.5 [DATA_SOURCE Values](#125-data_source-values)
+    - 12.6 [Output Statistics](#126-output-statistics)
+13. [Known Data Characteristics](#13-known-data-characteristics)
+14. [Directory Structure](#14-directory-structure)
+15. [How to Run the Pipeline](#15-how-to-run-the-pipeline)
+16. [Dependencies](#16-dependencies)
+17. [Supporting Files Reference](#17-supporting-files-reference)
 
 ---
 
@@ -86,7 +94,9 @@ To answer these questions, we use **BTS T-100 air carrier statistics** — a com
 - **Both U.S. and foreign carriers**: The data includes U.S.-based airlines (American, United, Southwest, etc.) AND foreign carriers operating to/from U.S. airports (Aeromexico, Volaris, LATAM, etc.).
 - **Coverage**: Every commercial flight segment and passenger market involving a U.S. airport.
 - **Granularity**: Monthly data broken down by carrier, route (origin-destination airport pair), aircraft type, and service class.
-- **Public data**: Available for download at [https://transtats.bts.gov](https://transtats.bts.gov).
+- **Public data**: Available for download from the [Air Carrier Statistics tables](https://www.transtats.bts.gov/Tables.asp?QO_VQ=EEE) on TranStats. The two T-100 tables used in this project (combined domestic + international, all carriers):
+  - [T-100 Market (All Carriers)](https://www.transtats.bts.gov/DL_SelectFields.asp?gnoyr_VQ=FMF)
+  - [T-100 Segment (All Carriers)](https://www.transtats.bts.gov/DL_SelectFields.asp?gnoyr_VQ=FMG)
 
 The T-100 data is published in two complementary forms: **Market** data and **Segment** data. Understanding the difference is critical to interpreting the numbers correctly.
 
@@ -127,15 +137,17 @@ The segment total (370) is higher because the 50 through-passengers are counted 
 
 ### When to Use Which
 
-| Analysis Goal | Use |
-|---|---|
-| Total travel demand between two cities | Market |
-| Passenger connectivity patterns | Market |
-| How many flights were operated on a route | Segment |
-| Airport capacity utilization (seats, load factor) | Segment |
-| Cargo tonnage by flight leg | Segment |
-| Schedule reliability (scheduled vs. performed departures) | Segment |
-| Freight-only and charter flight operations | Segment |
+| Analysis Goal | Use | Why |
+|---|---|---|
+| Total passenger demand between two cities | Market | Counts each passenger once per journey |
+| Total freight/mail volume between two cities | Market | Journey-level totals — the demand picture |
+| Passenger/freight connectivity patterns | Market | Origin-to-destination flows, not individual legs |
+| How many flights were operated on a route | Segment | Only source for departure counts |
+| Seat capacity and load factor | Segment | Only source for SEATS |
+| Freight/mail carried per flight leg | Segment | Leg-level detail — the operational picture |
+| Schedule reliability (scheduled vs. performed departures) | Segment | Only source for scheduled/performed counts |
+| Aircraft types serving a route | Segment | Only source for AIRCRAFT_TYPE |
+| Freight-only and charter flight operations | Segment | Service class detail + departure counts |
 
 ### Key Differences at a Glance
 
@@ -191,7 +203,7 @@ This is the complete BTS T-100 market dataset. Each row represents one carrier's
 
 **All 41 columns in the raw database table** (our pipeline extracts a subset — see Section 7):
 
-| Column | Type | Description |
+| Column | SQLite Type | Description |
 |---|---|---|
 | PASSENGERS | REAL | Enplaned passengers (counted once per journey) |
 | FREIGHT | REAL | Freight enplaned, in pounds |
@@ -243,7 +255,7 @@ This is the complete BTS T-100 segment dataset. Each row represents one carrier'
 
 **Additional columns beyond those shared with BTS_MARKET:**
 
-| Column | Type | Description |
+| Column | SQLite Type | Description |
 |---|---|---|
 | AIRCRAFT_GROUP | INTEGER | Aircraft group classification |
 | AIRCRAFT_TYPE | INTEGER | Aircraft type code |
@@ -274,11 +286,27 @@ The pipeline transforms ~19.7 million raw database records into two clean, analy
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                           RAW DATA SOURCES                               │
-│  SQLite Database (~4.5 GB, ~19.7M records across 2 main tables)         │
-│  BTS_MARKET: 8.3M rows × 41 cols    BTS_SEGMENT: 11.4M rows × 50 cols  │
-│  Airport Master List CSV (names, coordinates, attributes)               │
+│                        RAW BTS DOWNLOADS                                 │
+│  CSV files organized by year/month in zip archives                       │
+│  01_Raw Data/.../Raw BTS MARKET DATA/   (zip files by year)             │
+│  01_Raw Data/.../Raw BTS SEGMENT DATA/  (zip files by year)             │
 └───────────────────────────────┬──────────────────────────────────────────┘
+                                │
+                   ┌────────────▼──────────────────┐
+                   │  STEP 0: DATABASE CREATION     │
+                   │  raw-BTS-data-to-DB.py         │
+                   │  (one-time setup)              │
+                   └────────────┬──────────────────┘
+                                │  Extract CSVs from zip archives
+                                │  Load into SQLite tables
+                                ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         SQLite DATABASE                                   │
+│  BTS_Air_Carrier_Statistics.db (~4.5 GB, ~19.7M records)                │
+│  BTS_MARKET: 8.3M rows × 41 cols    BTS_SEGMENT: 11.4M rows × 50 cols  │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                │
+              Airport Master List CSV (names, coordinates, attributes)
                                 │
                      ┌──────────▼──────────┐
                      │  STEP 1: EXTRACTION │
@@ -339,11 +367,47 @@ The pipeline transforms ~19.7 million raw database records into two clean, analy
 
 ---
 
-## 7. Step 1 — Extraction
+## 7. Step 0 — Database Creation
+
+**Script:** `raw-BTS-data-to-DB.py`
+
+This is a one-time setup step that builds the SQLite database from the raw BTS download files. It was written by Andrew and only needs to be re-run if the database needs to be rebuilt from scratch (e.g., to incorporate newly downloaded years of data).
+
+### What It Does
+
+1. **Reads zip archives** from the raw data folders:
+   - `01_Raw Data/BTS_Air_Carrier_Statistics/Raw BTS MARKET DATA/` — market data zip files (one per year/month)
+   - `01_Raw Data/BTS_Air_Carrier_Statistics/Raw BTS SEGMENT DATA/` — segment data zip files (one per year/month)
+2. **Extracts the CSV** inside each zip file using Python's `zipfile` module
+3. **Loads each CSV into SQLite** using `pandas.DataFrame.to_sql()`, appending to `BTS_MARKET` and `BTS_SEGMENT` tables respectively
+
+### Configuration
+
+The script uses hardcoded paths in the `__init__` method of the `ImportBTSAirData` class. Before running, update these paths to match your local environment:
+
+```python
+self.path = "..."    # Path to the folder containing Raw BTS MARKET DATA/ and Raw BTS SEGMENT DATA/
+self.dbpath = "..."  # Path where the output .db file should be created
+```
+
+### Output
+
+- **File:** `BTS_Air_Carrier_Statistics.db` (SQLite, ~4.5 GB)
+- **Tables created:** `BTS_MARKET` (~8.3M rows × 41 cols), `BTS_SEGMENT` (~11.4M rows × 50 cols)
+
+### When to Run
+
+- **Initial setup:** Run once to create the database from raw BTS downloads
+- **Data refresh:** Run again if new year/month zip files are added to the raw data folders. Delete or rename the existing `.db` file first to rebuild from scratch, or the script will append to the existing tables
+- **Not needed for normal pipeline runs:** Steps 1–3 query the existing database and do not modify it
+
+---
+
+## 8. Step 1 — Extraction
 
 **Script:** `Extract_BTS_Data.py`
 
-### 7.1 What Gets Extracted
+### 8.1 What Gets Extracted
 
 The extraction script connects to the SQLite database and runs SQL queries against both `BTS_MARKET` and `BTS_SEGMENT` tables. It selects only the columns needed for analysis (reducing from 41/50 raw columns down to 17/21 output columns) and aggregates monthly data into annual totals.
 
@@ -391,7 +455,7 @@ The extraction script connects to the SQLite database and runs SQL queries again
 - RAMP_TO_RAMP, AIR_TIME — operational timing metrics
 - REGION — carrier operation region
 
-### 7.2 Filtering Logic
+### 8.2 Filtering Logic
 
 The SQL WHERE clause selects records relevant to Texas-Mexico connectivity:
 
@@ -416,32 +480,36 @@ The union of these conditions ensures full coverage of:
 - US-Mexico routes at the national level (any U.S. airport ↔ Mexico)
 - Texas-Mexico routes specifically (TX ↔ Mexico)
 
-### 7.3 Aggregation
+### 8.3 Aggregation
 
 Raw BTS data is monthly. The extraction aggregates to **annual** totals:
 
 ```sql
+-- Common GROUP BY (both Market and Segment):
 GROUP BY YEAR, ORIGIN_AIRPORT_ID, ORIGIN, ORIGIN_CITY_NAME, ORIGIN_STATE_NM,
          ORIGIN_COUNTRY_NAME, DEST_AIRPORT_ID, DEST, DEST_CITY_NAME,
          DEST_STATE_NM, DEST_COUNTRY_NAME, CARRIER_NAME, CLASS, DATA_SOURCE
+
+-- Segment only: AIRCRAFT_GROUP is also included in GROUP BY (via SEGMENT_EXTRA_GROUP_BY)
+GROUP BY ..., AIRCRAFT_GROUP, DATA_SOURCE
 ```
 
 **Market aggregated metrics:** `SUM(PASSENGERS)`, `SUM(FREIGHT)`, `SUM(MAIL)`
 
 **Segment aggregated metrics:** `SUM(DEPARTURES_SCHEDULED)`, `SUM(DEPARTURES_PERFORMED)`, `SUM(PAYLOAD)`, `SUM(SEATS)`, `SUM(PASSENGERS)`, `SUM(FREIGHT)`, `SUM(MAIL)`
 
-This means each row in the output represents: **one airline, on one route (origin-destination pair), in one year, for one service class and data source**.
+This means each row in the market output represents: **one airline, on one route (origin-destination pair), in one year, for one service class and data source**. Each row in the segment output additionally preserves the **aircraft group** dimension.
 
-**Important:** Because segment data in the raw database is split by aircraft type (see Section 5.2), the annual aggregation sums across all aircraft types — so the output has one row per carrier/route/year/class/source, not per aircraft type.
+**Aircraft group preservation:** The segment extraction includes `AIRCRAFT_GROUP` (BTS aircraft group classification, integer 0–8) in the GROUP BY via `SEGMENT_EXTRA_GROUP_BY`. This preserves aircraft category information per row, enabling aircraft mix analysis in the dashboard. Market data does not include aircraft group information.
 
-### 7.4 Intermediate Output Files
+### 8.4 Intermediate Output Files
 
 Written to `Script/_temp/`:
 
 | File | Description |
 |---|---|
 | `BTS_T-100_Market_2015-2024.csv` | ~106,000 rows × 17 columns |
-| `BTS_T-100_Segment_2015-2024.csv` | ~109,000 rows × 21 columns |
+| `BTS_T-100_Segment_2015-2024.csv` | ~112,000 rows × 22 columns (before cleaning; includes AIRCRAFT_GROUP) |
 | `BTS_T-100_Airports_2015-2024.geojson` | ~4,981 features (all time-versioned airport entries referenced in the data) |
 
 **About the Airport GeoJSON:** The pipeline generates a GeoJSON file from the Airport Master List (CSV), containing geographic coordinates, names, and attributes for every airport referenced in the Market and Segment data. This file provides the spatial reference needed for mapping airport locations and route visualization. The raw GeoJSON contains time-versioned entries (multiple features per airport tracking changes over time) — these are cleaned down to current entries in Step 3.
@@ -450,7 +518,7 @@ Written to `Script/_temp/`:
 
 ---
 
-## 8. Step 2 — Verification & Rule Discovery
+## 9. Step 2 — Verification & Rule Discovery
 
 **Script:** `Verify_Corrections.py`
 
@@ -483,13 +551,13 @@ This script validates that all documented corrections are consistent with the ra
 
 ---
 
-## 9. Step 3 — Data Cleaning
+## 10. Step 3 — Data Cleaning
 
 **Script:** `Apply_Data_Cleaning.py`
 
 The cleaning script reads the intermediate files from `_temp/`, applies all cleaning rules, and writes the final analysis-ready files to `03_Process_Data/BTS/`.
 
-### 9.1 Cleaning Rule System
+### 10.1 Cleaning Rule System
 
 All cleaning rules are defined in a single CSV file: `Database/data-cleaning/data-cleaning.csv`. Rules are **not hardcoded** in the script — the script reads this file and executes whatever rules it finds. This makes it easy to add, modify, or remove rules without touching Python code.
 
@@ -509,7 +577,7 @@ All cleaning rules are defined in a single CSV file: `Database/data-cleaning/dat
 
 **Detailed rationale** for every cleaning rule is documented in `Database/data-cleaning/data-cleaning.md` — a comprehensive data quality report with affected row counts, anomaly explanations, and decision justifications.
 
-### 9.2 Phase 1: Updates (Code & Name Standardization)
+### 10.2 Phase 1: Updates (Code & Name Standardization)
 
 BTS uses `AIRPORT_ID` as the stable unique identifier for an airport. Over time, the IATA/FAA code assigned to an airport can change, and city name labels can be inconsistent. Update rules standardize these to the most current value.
 
@@ -532,7 +600,7 @@ BTS uses `AIRPORT_ID` as the stable unique identifier for an airport. Over time,
 
 **How updates work in the data:** Because each airport can appear as either origin or destination, the script checks both sides. For example, a code update for Airport ID 12544 changes `ORIGIN` from `JQF` to `USA` where `ORIGIN_AIRPORT_ID = 12544`, AND changes `DEST` from `JQF` to `USA` where `DEST_AIRPORT_ID = 12544`.
 
-### 9.3 Phase 2: Corrections (Value Fixes)
+### 10.3 Phase 2: Corrections (Value Fixes)
 
 These rules fix specific numeric values that are clearly erroneous.
 
@@ -560,11 +628,11 @@ A small number of segment rows report more passengers than available seats — a
 - **Fix:** Cap `PASSENGERS` at `SEATS`
 - **Scope:** Segment data only (Market data has no SEATS column)
 
-### 9.4 Phase 3: Deletes (Unreliable Data Removal)
+### 10.4 Phase 3: Deletes (Unreliable Data Removal)
 
 **Airport ID 16706 (Austin, TX):** An unidentifiable facility — not Austin-Bergstrom (AUS), not Austin Executive (EDC), not any other known Austin airport. Only 2 market rows and 4 segment rows, all charter data from one or two carriers. Deleted as unreliable.
 
-### 9.5 Phase 4: Filters (Row Exclusion)
+### 10.5 Phase 4: Filters (Row Exclusion)
 
 These rules remove rows that are technically valid BTS records but represent no meaningful air connectivity for our analysis.
 
@@ -588,7 +656,7 @@ For segment data, these all-zero rows may still have nonzero operational fields 
 
 Safety net filter using pandas `drop_duplicates()`. As of the current extract, no exact duplicates exist — the rule is a precaution for future extracts or expanded year ranges.
 
-### 9.6 Phase 5: State Name Fill
+### 10.6 Phase 5: State Name Fill
 
 BTS does not populate state/province names for international airports. Approximately 12% of rows in both datasets have blank `ORIGIN_STATE_NM` or `DEST_STATE_NM`.
 
@@ -602,7 +670,7 @@ BTS does not populate state/province names for international airports. Approxima
 
 The fill is applied to both origin and destination state columns, using a merge-on-key approach. After filling, only a handful of null states remain (airports with no matching entry in the lookup — typically very small or recently opened facilities).
 
-### 9.7 Phase 6: Re-Aggregation
+### 10.7 Phase 6: Re-Aggregation
 
 After code and city name updates (Phase 1), some rows that previously had different keys may now share identical descriptor columns. For example, after changing NLU's city name from "Zumpango, Mexico" to "Mexico City, Mexico", two rows for the same carrier/route/year/class that previously differed only in city name would become semantic duplicates.
 
@@ -611,7 +679,7 @@ The re-aggregation step collapses these duplicates by summing their metric colum
 - Market: typically ~5 duplicate groups collapsed
 - Segment: typically ~6 duplicate groups collapsed
 
-### 9.8 Phase 7: Derived Flags (Segment Only)
+### 10.8 Phase 7: Derived Flags (Segment Only)
 
 After re-aggregation, the script adds a `SCHED_REPORTED` flag column to the segment CSV. This flag marks whether each row's `DEPARTURES_SCHEDULED` value is trustworthy for schedule adherence analysis.
 
@@ -622,7 +690,7 @@ After re-aggregation, the script adds a `SCHED_REPORTED` flag column to the segm
 
 This flag is not added to market data (market records don't have DEPARTURES_SCHEDULED).
 
-### 9.9 GeoJSON Cleaning (5 Phases)
+### 10.9 GeoJSON Cleaning (5 Phases)
 
 The Airport GeoJSON goes through its own parallel cleaning process within the same script. The GeoJSON is sourced from the BTS Airport Master List, which contains time-versioned entries — multiple features per airport tracking name, code, and coordinate changes over time.
 
@@ -668,7 +736,7 @@ All other properties (AIRPORT_ID, IS_LATEST, state, country, ICAO codes, etc.) a
 
 ---
 
-## 10. Detailed Data Quality Report & Cleaning Rules
+## 11. Detailed Data Quality Report & Cleaning Rules
 
 This section provides the complete, detailed documentation of every data quality issue found in the BTS T-100 data, the investigation behind each finding, the decision rationale, and the exact correction applied. This is the authoritative reference for understanding why the data was modified.
 
@@ -683,11 +751,11 @@ This section provides the complete, detailed documentation of every data quality
 - Year distribution is complete (2015–2024) with no gaps (2020 lowest due to COVID)
 - Country names are consistent with no misspellings
 
-### 10.1 Issues Corrected
+### 11.1 Issues Corrected
 
 These issues are addressed via `data-cleaning.csv` and the lookup file `missing-states.csv`.
 
-#### 10.1.1 Missing State Names
+#### 11.1.1 Missing State Names
 
 **Anomaly:**
 `ORIGIN_STATE_NM` and `DEST_STATE_NM` are blank for approximately 12% of rows in both datasets. All missing values correspond to international (non-US) airports. BTS does not populate state/province names for airports outside the United States.
@@ -710,7 +778,7 @@ A lookup file `missing-states.csv` was created with 460 entries covering every u
 
 **Ambiguity check:** Every airport code + city name combination maps to exactly one state. No ambiguous lookups were found.
 
-#### 10.1.2 NLU City Name Standardization
+#### 11.1.2 NLU City Name Standardization
 
 **Anomaly:**
 Airport ID 16852 (NLU — Felipe Ángeles International Airport) appears with two different city names:
@@ -733,7 +801,7 @@ Change all `ORIGIN_CITY_NAME` and `DEST_CITY_NAME` values from `"Zumpango, Mexic
 
 Affected rows: Market 20, Segment 22
 
-#### 10.1.3 Airport Code Updates (Same Airport ID, Multiple Codes)
+#### 11.1.3 Airport Code Updates (Same Airport ID, Multiple Codes)
 
 BTS uses Airport ID as the true unique identifier for an airport. Over time, the FAA or IATA code assigned to an airport can change. In these cases, the Airport ID remains stable but the code column shows different values across years. The correction standardizes all rows to the most current code.
 
@@ -783,7 +851,7 @@ Berlin Schönefeld Airport (SXF) was absorbed into the new Berlin Brandenburg Ai
 **Correction:** Change `SXF` to `BER` for all rows where Airport ID = 15081.
 Affected rows: Market 0, Segment 1
 
-#### 10.1.4 T4X Code Conflict (Same Code, Multiple Airport IDs)
+#### 11.1.4 T4X Code Conflict (Same Code, Multiple Airport IDs)
 
 **Anomaly:**
 The code `T4X` is shared by two different Airport IDs pointing to two different cities:
@@ -806,7 +874,7 @@ This is an unidentifiable facility — only charter data from one or two carrier
 **Correction:** Delete all rows where Airport ID = 16706.
 Affected rows: Market 2, Segment 4
 
-#### 10.1.5 DEPARTURES_SCHEDULED Outliers (Segment Only)
+#### 11.1.5 DEPARTURES_SCHEDULED Outliers (Segment Only)
 
 **Anomaly:**
 A handful of segment rows have `DEPARTURES_SCHEDULED` values that are orders of magnitude larger than `DEPARTURES_PERFORMED`, clearly indicating data entry errors (extra digits or miskeyed values).
@@ -825,12 +893,12 @@ These are rare but would skew any analysis using `DEPARTURES_SCHEDULED` as a den
 
 **Correction:** Set `DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED` for affected rows. The assumption is that the scheduled count was a data entry error and the performed count is reliable.
 
-> **In the current 2015–2024 extract:** All 16 rows matching ratio > 100 belong to **Kalitta Charters II** (Class P, years 2015 and 2017). These same rows are also caught by the charter-specific ratio > 10 rule in Section 10.1.6 — the general rule fires first, so in practice the two rules overlap on these 16 rows.
+> **In the current 2015–2024 extract:** All 16 rows matching ratio > 100 belong to **Kalitta Charters II** (Class P, years 2015 and 2017). These same rows are also caught by the charter-specific ratio > 10 rule in Section 11.1.6 — the general rule fires first, so in practice the two rules overlap on these 16 rows.
 
-#### 10.1.6 DEPARTURES_SCHEDULED Charter Carrier Outliers (Segment Only)
+#### 11.1.6 DEPARTURES_SCHEDULED Charter Carrier Outliers (Segment Only)
 
 **Anomaly:**
-Class P (non-scheduled civilian) and Class L (charter) carriers should not report scheduled departures — 99.4% of Class P rows correctly have `DEPARTURES_SCHEDULED = 0`. However, a small number of charter carrier rows report non-zero `DEPARTURES_SCHEDULED` with implausibly high ratios to `DEPARTURES_PERFORMED`, showing the same systematic data entry error pattern as the >100× outliers in Section 10.1.5.
+Class P (non-scheduled civilian) and Class L (charter) carriers should not report scheduled departures — 99.4% of Class P rows correctly have `DEPARTURES_SCHEDULED = 0`. However, a small number of charter carrier rows report non-zero `DEPARTURES_SCHEDULED` with implausibly high ratios to `DEPARTURES_PERFORMED`, showing the same systematic data entry error pattern as the >100× outliers in Section 11.1.5.
 
 **Affected carriers (in the 2015–2024 extract):**
 
@@ -846,9 +914,9 @@ The 10–100× ratio range for mainstream Class F carriers (392 total rows) cont
 
 **Detection rule:** Rows where `CLASS IN ('P', 'L')` and `DEPARTURES_PERFORMED > 0` and `DEPARTURES_SCHEDULED / DEPARTURES_PERFORMED > 10`.
 
-**Correction:** Set `DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED` for affected rows. Applied after the general >100× correction (Section 10.1.5) to avoid double-counting.
+**Correction:** Set `DEPARTURES_SCHEDULED = DEPARTURES_PERFORMED` for affected rows. Applied after the general >100× correction (Section 11.1.5) to avoid double-counting.
 
-#### 10.1.7 PASSENGERS Exceeding SEATS (Segment Only)
+#### 11.1.7 PASSENGERS Exceeding SEATS (Segment Only)
 
 **Anomaly:**
 A small number of segment rows report `PASSENGERS > SEATS` where `SEATS > 0`. These are reporting errors — passengers cannot exceed available seat capacity.
@@ -857,7 +925,7 @@ A small number of segment rows report `PASSENGERS > SEATS` where `SEATS > 0`. Th
 
 **Correction:** Cap `PASSENGERS` at `SEATS` for affected rows. Only applies to segment data (market data does not have a SEATS column).
 
-#### 10.1.8 T8X City Name Correction (McKinney, TX)
+#### 11.1.8 T8X City Name Correction (McKinney, TX)
 
 **Anomaly:**
 Airport ID 16755 (T8X — Collin County Regional Airport at McKinney) is labeled `"Dallas, TX"` by BTS, but the airport is located in McKinney, TX (~35 miles north of Dallas).
@@ -870,13 +938,13 @@ Airport ID 16755 (T8X — Collin County Regional Airport at McKinney) is labeled
 
 Affected rows: Market 46, Segment 47
 
-> **Context:** T8X is one of seven T-prefix FAA LID codes for small Texas airports in the data (see Section 10.4.6). It is the only one with a factual city-name error — the others have correct city labels. T8X is also the most active of the group, with charter passenger service and cargo operations (Ameristar Air Cargo) spanning 2019–2025.
+> **Context:** T8X is one of seven T-prefix FAA LID codes for small Texas airports in the data (see Section 12.4.6). It is the only one with a factual city-name error — the others have correct city labels. T8X is also the most active of the group, with charter passenger service and cargo operations (Ameristar Air Cargo) spanning 2019–2025.
 
-### 10.2 Issues Filtered Out
+### 11.2 Issues Filtered Out
 
 These rows are not corrected but are excluded during cleaning because they do not represent meaningful air connectivity.
 
-#### 10.2.1 Self-Flight Rows (Same Origin and Destination)
+#### 11.2.1 Self-Flight Rows (Same Origin and Destination)
 
 **Anomaly:** Rows where origin and destination airport are identical (ORIGIN = DEST, e.g., DFW→DFW, AUS→AUS).
 
@@ -893,7 +961,7 @@ These rows are not corrected but are excluded during cleaning because they do no
 
 **Action:** Filter out during cleaning. Tagged in `data-cleaning.csv` as `Action = filter`, `Correction_Type = Zero_Distance`.
 
-#### 10.2.2 All-Zero Activity Rows
+#### 11.2.2 All-Zero Activity Rows
 
 **Anomaly:** Rows where `PASSENGERS = 0`, `FREIGHT = 0`, and `MAIL = 0` simultaneously.
 
@@ -912,7 +980,7 @@ These rows are not corrected but are excluded during cleaning because they do no
 For this project, route activity is defined by traffic movement (PASSENGERS, FREIGHT, MAIL). If all three are zero, the row is excluded even when operational fields (for segment data) are nonzero.
 
 **Overlap with self-flights:**
-The self-flight rows (Section 10.2.1) partially overlap with all-zero rows. Unique rows to filter:
+The self-flight rows (Section 11.2.1) partially overlap with all-zero rows. Unique rows to filter:
 - **Market:** 11,921 (all-zero) + 70 (self-flights with activity) = **11,991 unique rows**
 - **Segment:** 14,552 (all-zero) + 175 (self-flights with activity) = **14,727 unique rows**
 
@@ -968,15 +1036,15 @@ Market data has no departure columns — only PASSENGERS, FREIGHT, MAIL. A zero-
 
 The 24% with segment traffic reflects how BTS market data counts passengers at the journey level: if a plane flew a leg empty but that leg was part of a larger routing, the market row for that specific O-D pair shows zero.
 
-#### 10.2.3 Exact Duplicate Rows
+#### 11.2.3 Exact Duplicate Rows
 
 **Anomaly:** Rows where every column is identical to another row — data artifacts from the extraction or BTS source.
 
 **Action:** Filter out using pandas `drop_duplicates()`. As of the current extract, **no exact duplicates were found in either dataset** — the rule is a safety net for future extracts or expanded year ranges.
 
-### 10.3 Issues Acknowledged but Not Corrected
+### 11.3 Issues Acknowledged but Not Corrected
 
-#### 10.3.1 Missing Carrier Names (2015 Charter Flights)
+#### 11.3.1 Missing Carrier Names (2015 Charter Flights)
 
 **Anomaly:** 27 rows have a blank `CARRIER_NAME` in both datasets (identical rows). All 27 share the same characteristics:
 - Year: 2015
@@ -1027,11 +1095,11 @@ However, since these carriers already have their own named rows on the same rout
 
 **Decision:** No correction applied. The 27 rows (< 0.03% of either dataset) are left as-is with blank carrier names. The rows still contain valid route, passenger, and distance data that can be used in analysis. Only carrier-level breakdowns would be affected.
 
-### 10.4 Known Anomalies (No Action Required)
+### 11.4 Known Anomalies (No Action Required)
 
 These are data quirks observed during the audit that do not require correction or filtering because they do not affect the analysis at the chosen level of aggregation.
 
-#### 10.4.1 Aeromexico VSA→IAH Cumulative Filing (2004/09)
+#### 11.4.1 Aeromexico VSA→IAH Cumulative Filing (2004/09)
 
 **Anomaly (in BTS_SEGMENT):** A single record for Aeromexico on the VSA (Minatitlán, Mexico) → IAH (Houston, TX) route in September 2004 reports 1,461 departures performed and ~108,000 passengers in one month. This is the only record for this carrier-route combination in 2004.
 
@@ -1039,7 +1107,7 @@ These are data quirks observed during the audit that do not require correction o
 
 **Why no action is needed:** Since this project aggregates data at the **yearly** level, the annual totals for 2004 remain correct regardless of which month the data was filed under. The anomaly would only distort monthly or seasonal analysis.
 
-#### 10.4.2 BTS_SEGMENT Record Granularity (Split by Aircraft Type)
+#### 11.4.2 BTS_SEGMENT Record Granularity (Split by Aircraft Type)
 
 **Anomaly:** BTS_SEGMENT data is split by **aircraft type** within each carrier/route/month combination. For example, American Airlines (AA) DFW→MEX in January 2023 has two rows: one for aircraft type 698 (9 departures) and one for aircraft type 614 (109 departures).
 
@@ -1047,7 +1115,7 @@ These are data quirks observed during the audit that do not require correction o
 
 **Why no action is needed:** The extraction scripts already aggregate across aircraft types when rolling up to yearly totals. This note is recorded so that analysts working with the raw monthly data or the source database understand why multiple rows may appear for what looks like the same carrier-route-month.
 
-#### 10.4.3 Performed > Scheduled (Within Valid Range)
+#### 11.4.3 Performed > Scheduled (Within Valid Range)
 
 **Anomaly (in BTS_SEGMENT raw extract):** Some rows have `DEPARTURES_PERFORMED > DEPARTURES_SCHEDULED` even when scheduled > 0.
 
@@ -1057,7 +1125,7 @@ Current profile (2015–2024 extract):
 
 **Why no action is needed:** Most cases are modest deviations and are treated as operational/reporting variance. Only extreme scheduled-outlier cases (scheduled/performed > 100) are corrected.
 
-#### 10.4.4 PASSENGERS > 0 with SEATS = 0 (Class P Edge Case)
+#### 11.4.4 PASSENGERS > 0 with SEATS = 0 (Class P Edge Case)
 
 **Anomaly (in BTS_SEGMENT raw extract):** A very small number of rows report `PASSENGERS > 0` while `SEATS = 0`, all in `CLASS = P`.
 
@@ -1065,7 +1133,7 @@ Current profile: 4 rows where `PASSENGERS > 0 & SEATS = 0 & DEPARTURES_PERFORMED
 
 **Why no action is needed:** The cases are rare, low-impact, and outside scheduled-service adherence logic. They are tracked as an edge-case anomaly.
 
-#### 10.4.5 Semantic Duplicates After Normalization
+#### 11.4.5 Semantic Duplicates After Normalization
 
 **Anomaly (transformation artifact):** After applying code/city standardization updates (for example, NLU city normalization), some rows can collapse into identical descriptor keys while retaining split metric values.
 
@@ -1073,9 +1141,9 @@ Current profile before re-aggregation:
 - Market: 5 duplicate descriptor groups
 - Segment: 6 duplicate descriptor groups
 
-**Action in pipeline:** `Apply_Data_Cleaning.py` re-aggregates metrics by descriptor keys after updates/corrections/filters/fill so normalized duplicates are collapsed deterministically (see Section 9.7).
+**Action in pipeline:** `Apply_Data_Cleaning.py` re-aggregates metrics by descriptor keys after updates/corrections/filters/fill so normalized duplicates are collapsed deterministically (see Section 10.7).
 
-#### 10.4.6 T-Prefix FAA LID Airport Codes (7 Small TX Airports)
+#### 11.4.6 T-Prefix FAA LID Airport Codes (7 Small TX Airports)
 
 **Anomaly:** Seven airport codes beginning with "T" followed by a digit or alphanumeric suffix appear in the data. These are FAA Location Identifiers (FAA LIDs) for small Texas airports that do not have IATA codes.
 
@@ -1092,30 +1160,30 @@ Current profile before re-aggregation:
 Combined: 88 market + 92 segment rows (~250 total passengers and ~33K lbs freight across all 7 airports over 10 years).
 
 **Why no action is needed:**
-1. **Valid FAA codes** — Unlike T1X/T4X (Section 10.1.3c/10.1.4), which had dual codes for the same airport ID, these T-codes are the *sole* identifier for their airport ID. There is no "correct" IATA code to normalize to.
+1. **Valid FAA codes** — Unlike T1X/T4X (Section 11.1.3c/11.1.4), which had dual codes for the same airport ID, these T-codes are the *sole* identifier for their airport ID. There is no "correct" IATA code to normalize to.
 2. **Negligible volume** — noise-level data.
 3. **Legitimate activity** — all rows are charter, non-scheduled cargo, all-cargo, or commuter. These represent real charter flights, air taxi operations, and FedEx feeder routes.
-4. **T8X city name corrected** — the only factual error (BTS labeling McKinney as "Dallas") is addressed in Section 10.1.8.
+4. **T8X city name corrected** — the only factual error (BTS labeling McKinney as "Dallas") is addressed in Section 11.1.8.
 
 > **Note for future analysts:** If new T-prefix codes appear in expanded data, check whether they share an Airport ID with an existing IATA/FAA code (like T1X/T4X did). If so, normalize. If the T-code is the sole identifier, leave it as-is.
 
-### 10.5 GeoJSON-Specific Cleaning Details
+### 11.5 GeoJSON-Specific Cleaning Details
 
 The airport GeoJSON is sourced from the BTS Airport Master List. It requires cleaning steps beyond the CSV corrections because the master list contains time-versioned entries (multiple features per airport) and some code mismatches.
 
-#### 10.5.1 Filter to Latest Records
+#### 11.5.1 Filter to Latest Records
 
 **Issue:** The raw GeoJSON contains 4,981 features but only 1,354 unique AIRPORT_IDs. Each airport has multiple time-versioned entries (average 3.68 features per ID) tracking coordinate/name changes over time. Only the `IS_LATEST=1` entry per airport is current.
 
 **Action:** Filter to `AIRPORT_IS_LATEST = 1` only. Result: 4,981 → 1,354 features.
 
-#### 10.5.2 Scope to Corrected CSV Airport IDs
+#### 11.5.2 Scope to Corrected CSV Airport IDs
 
 **Issue:** After filtering to latest, 79 airports remain in the GeoJSON that do not appear in the corrected Market or Segment CSVs. These are airports that were only referenced in rows that got deleted or filtered out.
 
 **Action:** Keep only AIRPORT_IDs present in the union of corrected Market and Segment data. Result: 1,354 → 1,275 features.
 
-#### 10.5.3 GeoJSON Code Mismatch (XJD → IUD)
+#### 11.5.3 GeoJSON Code Mismatch (XJD → IUD)
 
 **Anomaly:** Airport ID 15968 (Al Udeid Air Base, Doha, Qatar) has code `XJD` in the Airport Master List but appears as `IUD` in the BTS Market and Segment data.
 
@@ -1123,44 +1191,44 @@ The airport GeoJSON is sourced from the BTS Airport Master List. It requires cle
 Affected features: 1
 
 **Additional GeoJSON corrections applied from CSV rules:**
-- Airport ID 16879: T4X → AQO (code correction, same as CSV Section 10.1.4a)
-- Airport ID 16706: deleted (same as CSV Section 10.1.4b)
+- Airport ID 16879: T4X → AQO (code correction, same as CSV Section 11.1.4a)
+- Airport ID 16706: deleted (same as CSV Section 11.1.4b)
 
-### 10.6 Cleaning Summary Table
+### 11.6 Cleaning Summary Table
 
 | # | Issue | Type | Market Rows | Segment Rows | GeoJSON | Action |
 |---|---|---|---|---|---|---|
-| 10.1.1 | Missing state names | Data gap | ~13,200 | ~13,400 | 436 | Fill via `missing-states.csv` |
-| 10.1.2 | NLU city name | Standardization | 20 | 22 | — | Update to "Mexico City, Mexico" |
-| 10.1.3a | Concord, NC (JQF → USA) | Code update | 24 | 24 | — | Update code |
-| 10.1.3b | Jacksonville, FL (NZC → VQQ) | Code update | 1 | 1 | — | Update code |
-| 10.1.3c | Gainesville, TX (T1X → GLE) | Code update | 4 | 6 | — | Update code |
-| 10.1.3d | Berlin (SXF → BER) | Code update | 0 | 1 | — | Update code |
-| 10.1.4a | Llano, TX (T4X → AQO) | Code update | 49 | 49 | 1 | Update code |
-| 10.1.4b | Austin, TX (ID 16706) | Unreliable data | 2 | 4 | 3 | Delete |
-| 10.1.5 | DEPARTURES_SCHEDULED outliers | Data entry error | — | ratio > 100 | — | Correct (set = performed) |
-| 10.1.6 | Charter DEPARTURES_SCHEDULED outliers | Charter data entry error | — | Class P/L, ratio > 10 | — | Correct (set = performed) |
-| 10.1.7 | PASSENGERS exceeding SEATS | Reporting error | — | PAX > SEATS | — | Correct (cap at SEATS) |
-| 10.1.8 | T8X city name (Dallas → McKinney) | City name error | 46 | 47 | — | Update city name |
-| 10.2.1 | Self-flight rows (ORIGIN=DEST) | Not real routes | 237 | 316 | — | Filter out |
-| 10.2.2 | All-zero activity | No activity | 11,921 | 14,552 | — | Filter out |
-| 10.2.3 | Exact duplicate rows | Data artifact | 0 | 0 | — | Filter out (safety net) |
-| 10.3.1 | Missing carrier names | Unresolvable | 27 | 27 | — | Acknowledged |
-| 10.4.3 | Performed > scheduled (sched>0) | Operational variance | — | 1,417 | — | Documented; no correction |
-| 10.4.4 | PASSENGERS > 0 with SEATS = 0 | Edge case | — | 4 | — | Documented; monitor |
-| 10.4.5 | Semantic duplicates after normalization | Transformation artifact | 5 groups | 6 groups | — | Re-aggregate in cleaner |
-| 10.4.6 | T-prefix FAA LID codes (7 small TX airports) | Valid FAA identifiers | 88 | 92 | — | No action; documented |
-| 10.5.1 | GeoJSON multi-version | Processing | — | — | 3,627 | Filter to IS_LATEST=1 |
-| 10.5.2 | GeoJSON orphan airports | Processing | — | — | 79 | Scope to CSV IDs |
-| 10.5.3 | Al Udeid (XJD → IUD) | Code mismatch | — | — | 1 | Update code |
+| 11.1.1 | Missing state names | Data gap | ~13,200 | ~13,400 | 436 | Fill via `missing-states.csv` |
+| 11.1.2 | NLU city name | Standardization | 20 | 22 | — | Update to "Mexico City, Mexico" |
+| 11.1.3a | Concord, NC (JQF → USA) | Code update | 24 | 24 | — | Update code |
+| 11.1.3b | Jacksonville, FL (NZC → VQQ) | Code update | 1 | 1 | — | Update code |
+| 11.1.3c | Gainesville, TX (T1X → GLE) | Code update | 4 | 6 | — | Update code |
+| 11.1.3d | Berlin (SXF → BER) | Code update | 0 | 1 | — | Update code |
+| 11.1.4a | Llano, TX (T4X → AQO) | Code update | 49 | 49 | 1 | Update code |
+| 11.1.4b | Austin, TX (ID 16706) | Unreliable data | 2 | 4 | 3 | Delete |
+| 11.1.5 | DEPARTURES_SCHEDULED outliers | Data entry error | — | ratio > 100 | — | Correct (set = performed) |
+| 11.1.6 | Charter DEPARTURES_SCHEDULED outliers | Charter data entry error | — | Class P/L, ratio > 10 | — | Correct (set = performed) |
+| 11.1.7 | PASSENGERS exceeding SEATS | Reporting error | — | PAX > SEATS | — | Correct (cap at SEATS) |
+| 11.1.8 | T8X city name (Dallas → McKinney) | City name error | 46 | 47 | — | Update city name |
+| 11.2.1 | Self-flight rows (ORIGIN=DEST) | Not real routes | 237 | 316 | — | Filter out |
+| 11.2.2 | All-zero activity | No activity | 11,921 | 14,552 | — | Filter out |
+| 11.2.3 | Exact duplicate rows | Data artifact | 0 | 0 | — | Filter out (safety net) |
+| 11.3.1 | Missing carrier names | Unresolvable | 27 | 27 | — | Acknowledged |
+| 11.4.3 | Performed > scheduled (sched>0) | Operational variance | — | 1,417 | — | Documented; no correction |
+| 11.4.4 | PASSENGERS > 0 with SEATS = 0 | Edge case | — | 4 | — | Documented; monitor |
+| 11.4.5 | Semantic duplicates after normalization | Transformation artifact | 5 groups | 6 groups | — | Re-aggregate in cleaner |
+| 11.4.6 | T-prefix FAA LID codes (7 small TX airports) | Valid FAA identifiers | 88 | 92 | — | No action; documented |
+| 11.5.1 | GeoJSON multi-version | Processing | — | — | 3,627 | Filter to IS_LATEST=1 |
+| 11.5.2 | GeoJSON orphan airports | Processing | — | — | 79 | Scope to CSV IDs |
+| 11.5.3 | Al Udeid (XJD → IUD) | Code mismatch | — | — | 1 | Update code |
 
 ---
 
-## 11. Final Output Files (Process Data)
+## 12. Final Output Files (Process Data)
 
 The cleaned, analysis-ready files are written to `03_Process_Data/BTS/`.
 
-### 11.1 Market CSV — Column Definitions
+### 12.1 Market CSV — Column Definitions
 
 **File:** `BTS_T-100_Market_2015-2024.csv`
 
@@ -1178,38 +1246,52 @@ The cleaned, analysis-ready files are written to `03_Process_Data/BTS/`.
 | 10 | DEST_STATE_NM | String | Destination state/province/region | Quintana Roo |
 | 11 | DEST_COUNTRY_NAME | String | Destination country name | Mexico |
 | 12 | CARRIER_NAME | String | Airline name (may be blank for 27 unidentified charter rows) | American Airlines Inc. |
-| 13 | CLASS | String | Service class code (see Section 11.4) | F |
+| 13 | CLASS | String | Service class code (see Section 12.4) | F |
 | 14 | PASSENGERS | Integer | Annual enplaned passenger count (origin-to-destination) | 145230 |
 | 15 | FREIGHT | Integer | Annual freight enplaned, in pounds | 2340567 |
 | 16 | MAIL | Integer | Annual mail enplaned, in pounds | 15420 |
-| 17 | DATA_SOURCE | String | Two-character BTS reporting source (see Section 11.5) | DU |
+| 17 | DATA_SOURCE | String | Two-character BTS reporting source (see Section 12.5) | DU |
 
 **Each row represents:** One airline's annual traffic on one origin→destination market, for one service class and data source combination.
 
-### 11.2 Segment CSV — Column Definitions
+### 12.2 Segment CSV — Column Definitions
 
 **File:** `BTS_T-100_Segment_2015-2024.csv`
 
-Contains all 17 columns from the Market CSV (same definitions), plus 4 additional operational columns:
+Contains all 13 common columns from the Market CSV (1–13, same definitions), plus `AIRCRAFT_GROUP` and 4 additional operational columns:
 
 | # | Column | Type | Description | Example |
 |---|---|---|---|---|
-| 14 | DEPARTURES_SCHEDULED | Integer | Annual number of departures the carrier was authorized/scheduled to operate on this segment | 365 |
-| 15 | DEPARTURES_PERFORMED | Integer | Annual number of departures actually operated | 358 |
-| 16 | PAYLOAD | Integer | Annual total payload capacity, in pounds (weight the aircraft can carry including passengers, bags, freight, mail) | 12500000 |
-| 17 | SEATS | Integer | Annual total available seats on all departures | 65700 |
-| 18 | PASSENGERS | Integer | Annual passengers transported on this segment (counted each leg) | 58430 |
-| 19 | FREIGHT | Integer | Annual freight transported, in pounds | 1870000 |
-| 20 | MAIL | Integer | Annual mail transported, in pounds | 9800 |
-| 21 | DATA_SOURCE | String | Two-character BTS reporting source | IU |
+| 14 | AIRCRAFT_GROUP | Integer | BTS aircraft group classification (0–8). See aircraft group codes below. | 6 |
+| 15 | DEPARTURES_SCHEDULED | Integer | Annual number of departures the carrier was authorized/scheduled to operate on this segment | 365 |
+| 16 | DEPARTURES_PERFORMED | Integer | Annual number of departures actually operated | 358 |
+| 17 | PAYLOAD | Integer | Annual total payload capacity, in pounds (weight the aircraft can carry including passengers, bags, freight, mail) | 12500000 |
+| 18 | SEATS | Integer | Annual total available seats on all departures | 65700 |
+| 19 | PASSENGERS | Integer | Annual passengers transported on this segment (counted each leg) | 58430 |
+| 20 | FREIGHT | Integer | Annual freight transported, in pounds | 1870000 |
+| 21 | MAIL | Integer | Annual mail transported, in pounds | 9800 |
+| 22 | DATA_SOURCE | String | Two-character BTS reporting source | IU |
 
-**Each row represents:** One airline's annual operations on one flight segment (origin→destination), for one service class and data source combination.
+**AIRCRAFT_GROUP codes:**
+
+| Code | Description | Typical Aircraft |
+|---|---|---|
+| 0 | Unknown | Unclassified |
+| 1 | Piston | Small propeller aircraft |
+| 3 | Turbojet (3+ Engine) | Older multi-engine jets |
+| 4 | Turboprop | Regional turboprops (ATR, Dash 8) |
+| 5 | Regional Jet | Small jets (CRJ, ERJ) |
+| 6 | Narrow-Body Jet | Single-aisle (Boeing 737, Airbus A320) — dominates at ~95% of TX/MX records |
+| 7 | Wide-Body Jet | Twin-aisle (Boeing 787, 777, Airbus A330) |
+| 8 | Wide-Body (3+ Engine) | Large wide-body/jumbo (Boeing 747, Airbus A380) |
+
+**Each row represents:** One airline's annual operations on one flight segment (origin→destination), for one service class, data source, and aircraft group combination.
 
 **Important note on DEPARTURES_SCHEDULED:**
 - Foreign carriers (`DATA_SOURCE` = IF or DF) do not report scheduled departures — the value is always 0. This is a BTS reporting convention, not missing data.
 - Charter/non-scheduled carriers (`CLASS` = L or P) have no scheduled departures by definition — 99.4% correctly report 0.
 
-### 11.3 Airport GeoJSON — Structure & Properties
+### 12.3 Airport GeoJSON — Structure & Properties
 
 **File:** `BTS_T-100_Airports_2015-2024.geojson`
 
@@ -1230,7 +1312,7 @@ A standard GeoJSON FeatureCollection containing Point features for each airport 
 
 **Usage:** The GeoJSON provides airport display names and geographic coordinates for mapping and spatial analysis. The `AIRPORT` code is the join key linking GeoJSON features to rows in the Market and Segment CSVs. All other airport data (traffic, carriers, routes) comes from the CSVs.
 
-### 11.4 CLASS Values (Service Class)
+### 12.4 CLASS Values (Service Class)
 
 | Code | Name | Description |
 |---|---|---|
@@ -1239,7 +1321,7 @@ A standard GeoJSON FeatureCollection containing Point features for each airport 
 | L | Charter | Charter flights — ad-hoc service not on a regular schedule |
 | P | Non-Scheduled Civilian | Non-scheduled service including air taxi, commuter charters, and non-scheduled cargo |
 
-### 11.5 DATA_SOURCE Values
+### 12.5 DATA_SOURCE Values
 
 The DATA_SOURCE column is a two-character code that encodes two dimensions:
 
@@ -1260,58 +1342,58 @@ The DATA_SOURCE column is a two-character code that encodes two dimensions:
 
 **Key implication:** Foreign carriers (DATA_SOURCE ending in `F`) do not report `DEPARTURES_SCHEDULED` — that field is always 0 for IF and DF records.
 
-### 11.6 Output Statistics
+### 12.6 Output Statistics
 
 | Metric | Market | Segment |
 |---|---|---|
-| Raw extracted rows | ~106,000 | ~109,000 |
-| Cleaned output rows | ~94,000 | ~94,000 |
-| Rows removed by cleaning | ~12,000 | ~15,000 |
-| Columns | 17 | 21 |
+| Raw extracted rows | ~106,000 | ~112,000 |
+| Cleaned output rows | ~94,000 | ~96,000 |
+| Rows removed by cleaning | ~12,000 | ~16,000 |
+| Columns | 17 | 23 |
 | Year range | 2015–2024 | 2015–2024 |
 | Unique airports | ~1,275 | ~1,275 |
 
 ---
 
-## 12. Known Data Characteristics
+## 13. Known Data Characteristics
 
 These are patterns in the data that may look unusual but are **not errors**. Understanding them prevents misinterpretation.
 
-### 12.1 Foreign Carriers Report Zero Scheduled Departures
+### 13.1 Foreign Carriers Report Zero Scheduled Departures
 
 All `DATA_SOURCE = IF` or `DF` records have `DEPARTURES_SCHEDULED = 0`. This is because foreign carriers report to BTS under different rules and are not required to provide schedule data. Their `DEPARTURES_PERFORMED` values are reliable.
 
-### 12.2 Charter/Non-Scheduled Carriers Have No Scheduled Departures
+### 13.2 Charter/Non-Scheduled Carriers Have No Scheduled Departures
 
-`CLASS = L` (charter) and `CLASS = P` (non-scheduled) services are by definition not scheduled. 99.4% of Class P rows correctly report `DEPARTURES_SCHEDULED = 0`. The small number with nonzero values are data entry errors that the pipeline corrects (see Section 9.3b).
+`CLASS = L` (charter) and `CLASS = P` (non-scheduled) services are by definition not scheduled. 99.4% of Class P rows correctly report `DEPARTURES_SCHEDULED = 0`. The small number with nonzero values are data entry errors that the pipeline corrects (see Section 10.3b).
 
-### 12.3 Segment Data Was Originally Split by Aircraft Type
+### 13.3 Segment Data Was Originally Split by Aircraft Type
 
 In the raw BTS database, segment data has separate rows for each aircraft type used on a route. For example, American Airlines operating DFW→MEX with both Boeing 737s and Airbus A321s in January would have two rows. Our extraction aggregates across aircraft types to produce one row per carrier/route/year/class/source — but this is why the raw segment table has more records than market.
 
-### 12.4 Performed > Scheduled is Normal (Within Reason)
+### 13.4 Performed > Scheduled is Normal (Within Reason)
 
 About 1,400 segment rows have `DEPARTURES_PERFORMED > DEPARTURES_SCHEDULED`. Small deviations are normal (extra sections, demand-driven additions). Only extreme outliers (>100× ratio) are corrected.
 
-### 12.5 Missing Carrier Names (27 Rows)
+### 13.5 Missing Carrier Names (27 Rows)
 
 27 rows in both datasets have blank `CARRIER_NAME` — all from 2015, all Class L (charter), connecting military-adjacent airports with Texas border cities and Central American destinations. Likely a government/military charter operation. The rows are retained because they contain valid route and traffic data; only carrier-level breakdowns are affected.
 
-### 12.6 COVID-19 Impact (2020)
+### 13.6 COVID-19 Impact (2020)
 
 2020 has the lowest traffic volumes across all metrics due to the pandemic. Year-over-year comparisons should account for this. The year distribution is otherwise complete with no gaps.
 
-### 12.7 T-Prefix FAA LID Codes
+### 13.7 T-Prefix FAA LID Codes
 
 Seven small Texas airports use FAA Location Identifier codes starting with "T" (T6X, T8X, T82, T2X, T3X, T5X, T9X). These are legitimate FAA codes for airports without IATA codes. Combined volume is negligible (~250 passengers across all 7 airports over 10 years). They are left as-is because no "correct" IATA code exists to normalize to.
 
-### 12.8 AIRPORT_ID Is the True Unique Identifier
+### 13.8 AIRPORT_ID Is the True Unique Identifier
 
-Airport codes (IATA/FAA) can change over time and can be reused across different airports. The `AIRPORT_ID` column is the stable, unique identifier assigned by US DOT. Always join or track airports by `AIRPORT_ID`, not by airport code, for reliable longitudinal analysis. The code updates in Section 9.2 normalize historical code changes so that the code column is also consistent, but `AIRPORT_ID` remains the authoritative key.
+Airport codes (IATA/FAA) can change over time and can be reused across different airports. The `AIRPORT_ID` column is the stable, unique identifier assigned by US DOT. Always join or track airports by `AIRPORT_ID`, not by airport code, for reliable longitudinal analysis. The code updates in Section 10.2 normalize historical code changes so that the code column is also consistent, but `AIRPORT_ID` remains the authoritative key.
 
 ---
 
-## 13. Directory Structure
+## 14. Directory Structure
 
 ```
 Task 6 - Airport Connectivity/
@@ -1338,6 +1420,7 @@ Task 6 - Airport Connectivity/
 │       │
 │       └── Script/
 │           ├── Data Pipeline README.md             # ← This file
+│           ├── raw-BTS-data-to-DB.py              # Step 0: Build SQLite DB from raw zip files (one-time setup)
 │           ├── Extract_BTS_Data.py                # Step 1: Extract & aggregate from DB
 │           ├── Verify_Corrections.py              # Step 2: Verify rules & scan anomalies
 │           ├── Apply_Data_Cleaning.py             # Step 3: Clean & output final files
@@ -1365,7 +1448,7 @@ Task 6 - Airport Connectivity/
 
 ---
 
-## 14. How to Run the Pipeline
+## 15. How to Run the Pipeline
 
 All scripts use relative paths from their own location — they can be run from any working directory.
 
@@ -1379,6 +1462,10 @@ All scripts use relative paths from their own location — they can be run from 
 ### Full Pipeline Run
 
 ```bash
+# Step 0 (one-time): Build SQLite database from raw BTS zip files
+# Edit paths in raw-BTS-data-to-DB.py first, then run:
+python raw-BTS-data-to-DB.py
+
 # Step 1: Extract data from database → writes to Script/_temp/
 python Extract_BTS_Data.py
 
@@ -1418,12 +1505,13 @@ All scripts produce structured console output with status prefixes:
 
 ---
 
-## 15. Dependencies
+## 16. Dependencies
 
 | Package | Purpose | Required By |
 |---|---|---|
 | `pandas` | Data manipulation, SQL query execution, CSV I/O | All scripts |
-| `sqlite3` | Database connectivity (Python standard library) | Extract_BTS_Data.py |
+| `sqlite3` | Database connectivity (Python standard library) | raw-BTS-data-to-DB.py, Extract_BTS_Data.py |
+| `zipfile` | Extract CSVs from zip archives (Python standard library) | raw-BTS-data-to-DB.py |
 | `geopandas` | Spatial data handling, GeoJSON creation | Extract_BTS_Data.py |
 | `shapely` | Point geometry creation | Extract_BTS_Data.py |
 | `json` | GeoJSON file I/O (Python standard library) | Apply_Data_Cleaning.py, Verify_Corrections.py |
@@ -1433,7 +1521,7 @@ All scripts produce structured console output with status prefixes:
 
 ---
 
-## 16. Supporting Files Reference
+## 17. Supporting Files Reference
 
 | File | Location | Purpose |
 |---|---|---|

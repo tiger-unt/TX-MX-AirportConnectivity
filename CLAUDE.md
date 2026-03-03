@@ -33,10 +33,14 @@ TxDOT IAC 2025-26 research project analyzing airport connectivity between Texas 
 All Python scripts live under `02_Data_Staging/BTS_Air_Carrier_Statistics/Script/`.
 Scripts use relative paths from their own location (`Path(__file__).parent`).
 
+### Step 0: Database Creation (one-time setup)
+- `raw-BTS-data-to-DB.py` — builds the SQLite database from raw BTS zip file downloads. Extracts CSVs from zip archives in `01_Raw Data/.../Raw BTS MARKET DATA/` and `Raw BTS SEGMENT DATA/`, loads them into `BTS_MARKET` and `BTS_SEGMENT` tables via `pandas.DataFrame.to_sql()`. Only needs to be re-run if rebuilding the database from scratch (e.g., adding new years of data). Paths are hardcoded in the class `__init__` — update before running.
+
 ### Step 1: Extraction
 - `Extract_BTS_Data.py` — extracts & aggregates both BTS_MARKET and BTS_SEGMENT for TX/MX connectivity, outputs raw CSVs + airport GeoJSON to `Script/_temp/`
   - Filters: Origin/Dest State = TX OR Origin/Dest Country = Mexico
   - Aggregates monthly data to annual totals via GROUP BY
+  - Segment extraction includes `AIRCRAFT_GROUP` in GROUP BY (via `SEGMENT_EXTRA_GROUP_BY`), preserving aircraft type categories per row
   - Year range: 2015-2024 (configurable via `START_YEAR`/`END_YEAR`)
 
 ### Step 2: Verification & Rule Discovery
@@ -68,7 +72,8 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 - **Foreign carriers** (DATA_SOURCE=IF/DF) don't report DEPARTURES_SCHEDULED — always 0
 - **US scheduled-service missing-as-zero** — ~14% of DU/F and ~13.5% of IU/F rows have DEPARTURES_PERFORMED > 0 but DEPARTURES_SCHEDULED = 0 (unreported schedule data). The `SCHED_REPORTED` flag marks these as 0
 - **Charter/commuter service** (CLASS=L/P) has no scheduled departures by definition
-- **Record granularity**: BTS_SEGMENT is split by aircraft type within each carrier/route/year
+- **AIRCRAFT_GROUP**: BTS aircraft group classification (0–8). Segment CSV includes this as a dimension column. Values: 1=Piston, 4=Turboprop, 5=Regional Jet, 6=Narrow-Body Jet (dominant, ~95%), 7=Wide-Body Jet, 8=Wide-Body (3+ Engine), 0=Unknown. Labels defined in `AIRCRAFT_GROUP_LABELS` (aviationHelpers.js)
+- **Record granularity**: BTS_SEGMENT is split by aircraft group within each carrier/route/year
 - **Market vs Segment**: Market counts passengers once per journey; Segment counts each flight leg separately
 - **Self-flight filter uses code equality (ORIGIN == DEST), not airport ID** — this is correct. Within a single BTS record, ORIGIN and DEST are contemporaneous (same reporting period), and IATA/FAA codes are unique at any point in time. Code reassignment (e.g., T4X) is a cross-time concern, not a within-record concern, so `ORIGIN == DEST` always implies `ORIGIN_AIRPORT_ID == DEST_AIRPORT_ID` within the same row. No change to airport-ID-based comparison is needed.
 
@@ -101,9 +106,9 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 | `/` | Overview | Hero + stat cards + nav cards to other pages |
 | `/texas-domestic` | Texas Domestic | TX origin → US destination |
 | `/texas-international` | Texas International | TX origin → non-US destination |
-| `/us-mexico` | US-Mexico | Any US ↔ Mexico (national) |
-| `/texas-mexico` | Texas-Mexico | TX ↔ Mexico (bidirectional) |
-| `/about-data` | About Data | Static: pipeline docs, glossary, quality insights |
+| `/us-mexico` | US-Mexico | Any US ↔ Mexico (national). Includes seat capacity & load factor analysis |
+| `/texas-mexico` | Texas-Mexico | TX ↔ Mexico (bidirectional). Includes service class breakdown, aircraft mix, freight intensity |
+| `/about-data` | About Data | Static: pipeline docs, glossary, quality insights, "When to Use Which" table |
 
 ### Component Architecture
 ```
@@ -119,7 +124,7 @@ src/
 ├── stores/             # aviationStore.js (data+filters), chatStore.js (AI chat)
 ├── lib/                # Utilities
 │   ├── airportUtils.js     # GeoJSON indexing, row enrichment, route aggregation (metric-parameterized)
-│   ├── aviationHelpers.js  # Route predicates, formatters, schedule adherence, BORDER_AIRPORTS, MAP_METRIC_OPTIONS
+│   ├── aviationHelpers.js  # Route predicates, formatters, schedule adherence, BORDER_AIRPORTS, MAP_METRIC_OPTIONS, AIRCRAFT_GROUP_LABELS
 │   ├── chartColors.js      # TxDOT brand palette (9 colors) + formatters
 │   ├── tokens.js           # Design tokens for D3 + dynamic styling
 │   ├── aiClient.js         # Mock AI responder (local data-driven answers)
@@ -174,6 +179,9 @@ All chart components accept a `formatValue` prop that controls how numeric value
 - **HeatmapTable**: Color-intensity HTML grid table. Props: `data` (with `rowLabels`, `colLabels`, `cells` 2D array), `formatValue`. Cell background alpha scales with value. Used for border airport O-D route matrices.
 - **ScatterPlot**: Scatter/bubble chart with two numeric axes. Props: `data`, `xKey`, `yKey`, `labelKey`, `colorKey`, `sizeKey`, `formatX`, `formatY`, `colorMap`, `labelThreshold`, `scaleType` (`'symlog'`/`'linear'`/`'log'`), `animate`. Supports `d3.scaleSymlog()` for data with extreme skew and zero values. Optional bubble sizing via `scaleSqrt`. Permanent labels on top-N points, tooltip on hover for all. Used on Texas-Mexico page for Passengers vs Freight airport activity.
 - **Map metric selector**: Each page's AirportMap has a `<select>` dropdown (via ChartCard `headerRight`) letting users switch between Passengers, Freight (lbs), Mail (lbs), and Flights. Configuration is centralized in `MAP_METRIC_OPTIONS` (aviationHelpers.js). Each option specifies the CSV field, data source (market/segment), formatter, and unit label. The map metric is page-local state (`useState`), not global store state, since it only affects map visualization. `aggregateRoutes(data, airportIndex, field)` and `aggregateAirportVolumes(data, field)` accept an optional field parameter (default `'PASSENGERS'`). AirportMap accepts `formatValue` and `metricLabel` props for popup formatting.
+- **AIRCRAFT_GROUP_LABELS constant**: `aviationHelpers.js` exports `AIRCRAFT_GROUP_LABELS` mapping BTS aircraft group codes (0–8) to readable names. Used on the Texas-Mexico page for Aircraft Mix donut chart and trend line. The segment CSV includes `AIRCRAFT_GROUP` as a dimension column (added to `SEGMENT_EXTRA_GROUP_BY` in Extract_BTS_Data.py).
+- **Service class analysis**: Texas-Mexico page includes a Service Class Breakdown section showing flight share by CLASS (F/G/L/P) as a donut chart and multi-series trend line. Uses `CLASS_LABELS` for readable names.
+- **Freight intensity**: Texas-Mexico page includes a "Freight Intensity by Route" bar chart showing average freight per departure (lbs/flight) from segment data. Only routes with ≥10 departures are included to avoid statistical noise.
 
 ### Running the WebApp
 ```bash

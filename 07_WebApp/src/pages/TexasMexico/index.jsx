@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Users, Plane, Package, Route, ArrowRightLeft, MapPin } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, BORDER_AIRPORTS, BORDER_AIRPORT_LIST, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, computeAdherenceData, CLASS_LABELS, AIRCRAFT_GROUP_LABELS, CARRIER_TYPE_LABELS, getCarrierType, BORDER_AIRPORTS, BORDER_AIRPORT_LIST, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
 import { formatNumber, CHART_COLORS } from '@/lib/chartColors'
@@ -582,6 +582,76 @@ export default function TexasMexicoPage() {
     { key: 'Mail', label: 'Mail (lbs)', render: (v) => formatNumber(v) },
   ]
 
+  /* ── service class breakdown ─────────────────────────────────────── */
+  const serviceClassShare = useMemo(() => {
+    const byClass = new Map()
+    filteredSegment.forEach((d) => {
+      const cls = d.CLASS || 'Unknown'
+      byClass.set(cls, (byClass.get(cls) || 0) + d.DEPARTURES_PERFORMED)
+    })
+    return Array.from(byClass, ([cls, value]) => ({
+      label: CLASS_LABELS[cls] || cls,
+      value,
+    })).sort((a, b) => b.value - a.value)
+  }, [filteredSegment])
+
+  const serviceClassTrend = useMemo(() => {
+    const byYC = new Map()
+    filteredSegment.forEach((d) => {
+      const cls = CLASS_LABELS[d.CLASS] || d.CLASS || 'Unknown'
+      const key = `${d.YEAR}|${cls}`
+      if (!byYC.has(key)) byYC.set(key, { year: d.YEAR, value: 0, Class: cls })
+      byYC.get(key).value += d.DEPARTURES_PERFORMED
+    })
+    return Array.from(byYC.values()).sort((a, b) => a.year - b.year || a.Class.localeCompare(b.Class))
+  }, [filteredSegment])
+
+  /* ── aircraft mix ──────────────────────────────────────────────────── */
+  const aircraftGroupShare = useMemo(() => {
+    const byGroup = new Map()
+    filteredSegment.forEach((d) => {
+      const grp = d.AIRCRAFT_GROUP
+      if (grp == null) return
+      byGroup.set(grp, (byGroup.get(grp) || 0) + d.DEPARTURES_PERFORMED)
+    })
+    return Array.from(byGroup, ([grp, value]) => ({
+      label: AIRCRAFT_GROUP_LABELS[grp] || `Group ${grp}`,
+      value,
+    })).sort((a, b) => b.value - a.value)
+  }, [filteredSegment])
+
+  const aircraftGroupTrend = useMemo(() => {
+    const byYG = new Map()
+    filteredSegment.forEach((d) => {
+      const grp = d.AIRCRAFT_GROUP
+      if (grp == null) return
+      const label = AIRCRAFT_GROUP_LABELS[grp] || `Group ${grp}`
+      const key = `${d.YEAR}|${label}`
+      if (!byYG.has(key)) byYG.set(key, { year: d.YEAR, value: 0, Aircraft: label })
+      byYG.get(key).value += d.DEPARTURES_PERFORMED
+    })
+    return Array.from(byYG.values()).sort((a, b) => a.year - b.year || a.Aircraft.localeCompare(b.Aircraft))
+  }, [filteredSegment])
+
+  /* ── freight per departure (segment-level intensity) ───────────────── */
+  const freightPerDep = useMemo(() => {
+    const byRoute = new Map()
+    filteredSegment.forEach((d) => {
+      if (d.DEPARTURES_PERFORMED <= 0) return
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} \u2192 ${d.DEST_FULL_LABEL || d.DEST}`
+      if (!byRoute.has(label)) byRoute.set(label, { label, freight: 0, deps: 0 })
+      const row = byRoute.get(label)
+      row.freight += d.FREIGHT
+      row.deps += d.DEPARTURES_PERFORMED
+    })
+    return Array.from(byRoute.values())
+      .filter((d) => d.deps >= 10)
+      .map((d) => ({ label: d.label, value: Math.round(d.freight / d.deps) }))
+      .filter((d) => d.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
+  }, [filteredSegment])
+
   /* ── map data ──────────────────────────────────────────────────────── */
   const mapDataSource = mapMetricConfig.source === 'segment' ? filteredSegment : filtered
 
@@ -1093,6 +1163,66 @@ export default function TexasMexicoPage() {
           downloadData={{ summary: { data: tableData, filename: 'tx-mx-route-details' } }}
         >
           <DataTable columns={tableColumns} data={tableData} />
+        </ChartCard>
+      </SectionBlock>
+
+      {/* Service Class Breakdown */}
+      <SectionBlock alt>
+        <div className="max-w-5xl mx-auto mb-4">
+          <h3 className="text-xl font-bold text-text-primary mb-1">Service Class Breakdown</h3>
+          <p className="text-base text-text-secondary">Charter, cargo-only, and scheduled service operations on Texas&ndash;Mexico routes.</p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <ChartCard
+            title="Flight Share by Service Class"
+            subtitle="Departures performed by class (all filtered years)"
+            downloadData={{ summary: { data: serviceClassShare, filename: 'tx-mx-service-class-share' } }}
+          >
+            <DonutChart data={serviceClassShare} formatValue={fmtCompact} />
+          </ChartCard>
+          <ChartCard
+            title="Flights by Service Class Over Time"
+            subtitle="Departures performed by class and year"
+            downloadData={{ summary: { data: serviceClassTrend, filename: 'tx-mx-service-class-trend' } }}
+          >
+            <LineChart data={serviceClassTrend} xKey="year" yKey="value" seriesKey="Class" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+        </div>
+      </SectionBlock>
+
+      {/* Aircraft Mix */}
+      <SectionBlock>
+        <div className="max-w-5xl mx-auto mb-4">
+          <h3 className="text-xl font-bold text-text-primary mb-1">Aircraft Mix</h3>
+          <p className="text-base text-text-secondary">Types of aircraft serving Texas&ndash;Mexico routes, by BTS aircraft group classification.</p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <ChartCard
+            title="Departures by Aircraft Group"
+            subtitle="Share of flights by aircraft type (all filtered years)"
+            downloadData={{ summary: { data: aircraftGroupShare, filename: 'tx-mx-aircraft-group-share' } }}
+          >
+            <DonutChart data={aircraftGroupShare} formatValue={fmtCompact} />
+          </ChartCard>
+          <ChartCard
+            title="Aircraft Group Trends"
+            subtitle="Departures by aircraft group over time"
+            downloadData={{ summary: { data: aircraftGroupTrend, filename: 'tx-mx-aircraft-group-trend' } }}
+          >
+            <LineChart data={aircraftGroupTrend} xKey="year" yKey="value" seriesKey="Aircraft" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+          </ChartCard>
+        </div>
+      </SectionBlock>
+
+      {/* Freight Per Departure */}
+      <SectionBlock alt>
+        <ChartCard
+          title="Freight Intensity by Route"
+          subtitle="Average freight per departure (lbs/flight) — top 10 routes with &ge;10 departures"
+          downloadData={{ summary: { data: freightPerDep, filename: 'tx-mx-freight-per-departure' } }}
+        >
+          <BarChart data={freightPerDep} xKey="label" yKey="value" horizontal formatValue={fmtLbs} color={CHART_COLORS[4]} />
+          <p className="text-base text-text-secondary mt-3 italic">Segment-level metric: shows how much cargo each flight actually carries, complementing market-level freight totals.</p>
         </ChartCard>
       </SectionBlock>
     </DashboardLayout>

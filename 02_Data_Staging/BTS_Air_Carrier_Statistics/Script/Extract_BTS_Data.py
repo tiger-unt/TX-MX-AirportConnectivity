@@ -95,6 +95,9 @@ GROUP_BY_COLUMNS = [
     "CLASS",
 ]
 
+# AIRCRAFT_GROUP is included in the segment GROUP BY only (not market)
+SEGMENT_EXTRA_GROUP_BY = ["AIRCRAFT_GROUP"]
+
 # DATA_SOURCE is selected but not aggregated — included in GROUP BY
 DATA_SOURCE_COL = "DATA_SOURCE"
 
@@ -113,13 +116,14 @@ WHERE (ORIGIN_STATE_ABR = 'TX'
 # FUNCTIONS
 # ============================================================================
 
-def extract_detail_data(con, table, agg_columns, label, raw_col_count, start_year, end_year):
+def extract_detail_data(con, table, agg_columns, label, raw_col_count, start_year, end_year, extra_group_by=None):
     """Extract and aggregate detail data from a BTS table."""
 
-    select_cols = ",\n    ".join(GROUP_BY_COLUMNS + agg_columns + [DATA_SOURCE_COL])
-    group_cols = ",\n    ".join(GROUP_BY_COLUMNS + [DATA_SOURCE_COL])
+    all_group_cols = GROUP_BY_COLUMNS + (extra_group_by or [])
+    select_cols = ",\n    ".join(all_group_cols + agg_columns + [DATA_SOURCE_COL])
+    group_cols = ",\n    ".join(all_group_cols + [DATA_SOURCE_COL])
     where = WHERE_CLAUSE.format(start_year=start_year, end_year=end_year)
-    output_col_count = len(GROUP_BY_COLUMNS) + len(agg_columns) + 1  # +1 for DATA_SOURCE
+    output_col_count = len(all_group_cols) + len(agg_columns) + 1  # +1 for DATA_SOURCE
 
     sql = f"""
 SELECT
@@ -224,6 +228,7 @@ def main():
         print("-" * 80)
 
         try:
+            extra = SEGMENT_EXTRA_GROUP_BY if type_key == "Segment" else None
             df = extract_detail_data(
                 con,
                 config['table'],
@@ -232,6 +237,7 @@ def main():
                 config['raw_col_count'],
                 START_YEAR,
                 END_YEAR,
+                extra_group_by=extra,
             )
         except Exception as e:
             print(f"[ERROR] Error executing query: {e}")
