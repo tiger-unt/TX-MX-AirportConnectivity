@@ -335,7 +335,7 @@ function answerBorderAirports(data) {
   const borderPct = total > 0 ? ((borderPax / total) * 100).toFixed(1) : '0'
 
   let response = `Border airports account for ${borderPct}% of passengers (${fmtCompact(borderPax)} of ${fmtCompact(total)}).\n\n`
-  response += 'Border airports: ELP (El Paso), LRD (Laredo), MFE (McAllen), HRL (Harlingen), BRO (Brownsville), DRT (Del Rio).\n\n'
+  response += 'Border airports: ELP (El Paso), DRT (Del Rio), LRD (Laredo), MFE (McAllen), HRL (Harlingen), BRO (Brownsville).\n\n'
 
   // Per-airport breakdown
   const byAirport = new Map()

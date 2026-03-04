@@ -42,11 +42,11 @@ export const MAP_METRIC_OPTIONS = [
 
 export const BORDER_AIRPORT_LIST = [
   { code: 'ELP', city: 'El Paso' },
+  { code: 'DRT', city: 'Del Rio' },
   { code: 'LRD', city: 'Laredo' },
   { code: 'MFE', city: 'McAllen' },
   { code: 'HRL', city: 'Harlingen' },
   { code: 'BRO', city: 'Brownsville' },
-  { code: 'DRT', city: 'Del Rio' },
 ]
 
 export const BORDER_AIRPORTS = new Set(BORDER_AIRPORT_LIST.map((a) => a.code))

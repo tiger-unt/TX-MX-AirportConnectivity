@@ -1,5 +1,8 @@
+import { useMemo } from 'react'
+import { TrendingUp } from 'lucide-react'
 import SectionBlock from '@/components/ui/SectionBlock'
 import ChartCard from '@/components/ui/ChartCard'
+import InsightCallout from '@/components/ui/InsightCallout'
 import LineChart from '@/components/charts/LineChart'
 import AirportMap from '@/components/maps/AirportMap'
 import { fmtCompact, fmtLbs, MAP_METRIC_OPTIONS, BORDER_AIRPORTS } from '@/lib/aviationHelpers'
@@ -11,11 +14,20 @@ export default function OverviewTab({
   selectedAirport, setSelectedAirport,
   paxTrend, flightTrend, freightTrend, mailTrend, latestYear,
 }) {
+  const covidRecovery = useMemo(() => {
+    if (!paxTrend.length || !latestYear) return null
+    const row2019 = paxTrend.find((d) => d.year === 2019)
+    const rowLatest = paxTrend.find((d) => d.year === latestYear)
+    if (!row2019?.value || !rowLatest?.value) return null
+    const pct = ((rowLatest.value - row2019.value) / row2019.value * 100).toFixed(1)
+    return { pct: Math.abs(pct), direction: rowLatest.value >= row2019.value ? 'above' : 'below' }
+  }, [paxTrend, latestYear])
+
   return (
     <>
       {/* Narrative introduction */}
       <SectionBlock>
-        <div className="max-w-3xl">
+        <div className="space-y-4">
           <p className="text-base text-text-secondary leading-relaxed">
             Texas and Mexico share one of the busiest bilateral air corridors in the Americas.
             This overview captures the scale and trajectory of that connectivity &mdash; from
@@ -23,6 +35,13 @@ export default function OverviewTab({
             2015 to {latestYear || '\u2026'}. Use the filters to focus on specific years,
             directions, or carriers.
           </p>
+          {covidRecovery && (
+            <InsightCallout
+              finding={`Texas\u2013Mexico passenger traffic in ${latestYear} is ${covidRecovery.pct}% ${covidRecovery.direction} pre-COVID 2019 levels.`}
+              variant={covidRecovery.direction === 'above' ? 'highlight' : 'default'}
+              icon={TrendingUp}
+            />
+          )}
         </div>
       </SectionBlock>
 
@@ -72,6 +91,7 @@ export default function OverviewTab({
             downloadData={{ summary: { data: paxTrend, filename: 'tx-mx-passenger-trends' } }}
           >
             <LineChart data={paxTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+            <p className="text-base text-text-secondary mt-3 italic">Both directions show a sharp 2020 decline. Texas-to-Mexico volumes have consistently exceeded the reverse direction.</p>
           </ChartCard>
           <ChartCard
             title="Texas\u2013Mexico Flight Trends"

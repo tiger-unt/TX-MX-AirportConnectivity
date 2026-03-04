@@ -1,5 +1,8 @@
+import { useMemo } from 'react'
+import { Package } from 'lucide-react'
 import SectionBlock from '@/components/ui/SectionBlock'
 import ChartCard from '@/components/ui/ChartCard'
+import InsightCallout from '@/components/ui/InsightCallout'
 import LineChart from '@/components/charts/LineChart'
 import BarChart from '@/components/charts/BarChart'
 import DivergingBarChart from '@/components/charts/DivergingBarChart'
@@ -15,17 +18,40 @@ export default function CargoTradeTab({
   borderSummaryTable,
   scatterScale, setScatterScale,
 }) {
+  const imbalanceInsight = useMemo(() => {
+    if (!freightImbalance?.length) return null
+    // Find the airport with the largest absolute imbalance
+    let maxDiff = 0, maxAirport = null, maxType = ''
+    freightImbalance.forEach((d) => {
+      const diff = Math.abs((d.exports || 0) - (d.imports || 0))
+      if (diff > maxDiff) {
+        maxDiff = diff
+        maxAirport = d.label
+        maxType = (d.exports || 0) > (d.imports || 0) ? 'net exporter' : 'net importer'
+      }
+    })
+    return maxAirport ? { airport: maxAirport, type: maxType } : null
+  }, [freightImbalance])
+
   return (
     <>
       {/* Narrative introduction */}
       <SectionBlock>
-        <div className="max-w-3xl">
+        <div className="space-y-4">
           <p className="text-base text-text-secondary leading-relaxed">
             While passengers dominate headlines, air cargo reveals the trade relationship
             between Texas and Mexico. Freight flows are highly asymmetric &mdash; some airports
             are net exporters while others are net importers. This section examines freight and
             mail volumes, trade imbalances, and which routes carry the most cargo per flight.
           </p>
+          {imbalanceInsight && (
+            <InsightCallout
+              finding={`${imbalanceInsight.airport} is the largest ${imbalanceInsight.type} of air freight on the Texas\u2013Mexico corridor.`}
+              context="The diverging bar chart below shows the export/import balance for each Texas airport."
+              variant="default"
+              icon={Package}
+            />
+          )}
         </div>
       </SectionBlock>
 
@@ -62,6 +88,7 @@ export default function CargoTradeTab({
             leftLabel="Imports (MX \u2192 TX)" rightLabel="Exports (TX \u2192 MX)"
             formatValue={fmtLbs}
           />
+          <p className="text-base text-text-secondary mt-3 italic">Airports with larger bars on the right ship more freight to Mexico; those extending left receive more. This asymmetry reflects cross-border trade flow patterns.</p>
         </ChartCard>
       </SectionBlock>
 

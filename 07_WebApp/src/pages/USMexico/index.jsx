@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Users, PieChart, MapPin, Route, Package } from 'lucide-react'
+import { Users, PieChart, MapPin, Route, Package, Award } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isUsToMx, isMxToUs, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
@@ -15,6 +15,7 @@ import LineChart from '@/components/charts/LineChart'
 import DonutChart from '@/components/charts/DonutChart'
 import BarChart from '@/components/charts/BarChart'
 import AirportMap from '@/components/maps/AirportMap'
+import InsightCallout from '@/components/ui/InsightCallout'
 
 const isUsMx = (d) => isUsToMx(d) || isMxToUs(d)
 
@@ -401,6 +402,15 @@ export default function USMexicoPage() {
     return { paxRank: paxRank || '-', paxPct, cargoRank: cargoRank || '-', cargoPct }
   }, [stateRankingPax, stateRankingCargo])
 
+  /* ── storytelling insights ───────────────────────────────────────── */
+  const loadFactorInsight = useMemo(() => {
+    if (!loadFactorTrend.length || !latestYear) return null
+    const latestRows = loadFactorTrend.filter((d) => d.year === latestYear)
+    if (!latestRows.length) return null
+    const avg = latestRows.reduce((s, d) => s + d.value, 0) / latestRows.length
+    return { avg: avg.toFixed(1) }
+  }, [loadFactorTrend, latestYear])
+
   /* ── top routes ────────────────────────────────────────────────────── */
   const topRoutes = useMemo(() => {
     const byRoute = new Map()
@@ -494,7 +504,7 @@ export default function USMexicoPage() {
         <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
           U.S.&ndash;Mexico Air Connectivity
         </h2>
-        <p className="text-white/70 mt-2 text-base max-w-2xl">
+        <p className="text-white/70 mt-2 text-base">
           National perspective on cross-border air traffic, with Texas&rsquo;s role
           as a gateway (2015&ndash;{latestYear || '\u2026'}).
         </p>
@@ -510,8 +520,36 @@ export default function USMexicoPage() {
       activeCount={activeCount}
       activeTags={activeTags}
     >
-      {/* KPI Cards */}
+      {/* Page Introduction */}
       <SectionBlock>
+        <div className="space-y-4">
+          <p className="text-base text-text-secondary leading-relaxed">
+            Air travel between the United States and Mexico forms one of the world&rsquo;s
+            busiest bilateral corridors. Texas serves as the primary gateway &mdash; more
+            U.S.-Mexico passengers depart from Texas airports than from any other state.
+            This page provides a national perspective on the cross-border market and
+            Texas&rsquo;s outsized role in it, from 2015 to {latestYear || '\u2026'}.
+          </p>
+          {txRankStats.paxRank && txRankStats.paxRank !== '-' && (
+            <InsightCallout
+              finding={`Texas ranks #${txRankStats.paxRank} among all U.S. states for Mexico-bound air passengers, carrying ${txRankStats.paxPct}% of the national total.`}
+              variant="default"
+              icon={Award}
+            />
+          )}
+          {loadFactorInsight && (
+            <InsightCallout
+              finding={`Average load factor on U.S.\u2013Mexico routes was ${loadFactorInsight.avg}% in ${latestYear}.`}
+              context="Load factors above 80% typically signal high demand relative to available capacity."
+              variant="default"
+              icon={Users}
+            />
+          )}
+        </div>
+      </SectionBlock>
+
+      {/* KPI Cards */}
+      <SectionBlock alt>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
           <StatCard
             label={`U.S.–Mexico Passengers (${latestYear || '\u2014'})`}
@@ -540,7 +578,7 @@ export default function USMexicoPage() {
       </SectionBlock>
 
       {/* Map */}
-      <SectionBlock alt>
+      <SectionBlock>
         <ChartCard
           title="U.S.–Mexico Route Map"
           subtitle="All U.S. airports serving Mexico, Texas airports highlighted"
@@ -575,7 +613,7 @@ export default function USMexicoPage() {
       </SectionBlock>
 
       {/* Trends (2x2 grid) */}
-      <SectionBlock>
+      <SectionBlock alt>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <ChartCard
             title="U.S.–Mexico Passenger Trends"
@@ -609,7 +647,12 @@ export default function USMexicoPage() {
       </SectionBlock>
 
       {/* TX Share + Top States */}
-      <SectionBlock alt>
+      <SectionBlock>
+        <div className="mb-4">
+          <p className="text-base text-text-secondary">
+            Texas&rsquo;s geographic position and major hub airports give it an outsized role in the national U.S.-Mexico market.
+          </p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div>
             <ChartCard
@@ -618,6 +661,7 @@ export default function USMexicoPage() {
               downloadData={{ summary: { data: txShareData, filename: 'tx-share-us-mx' } }}
             >
               <DonutChart data={txShareData} formatValue={fmtCompact} />
+              <p className="text-base text-text-secondary mt-3 italic">Texas&rsquo;s dominant share reflects both geographic proximity to Mexico and the state&rsquo;s concentration of major hub airports.</p>
             </ChartCard>
           </div>
           <div className="lg:col-span-2">
@@ -633,7 +677,7 @@ export default function USMexicoPage() {
       </SectionBlock>
 
       {/* TX National Ranking: Passengers vs Cargo */}
-      <SectionBlock>
+      <SectionBlock alt>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-5">
           <StatCard
             label={`TX Passenger Rank (${latestYear || '\u2014'})`}
@@ -665,7 +709,7 @@ export default function USMexicoPage() {
       </SectionBlock>
 
       {/* Top Routes */}
-      <SectionBlock alt>
+      <SectionBlock>
         <ChartCard
           title="Top U.S.–Mexico Routes"
           subtitle="Top 10 by passengers (all filtered years)"
@@ -689,6 +733,11 @@ export default function USMexicoPage() {
 
       {/* Seat Capacity & Load Factor */}
       <SectionBlock>
+        <div className="mb-4">
+          <p className="text-base text-text-secondary">
+            Seat capacity and load factors reveal whether airline supply is keeping pace with passenger demand.
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <ChartCard
             title="Seat Capacity Trends"

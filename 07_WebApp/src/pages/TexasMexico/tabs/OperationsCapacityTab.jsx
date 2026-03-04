@@ -1,5 +1,8 @@
+import { useMemo } from 'react'
+import { Users } from 'lucide-react'
 import SectionBlock from '@/components/ui/SectionBlock'
 import ChartCard from '@/components/ui/ChartCard'
+import InsightCallout from '@/components/ui/InsightCallout'
 import LineChart from '@/components/charts/LineChart'
 import BarChart from '@/components/charts/BarChart'
 import DonutChart from '@/components/charts/DonutChart'
@@ -14,17 +17,34 @@ export default function OperationsCapacityTab({
   serviceClassShare, serviceClassTrend,
   aircraftGroupShare, aircraftGroupTrend,
 }) {
+  const loadFactorInsight = useMemo(() => {
+    if (!loadFactorTrend.length) return null
+    const latestYear = Math.max(...loadFactorTrend.map((d) => d.year))
+    const latestRows = loadFactorTrend.filter((d) => d.year === latestYear)
+    if (!latestRows.length) return null
+    const avg = latestRows.reduce((s, d) => s + d.value, 0) / latestRows.length
+    return { avg: avg.toFixed(1), year: latestYear }
+  }, [loadFactorTrend])
+
   return (
     <>
       {/* Narrative introduction */}
       <SectionBlock>
-        <div className="max-w-3xl">
+        <div className="space-y-4">
           <p className="text-base text-text-secondary leading-relaxed">
             Beyond passenger counts, operational metrics reveal how efficiently airlines serve
             the Texas&ndash;Mexico corridor. Seat capacity, schedule adherence, and load factors
             indicate whether supply matches demand &mdash; while service class and aircraft mix
             show the types of operations and fleet deployed on these routes.
           </p>
+          {loadFactorInsight && (
+            <InsightCallout
+              finding={`Average load factor on Texas\u2013Mexico routes was ${loadFactorInsight.avg}% in ${loadFactorInsight.year}.`}
+              context="Load factors above 80% typically signal that airlines are operating near capacity."
+              variant="default"
+              icon={Users}
+            />
+          )}
         </div>
       </SectionBlock>
 
@@ -86,7 +106,7 @@ export default function OperationsCapacityTab({
 
       {/* Service Class Breakdown */}
       <SectionBlock alt>
-        <div className="max-w-5xl mx-auto mb-4">
+        <div className="mb-4">
           <h3 className="text-xl font-bold text-text-primary mb-1">Service Class Breakdown</h3>
           <p className="text-base text-text-secondary">Charter, cargo-only, and scheduled service operations on Texas&ndash;Mexico routes.</p>
         </div>
@@ -110,7 +130,7 @@ export default function OperationsCapacityTab({
 
       {/* Aircraft Mix */}
       <SectionBlock>
-        <div className="max-w-5xl mx-auto mb-4">
+        <div className="mb-4">
           <h3 className="text-xl font-bold text-text-primary mb-1">Aircraft Mix</h3>
           <p className="text-base text-text-secondary">Types of aircraft serving Texas&ndash;Mexico routes, by BTS aircraft group classification.</p>
         </div>

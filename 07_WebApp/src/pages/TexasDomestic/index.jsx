@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Plane, Users, MapPin, Award } from 'lucide-react'
+import { Plane, Users, MapPin, Award, Building2, TrendingUp } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isTxDomestic, isTxToUs, isUsToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
@@ -14,6 +14,7 @@ import SectionBlock from '@/components/ui/SectionBlock'
 import LineChart from '@/components/charts/LineChart'
 import BarChart from '@/components/charts/BarChart'
 import AirportMap from '@/components/maps/AirportMap'
+import InsightCallout from '@/components/ui/InsightCallout'
 
 /* ── cascading-filter config (stable refs, defined once) ───────────── */
 const buildApplicators = (f) => ({
@@ -309,6 +310,32 @@ export default function TexasDomesticPage() {
 
   const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
 
+  /* ── storytelling insights ───────────────────────────────────────── */
+  const hubInsight = useMemo(() => {
+    if (!filtered.length || !latestYear) return null
+    const latest = filtered.filter((d) => d.YEAR === latestYear)
+    const byAirport = new Map()
+    latest.forEach((d) => {
+      const txCode = isTxToUs(d) ? d.ORIGIN : d.DEST
+      byAirport.set(txCode, (byAirport.get(txCode) || 0) + d.PASSENGERS)
+    })
+    const sorted = [...byAirport.entries()].sort((a, b) => b[1] - a[1])
+    const top2 = sorted.slice(0, 2)
+    const total = sorted.reduce((s, [, v]) => s + v, 0)
+    if (!total || top2.length < 2) return null
+    const share = ((top2[0][1] + top2[1][1]) / total * 100).toFixed(0)
+    return { share, airports: [top2[0][0], top2[1][0]] }
+  }, [filtered, latestYear])
+
+  const covidRecovery = useMemo(() => {
+    if (!filtered.length || !latestYear) return null
+    const pax2019 = filtered.filter((d) => d.YEAR === 2019).reduce((s, d) => s + d.PASSENGERS, 0)
+    const paxLatest = filtered.filter((d) => d.YEAR === latestYear).reduce((s, d) => s + d.PASSENGERS, 0)
+    if (!pax2019) return null
+    const pct = ((paxLatest - pax2019) / pax2019 * 100).toFixed(1)
+    return { pct: Math.abs(pct), direction: paxLatest >= pax2019 ? 'above' : 'below' }
+  }, [filtered, latestYear])
+
   /* ── map data ──────────────────────────────────────────────────────── */
   const mapDataSource = mapMetricConfig.source === 'segment' ? filteredSegment : filtered
 
@@ -391,7 +418,7 @@ export default function TexasDomesticPage() {
         <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
           Texas Domestic Air Connectivity
         </h2>
-        <p className="text-white/70 mt-2 text-base max-w-2xl">
+        <p className="text-white/70 mt-2 text-base">
           Air connections between Texas and other U.S. states using BTS T-100
           data (2015&ndash;{latestYear || '\u2026'}).
         </p>
@@ -407,8 +434,36 @@ export default function TexasDomesticPage() {
       activeCount={activeCount}
       activeTags={activeTags}
     >
-      {/* KPI Cards */}
+      {/* Page Introduction */}
       <SectionBlock>
+        <div className="space-y-4">
+          <p className="text-base text-text-secondary leading-relaxed">
+            Texas is one of the most air-connected states in the U.S., with dozens of airports
+            linking Texans to destinations across all 50 states. But domestic connectivity
+            isn&rsquo;t evenly distributed &mdash; a handful of hub airports carry the vast majority
+            of traffic. This page examines passenger volumes, flight operations, cargo flows,
+            and schedule reliability from 2015 to {latestYear || '\u2026'}.
+          </p>
+          {hubInsight && (
+            <InsightCallout
+              finding={`${hubInsight.airports[0]} and ${hubInsight.airports[1]} together account for ${hubInsight.share}% of Texas domestic air passengers (${latestYear}).`}
+              context="Disruptions at either hub disproportionately affect statewide connectivity."
+              variant="warning"
+              icon={Building2}
+            />
+          )}
+          {covidRecovery && (
+            <InsightCallout
+              finding={`Texas domestic traffic in ${latestYear} is ${covidRecovery.pct}% ${covidRecovery.direction} pre-COVID 2019 levels.`}
+              variant={covidRecovery.direction === 'above' ? 'highlight' : 'default'}
+              icon={TrendingUp}
+            />
+          )}
+        </div>
+      </SectionBlock>
+
+      {/* KPI Cards */}
+      <SectionBlock alt>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
           <StatCard
             label={`Texas Domestic Passengers (${latestYear || '\u2014'})`}
@@ -436,7 +491,7 @@ export default function TexasDomesticPage() {
       </SectionBlock>
 
       {/* Map */}
-      <SectionBlock alt>
+      <SectionBlock>
         <ChartCard
           title="Domestic Route Map"
           subtitle="Texas airports with connections to U.S. destinations"
@@ -471,7 +526,7 @@ export default function TexasDomesticPage() {
       </SectionBlock>
 
       {/* Trends (2x2 grid) */}
-      <SectionBlock>
+      <SectionBlock alt>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <ChartCard
             title="Passenger Trends"
@@ -479,6 +534,7 @@ export default function TexasDomesticPage() {
             downloadData={{ summary: { data: paxTrend, filename: 'tx-domestic-passenger-trends' } }}
           >
             <LineChart data={paxTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+            <p className="text-base text-text-secondary mt-3 italic">The COVID-19 pandemic caused a sharp drop in 2020. Texas domestic traffic has since recovered, with most major corridors exceeding pre-pandemic levels.</p>
           </ChartCard>
           <ChartCard
             title="Flight Trends"
@@ -505,7 +561,12 @@ export default function TexasDomesticPage() {
       </SectionBlock>
 
       {/* Top States */}
-      <SectionBlock alt>
+      <SectionBlock>
+        <div className="mb-4">
+          <p className="text-base text-text-secondary">
+            Beyond aggregate trends, the state-level view reveals which corridors drive Texas domestic connectivity.
+          </p>
+        </div>
         <ChartCard
           title="Top Connected U.S. States"
           subtitle="Counterpart state by passengers (bidirectional totals)"
@@ -516,7 +577,7 @@ export default function TexasDomesticPage() {
       </SectionBlock>
 
       {/* Top Routes — full width for long airport-name labels */}
-      <SectionBlock>
+      <SectionBlock alt>
         <ChartCard
           title="Top Domestic Routes from Texas"
           subtitle="Total passengers (all filtered years)"
@@ -528,6 +589,11 @@ export default function TexasDomesticPage() {
 
       {/* Operations (segment) */}
       <SectionBlock>
+        <div className="mb-4">
+          <p className="text-base text-text-secondary">
+            Schedule adherence measures how closely airlines&rsquo; actual operations match their filed schedules.
+          </p>
+        </div>
         <ChartCard
           title="Schedule Adherence"
           subtitle="Departure-weighted: performed vs scheduled (Class F, scheduled service)"

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   Users, ArrowRightLeft, Route, Calendar, Plane, Globe, ArrowRight,
-  Building2, PlaneTakeoff, MapPin, Database
+  Building2, PlaneTakeoff, MapPin, Database, TrendingUp
 } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import {
@@ -12,6 +12,7 @@ import {
 } from '@/lib/aviationHelpers'
 import { aggregateAirportVolumes, aggregateRoutes } from '@/lib/airportUtils'
 import StatCard from '@/components/ui/StatCard'
+import InsightCallout from '@/components/ui/InsightCallout'
 import AirportMap from '@/components/maps/AirportMap'
 
 export default function OverviewPage() {
@@ -110,6 +111,43 @@ export default function OverviewPage() {
     return { airlines, txAirports, mxAirports, totalPax, routes }
   }, [allTxMx, latestYear])
 
+  /* ── storytelling insights ───────────────────────────────────────── */
+  const hubConcentration = useMemo(() => {
+    if (!allTxMx.length || !latestYear) return null
+    const latest = allTxMx.filter((d) => d.YEAR === latestYear)
+    const byAirport = new Map()
+    latest.forEach((d) => {
+      const txCode = isTxToMx(d) ? d.ORIGIN : d.DEST
+      byAirport.set(txCode, (byAirport.get(txCode) || 0) + d.PASSENGERS)
+    })
+    const sorted = [...byAirport.entries()].sort((a, b) => b[1] - a[1])
+    const top2 = sorted.slice(0, 2)
+    const total = sorted.reduce((s, [, v]) => s + v, 0)
+    if (!total || top2.length < 2) return null
+    const share = ((top2[0][1] + top2[1][1]) / total * 100).toFixed(0)
+    return { share, airports: [top2[0][0], top2[1][0]] }
+  }, [allTxMx, latestYear])
+
+  const covidRecovery = useMemo(() => {
+    if (!allTxMx.length || !latestYear) return null
+    const pax2019 = allTxMx.filter((d) => d.YEAR === 2019).reduce((s, d) => s + d.PASSENGERS, 0)
+    const paxLatest = allTxMx.filter((d) => d.YEAR === latestYear).reduce((s, d) => s + d.PASSENGERS, 0)
+    if (!pax2019) return null
+    const pct = ((paxLatest - pax2019) / pax2019 * 100).toFixed(1)
+    return { pct: Math.abs(pct), direction: paxLatest >= pax2019 ? 'above' : 'below', year: latestYear }
+  }, [allTxMx, latestYear])
+
+  const txNationalShare = useMemo(() => {
+    if (!marketData?.length || !latestYear) return null
+    const latest = marketData.filter((d) => d.YEAR === latestYear)
+    const usMxLatest = latest.filter((d) => isUsToMx(d) || isMxToUs(d))
+    const txPax = usMxLatest
+      .filter((d) => d.ORIGIN_STATE_NM === 'Texas' || d.DEST_STATE_NM === 'Texas')
+      .reduce((s, d) => s + d.PASSENGERS, 0)
+    const totalPax = usMxLatest.reduce((s, d) => s + d.PASSENGERS, 0)
+    return totalPax ? (txPax / totalPax * 100).toFixed(0) : null
+  }, [marketData, latestYear])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -192,10 +230,15 @@ export default function OverviewPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
             Texas–Mexico Air Connectivity Dashboard
           </h1>
-          <p className="text-white/70 mt-3 text-base md:text-lg max-w-2xl">
+          <p className="text-white/70 mt-3 text-base md:text-lg">
             TxDOT IAC 2025–26 research project, UNT System. Comprehensive analysis
             of air connectivity between Texas, Mexico, and the broader U.S. using BTS
             T-100 Air Carrier Statistics.
+          </p>
+          <p className="text-white/50 mt-4 text-base border-l-2 border-white/30 pl-4 leading-relaxed">
+            How has air connectivity between Texas and Mexico evolved over
+            {minYear && latestYear ? ` ${minYear}\u2013${latestYear}` : ' the past decade'},
+            and which airports, routes, and carriers drive that relationship?
           </p>
         </div>
       </div>
@@ -344,6 +387,46 @@ export default function OverviewPage() {
             </div>
           </div>
         </section>
+
+        {/* Key Findings */}
+        {(hubConcentration || covidRecovery || txNationalShare) && (
+          <section className="pb-8">
+            <h3 className="text-xl font-bold text-text-primary mb-5">Key Findings</h3>
+            <div className="space-y-4">
+              {hubConcentration && (
+                <InsightCallout
+                  finding={`${hubConcentration.airports[0]} and ${hubConcentration.airports[1]} together handle ${hubConcentration.share}% of all Texas\u2013Mexico passenger traffic (${latestYear}).`}
+                  context="Two airports dominate Texas's side of the corridor. Disruptions at either hub have outsized effects on cross-border connectivity."
+                  variant="warning"
+                  icon={Building2}
+                />
+              )}
+              {covidRecovery && (
+                <InsightCallout
+                  finding={`Texas\u2013Mexico passenger traffic in ${covidRecovery.year} is ${covidRecovery.pct}% ${covidRecovery.direction} pre-COVID 2019 levels.`}
+                  context="The corridor's recovery trajectory is visible in the trend charts on the Texas\u2013Mexico page."
+                  variant={covidRecovery.direction === 'above' ? 'highlight' : 'default'}
+                  icon={TrendingUp}
+                />
+              )}
+              {txNationalShare && (
+                <InsightCallout
+                  finding={`Texas accounts for approximately ${txNationalShare}% of all U.S.\u2013Mexico air passengers, more than any other state.`}
+                  context="Explore Texas's rank against all other states on the U.S.\u2013Mexico page."
+                  variant="default"
+                  icon={MapPin}
+                />
+              )}
+            </div>
+            <Link
+              to="/texas-mexico"
+              className="inline-flex items-center gap-1.5 mt-5 text-base font-semibold text-brand-blue hover:underline"
+            >
+              Full Texas–Mexico analysis
+              <ArrowRight size={14} />
+            </Link>
+          </section>
+        )}
 
         {/* Explore Pages */}
         <section className="pb-10">

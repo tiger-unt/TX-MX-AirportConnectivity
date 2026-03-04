@@ -99,7 +99,8 @@
       "Bash(/c/Users/UNT/AppData/Local/Programs/Python/Python313/python.exe -c \":*)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
       "Bash(grep -n \"BarChart.*horizontal\\\\|horizontal.*BarChart\" **/*.jsx)",
-      "Bash(curl -s http://localhost:5174)"
+      "Bash(curl -s http://localhost:5174)",
+      "Bash(netstat -ano)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",

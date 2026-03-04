@@ -1,7 +1,7 @@
 import { MapPin, ArrowRightLeft } from 'lucide-react'
 import SectionBlock from '@/components/ui/SectionBlock'
 import ChartCard from '@/components/ui/ChartCard'
-import StatCard from '@/components/ui/StatCard'
+import InsightCallout from '@/components/ui/InsightCallout'
 import DonutChart from '@/components/charts/DonutChart'
 import HeatmapTable from '@/components/charts/HeatmapTable'
 import AirportMap from '@/components/maps/AirportMap'
@@ -18,14 +18,14 @@ export default function BorderAirportsTab({
     <>
       {/* Border Airport Introduction */}
       <SectionBlock>
-        <div className="max-w-5xl mx-auto">
+        <div>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-9 h-9 rounded-lg bg-brand-blue/10 flex items-center justify-center flex-shrink-0">
               <MapPin size={18} className="text-brand-blue" />
             </div>
             <h3 className="text-xl font-bold text-text-primary">Texas Border Airports</h3>
           </div>
-          <p className="text-base text-text-secondary mb-5 max-w-3xl">
+          <p className="text-base text-text-secondary mb-5">
             Six Texas airports located within a TxDOT border district serve a
             unique role in cross-border connectivity &mdash; while most passenger traffic flows through
             major inland hubs like DFW, IAH, and SAT, border airports handle a disproportionate
@@ -44,6 +44,7 @@ export default function BorderAirportsTab({
                   fixedRadius={6}
                   legendItems={[{ color: '#0056a9', borderColor: '#E8B923', label: 'Border Airport' }]}
                   height="100%"
+                  hideVolume
                   fitToAirports
                   locked
                   hintText={null}
@@ -89,11 +90,12 @@ export default function BorderAirportsTab({
       {/* Border vs Non-Border Analysis */}
       <SectionBlock alt>
         {borderInsight && (
-          <div className="mb-5 max-w-3xl mx-auto">
-            <StatCard
-              label="Border Airport Insight"
-              value={`Border airports: ${borderInsight.paxPct}% of passengers, ${borderInsight.cargoPct}% of cargo`}
-              highlight icon={ArrowRightLeft}
+          <div className="mb-5">
+            <InsightCallout
+              finding={`Border airports handle ${borderInsight.paxPct}% of Texas\u2013Mexico passengers but ${borderInsight.cargoPct}% of cargo.`}
+              context="The gap between passenger and cargo share highlights the outsized role border airports play in cross-border freight."
+              variant="default"
+              icon={ArrowRightLeft}
             />
           </div>
         )}
@@ -126,6 +128,7 @@ export default function BorderAirportsTab({
           <HeatmapTable
             data={odMatrixData}
             formatValue={matrixMetric === 'passengers' ? fmtCompact : fmtLbs}
+            airportIndex={airportIndex}
           />
         </ChartCard>
       </SectionBlock>

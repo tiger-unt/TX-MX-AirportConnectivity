@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Plane, Users, Globe, Award } from 'lucide-react'
+import { Plane, Users, Globe, Award, TrendingUp } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isTxIntl, isTxToIntl, isIntlToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
@@ -15,6 +15,7 @@ import LineChart from '@/components/charts/LineChart'
 import DonutChart from '@/components/charts/DonutChart'
 import BarChart from '@/components/charts/BarChart'
 import AirportMap from '@/components/maps/AirportMap'
+import InsightCallout from '@/components/ui/InsightCallout'
 
 /* ── cascading-filter config (stable refs, defined once) ───────────── */
 const buildApplicators = (f) => ({
@@ -316,6 +317,25 @@ export default function TexasInternationalPage() {
 
   const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
 
+  /* ── storytelling insights ───────────────────────────────────────── */
+  const mexicoShareInsight = useMemo(() => {
+    if (!topCountries.length) return null
+    const mexicoRow = topCountries.find((d) => d.label === 'Mexico')
+    if (!mexicoRow) return null
+    const total = topCountries.reduce((s, d) => s + d.value, 0)
+    const pct = total ? (mexicoRow.value / total * 100).toFixed(0) : null
+    return pct ? { pct } : null
+  }, [topCountries])
+
+  const growthInsight = useMemo(() => {
+    if (paxTrend.length < 2) return null
+    const first = paxTrend[0]
+    const last = paxTrend[paxTrend.length - 1]
+    if (!first?.value) return null
+    const pct = ((last.value - first.value) / first.value * 100).toFixed(0)
+    return { pct: Math.abs(pct), startYear: first.year, endYear: last.year, direction: last.value >= first.value ? 'grown' : 'declined' }
+  }, [paxTrend])
+
   /* ── map data ──────────────────────────────────────────────────────── */
   const mapDataSource = mapMetricConfig.source === 'segment' ? filteredSegment : filtered
 
@@ -396,7 +416,7 @@ export default function TexasInternationalPage() {
         <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
           Texas International Air Connectivity
         </h2>
-        <p className="text-white/70 mt-2 text-base max-w-2xl">
+        <p className="text-white/70 mt-2 text-base">
           Texas&rsquo;s air connections to the world using BTS T-100 data
           (2015&ndash;{latestYear || '\u2026'}).
         </p>
@@ -412,8 +432,36 @@ export default function TexasInternationalPage() {
       activeCount={activeCount}
       activeTags={activeTags}
     >
-      {/* KPI Cards */}
+      {/* Page Introduction */}
       <SectionBlock>
+        <div className="space-y-4">
+          <p className="text-base text-text-secondary leading-relaxed">
+            Texas&rsquo;s three major hubs &mdash; Dallas/Fort Worth, Houston Intercontinental,
+            and Austin &mdash; operate extensive international networks reaching Latin America,
+            Europe, and Asia. Yet one country dominates: Mexico accounts for the largest share
+            of Texas&rsquo;s international air traffic by a wide margin. This page surveys
+            Texas&rsquo;s global air connections from 2015 to {latestYear || '\u2026'}.
+          </p>
+          {mexicoShareInsight && (
+            <InsightCallout
+              finding={`Mexico accounts for roughly ${mexicoShareInsight.pct}% of Texas international passenger traffic.`}
+              context="No other single country comes close in volume, reflecting deep economic and cultural ties."
+              variant="default"
+              icon={Globe}
+            />
+          )}
+          {growthInsight && (
+            <InsightCallout
+              finding={`Texas international passenger traffic has ${growthInsight.direction} ${growthInsight.pct}% between ${growthInsight.startYear} and ${growthInsight.endYear}.`}
+              variant={growthInsight.direction === 'grown' ? 'highlight' : 'default'}
+              icon={TrendingUp}
+            />
+          )}
+        </div>
+      </SectionBlock>
+
+      {/* KPI Cards */}
+      <SectionBlock alt>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
           <StatCard
             label={`Texas Intl Passengers (${latestYear || '\u2014'})`}
@@ -441,7 +489,7 @@ export default function TexasInternationalPage() {
       </SectionBlock>
 
       {/* Map */}
-      <SectionBlock alt>
+      <SectionBlock>
         <ChartCard
           title="International Route Map"
           subtitle="Texas airports with connections to world destinations"
@@ -477,7 +525,7 @@ export default function TexasInternationalPage() {
       </SectionBlock>
 
       {/* Trends (2x2 grid) */}
-      <SectionBlock>
+      <SectionBlock alt>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <ChartCard
             title="Passenger Trends"
@@ -511,7 +559,7 @@ export default function TexasInternationalPage() {
       </SectionBlock>
 
       {/* Top International Destinations */}
-      <SectionBlock alt>
+      <SectionBlock>
         <ChartCard
           title="Top International Destinations"
           subtitle="From Texas (all filtered years)"
@@ -526,11 +574,12 @@ export default function TexasInternationalPage() {
             }}
             selectedSlice={selectedCountry}
           />
+          <p className="text-base text-text-secondary mt-3 italic">Mexico accounts for the single largest share of Texas international passengers &mdash; more than the next several countries combined.</p>
         </ChartCard>
       </SectionBlock>
 
       {/* Top Routes */}
-      <SectionBlock>
+      <SectionBlock alt>
         <ChartCard
           title="Top International Routes"
           subtitle="Total passengers (all filtered years)"

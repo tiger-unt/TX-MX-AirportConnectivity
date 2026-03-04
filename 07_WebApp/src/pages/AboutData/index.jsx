@@ -13,7 +13,7 @@ export default function AboutDataPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
             About the Data
           </h1>
-          <p className="text-white/70 mt-3 text-base md:text-lg max-w-2xl">
+          <p className="text-white/70 mt-3 text-base md:text-lg">
             How the BTS T-100 data was extracted, cleaned, and prepared for this
             dashboard — and key structural details you should know when
             interpreting the numbers.

@@ -17,30 +17,34 @@
 export default function TabBar({ tabs, activeTab, onChange, className = '' }) {
   return (
     <div
-      className={`flex gap-2 overflow-x-auto scrollbar-hide ${className}`}
-      role="tablist"
+      className={`border-y border-border bg-surface-alt py-3 ${className}`}
     >
-      {tabs.map((tab) => {
-        const isActive = tab.key === activeTab
-        const Icon = tab.icon
-        return (
-          <button
-            key={tab.key}
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(tab.key)}
-            className={`flex items-center gap-2 px-4 py-2 text-base font-medium
-                        rounded-lg whitespace-nowrap transition-all duration-200 cursor-pointer
-                        ${isActive
-                          ? 'bg-brand-blue text-white shadow-sm'
-                          : 'text-text-secondary hover:bg-surface-alt hover:text-text-primary'
-                        }`}
-          >
-            {Icon && <Icon size={16} />}
-            {tab.label}
-          </button>
-        )
-      })}
+      <div
+        className="flex justify-center gap-2 overflow-x-auto scrollbar-hide px-4"
+        role="tablist"
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.key === activeTab
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.key}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onChange(tab.key)}
+              className={`flex items-center gap-2 px-5 py-2.5 text-base font-semibold
+                          rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer
+                          ${isActive
+                            ? 'bg-brand-blue text-white shadow-md'
+                            : 'bg-white text-text-secondary border border-border hover:border-brand-blue hover:text-brand-blue hover:shadow-sm'
+                          }`}
+            >
+              {Icon && <Icon size={18} />}
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

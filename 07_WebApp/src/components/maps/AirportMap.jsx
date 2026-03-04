@@ -17,6 +17,7 @@
  *   zoom          — initial zoom (default 5)
  *   formatValue   — Function to format numeric values in popups (default toLocaleString)
  *   metricLabel   — Unit noun shown in popups, e.g. 'passengers', 'freight' (default 'passengers')
+ *   hideVolume    — When true, popup only shows name + city (no volume/metric line)
  */
 import { useMemo, useCallback, useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Polyline, Popup, useMapEvents, useMap } from 'react-leaflet'
@@ -189,6 +190,7 @@ export default function AirportMap({
   zoom = 5,
   formatValue = (v) => v?.toLocaleString(),
   metricLabel = 'passengers',
+  hideVolume = false,
   hintText = 'Click airport to explore connections',
   fitToAirports = false,
   locked = false,
@@ -241,12 +243,12 @@ export default function AirportMap({
   const hintTimer = useRef(null)
 
   const handleWheel = useCallback(() => {
-    if (!mapActive) {
+    if (!mapActive && !locked) {
       setShowHint(true)
       clearTimeout(hintTimer.current)
       hintTimer.current = setTimeout(() => setShowHint(false), 1500)
     }
-  }, [mapActive])
+  }, [mapActive, locked])
 
   useEffect(() => () => clearTimeout(hintTimer.current), [])
 
@@ -355,8 +357,12 @@ export default function AirportMap({
                       <strong>{a.name}</strong>
                       <br />
                       {a.city}
-                      <br />
-                      {formatValue(a.volume)} {metricLabel}
+                      {!hideVolume && (
+                        <>
+                          <br />
+                          {formatValue(a.volume)} {metricLabel}
+                        </>
+                      )}
                     </div>
                   </Popup>
                 </CircleMarker>

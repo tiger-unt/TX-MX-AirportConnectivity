@@ -124,7 +124,7 @@ src/
 │           └── BorderAirportsTab.jsx    # Border intro, donut charts, scatter, heatmap
 ├── components/
 │   ├── layout/         # SiteHeader, MainNav, DashboardLayout, PageWrapper, Footer, UtilityBar
-│   ├── ui/             # StatCard, ChartCard, DataTable, FullscreenChart, DownloadButton, PageHeader, SectionBlock, TabBar, ErrorBoundary, MapPlaceholder
+│   ├── ui/             # StatCard, ChartCard, DataTable, FullscreenChart, DownloadButton, PageHeader, SectionBlock, TabBar, InsightCallout, ErrorBoundary, MapPlaceholder
 │   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot
 │   ├── maps/           # AirportMap (Leaflet markers + great-circle route arcs)
 │   ├── filters/        # FilterSidebar, FilterBar, FilterSelect, FilterMultiSelect, ActiveFilterTags
@@ -194,6 +194,8 @@ All chart components accept a `formatValue` prop that controls how numeric value
 - **Service class analysis**: Texas-Mexico page includes a Service Class Breakdown section showing flight share by CLASS (F/G/L/P) as a donut chart and multi-series trend line. Uses `CLASS_LABELS` for readable names.
 - **Freight intensity**: Texas-Mexico page includes a "Freight Intensity by Route" bar chart showing average freight per departure (lbs/flight) from segment data. Only routes with ≥10 departures are included to avoid statistical noise.
 - **TabBar component**: Reusable horizontal tab navigation (`components/ui/TabBar.jsx`). Props: `tabs` (array of `{key, label, icon?}`), `activeTab`, `onChange`. Active tab styled with `bg-brand-blue text-white`; mobile-friendly with horizontal scroll via `scrollbar-hide` utility. Uses `role="tablist"` and `aria-selected` for accessibility.
+- **InsightCallout component**: Inline narrative callout for dynamic data-driven findings (`components/ui/InsightCallout.jsx`). Props: `finding` (string, required — main insight sentence), `context` (string, optional — muted explanation), `icon` (Lucide component, default `Lightbulb`), `variant` (`'default'`/`'highlight'`/`'warning'`, default `'default'`), `className`. Visual: 3px left border accent + icon badge + text. Variants: `default` = brand-blue, `highlight` = brand-green (use for positive findings like COVID recovery), `warning` = brand-orange (use for concentration/risk findings). NOT a card — sits inline within SectionBlock content. Computation logic lives in page-level `useMemo`; InsightCallout is purely presentational.
+- **Page storytelling pattern**: Every data page includes (1) a narrative intro paragraph in the first SectionBlock, (2) 1-2 dynamically computed InsightCallouts surfacing key findings, and (3) italic chart annotations (`<p className="text-base text-text-secondary mt-3 italic">`) below key charts explaining what to look for. The Overview page includes a "Key Findings" section with InsightCallouts linking to detail pages.
 - **Texas-Mexico tabbed sub-navigation**: The Texas-Mexico page uses `TabBar` to split 25+ visualizations into 5 narrative chapters. KPI stat cards stay above the tab bar (always visible). All `useMemo` data hooks remain in the parent `index.jsx`; tab components receive data as props. Tab state is local (`useState`), not in URL or store. On tab switch, the page scrolls to the tab bar position. Each tab begins with a narrative intro paragraph providing context.
 
 ### Texas-Mexico Tab Structure

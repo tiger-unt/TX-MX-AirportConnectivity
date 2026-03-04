@@ -555,7 +555,10 @@ export default function TexasMexicoPage() {
     })
 
     const colLabels = [...mxCols].sort()
-    const rowLabels = [...borderRows.keys()].sort()
+    const borderOrder = BORDER_AIRPORT_LIST.map((a) => a.code)
+    const rowLabels = [...borderRows.keys()].sort(
+      (a, b) => borderOrder.indexOf(a) - borderOrder.indexOf(b)
+    )
     const cells = rowLabels.map((r) =>
       colLabels.map((c) => borderRows.get(r)?.get(c) || 0)
     )
@@ -765,7 +768,7 @@ export default function TexasMexicoPage() {
         <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
           Texas&ndash;Mexico Air Connectivity
         </h2>
-        <p className="text-white/70 mt-2 text-base max-w-2xl">
+        <p className="text-white/70 mt-2 text-base">
           Comprehensive analysis using market and segment data for air travel
           between Texas and Mexico (2015&ndash;{latestYear || '\u2026'}).
         </p>
@@ -815,14 +818,12 @@ export default function TexasMexicoPage() {
       </SectionBlock>
 
       {/* Tab Bar — sticky on scroll so users can switch tabs without scrolling back up */}
-      <div ref={tabBarRef} className="sticky top-0 z-40 bg-surface-alt border-b border-border-light shadow-sm">
-        <div className="container-main py-3">
+      <div ref={tabBarRef} className="sticky top-0 z-40 shadow-sm">
           <TabBar
             tabs={TAB_CONFIG}
             activeTab={activeTab}
             onChange={setActiveTab}
           />
-        </div>
       </div>
 
       {/* Tab Content */}
