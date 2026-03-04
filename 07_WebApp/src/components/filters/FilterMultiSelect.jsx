@@ -47,13 +47,24 @@ export default function FilterMultiSelect({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Compute available viewport space and flip direction when dropdown opens
+  // Compute available space within the nearest scroll container and flip direction
   useEffect(() => {
     if (open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
-      const spaceBelow = window.innerHeight - rect.bottom - 16
-      const spaceAbove = rect.top - 16
-      const shouldDropUp = spaceBelow < 200 && spaceAbove > spaceBelow
+      // Find nearest scrollable ancestor (the sidebar's overflow-y-auto div)
+      let container = triggerRef.current.parentElement
+      while (container) {
+        const { overflow, overflowY } = getComputedStyle(container)
+        if (/(auto|scroll)/.test(overflow + overflowY)) break
+        container = container.parentElement
+      }
+      // Measure space within the scroll container's visible bounds, or viewport
+      const bounds = container
+        ? container.getBoundingClientRect()
+        : { top: 0, bottom: window.innerHeight }
+      const spaceBelow = bounds.bottom - rect.bottom - 8
+      const spaceAbove = rect.top - bounds.top - 8
+      const shouldDropUp = spaceAbove > spaceBelow
       setDropUp(shouldDropUp)
       const available = shouldDropUp ? spaceAbove : spaceBelow
       setComputedMaxH(Math.max(200, available))

@@ -11,12 +11,18 @@
  *
  * @param {Object[]} data     – rows to export (array of flat objects)
  * @param {string}   filename – file name without extension (default: 'data')
+ * @param {Object}   [columns] – optional column rename map: { dataKey: 'CSV Header' }.
+ *                               When provided, only mapped keys present in the data are
+ *                               included, and the map values become CSV header names.
+ *                               When omitted, all keys from the first row are exported as-is.
  */
-export function downloadCsv(data, filename = 'data') {
+export function downloadCsv(data, filename = 'data', columns) {
   if (!data?.length) return
 
-  const keys = Object.keys(data[0])
-  const header = keys.join(',')
+  const keys = columns
+    ? Object.keys(columns).filter((k) => k in data[0])
+    : Object.keys(data[0])
+  const header = keys.map((k) => (columns ? columns[k] : k)).join(',')
   const rows = data.map((row) =>
     keys
       .map((k) => {

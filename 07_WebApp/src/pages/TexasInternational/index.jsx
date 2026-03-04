@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Plane, Users, Globe, Award, TrendingUp } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, fmtLbs, isTxIntl, isTxToIntl, isIntlToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, isTxIntl, isTxToIntl, isIntlToTx, computeAdherenceData, isEmptyOrAllZero, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { CHART_COLORS } from '@/lib/chartColors'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
+import { DL, PAGE_MARKET_COLS, PAGE_SEGMENT_COLS } from '@/lib/downloadColumns'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
 import FilterMultiSelect from '@/components/filters/FilterMultiSelect'
@@ -12,7 +13,6 @@ import StatCard from '@/components/ui/StatCard'
 import ChartCard from '@/components/ui/ChartCard'
 import SectionBlock from '@/components/ui/SectionBlock'
 import LineChart from '@/components/charts/LineChart'
-import DonutChart from '@/components/charts/DonutChart'
 import BarChart from '@/components/charts/BarChart'
 import AirportMap from '@/components/maps/AirportMap'
 import InsightCallout from '@/components/ui/InsightCallout'
@@ -50,7 +50,6 @@ const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rg
 export default function TexasInternationalPage() {
   const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
-  const [selectedCountry, setSelectedCountry] = useState(null)
   const [mapMetric, setMapMetric] = useState('PASSENGERS')
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
 
@@ -402,11 +401,13 @@ export default function TexasInternationalPage() {
         const info = airportIndex?.get(code)
         if (!info?.lat) continue
         const isOrigin = code === d.ORIGIN
+        const countryNm = isOrigin ? d.ORIGIN_COUNTRY_NAME : d.DEST_COUNTRY_NAME
         airports.push({
           iata: code,
           name: info.name,
           city: isOrigin ? d.ORIGIN_CITY_NAME : d.DEST_CITY_NAME,
-          country: isOrigin ? d.ORIGIN_COUNTRY_NAME : d.DEST_COUNTRY_NAME,
+          country: countryNm,
+          region: countryNm || '',
           lat: info.lat, lng: info.lng,
           volume: volumes.get(code) || 0,
         })
@@ -478,6 +479,10 @@ export default function TexasInternationalPage() {
       onResetAll={resetFilters}
       activeCount={activeCount}
       activeTags={activeTags}
+      pageDownload={{
+        market: { data: filtered, filename: 'texas-international-market-data', columns: PAGE_MARKET_COLS },
+        segment: { data: filteredSegment, filename: 'texas-international-segment-data', columns: PAGE_SEGMENT_COLS },
+      }}
     >
       {/* Page Introduction */}
       <SectionBlock>
@@ -581,28 +586,28 @@ export default function TexasInternationalPage() {
           <ChartCard
             title="Passenger Trends"
             subtitle="Total passengers by year"
-            downloadData={{ summary: { data: paxTrend, filename: 'tx-intl-passenger-trends' } }}
+            downloadData={{ summary: { data: paxTrend, filename: 'tx-intl-passenger-trends', columns: DL.paxTrend } }}
           >
             <LineChart data={paxTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="Flight Trends"
             subtitle="Flights operated by year (segment data)"
-            downloadData={{ summary: { data: flightTrend, filename: 'tx-intl-flight-trends' } }}
+            downloadData={{ summary: { data: flightTrend, filename: 'tx-intl-flight-trends', columns: DL.flightTrend } }}
           >
             <LineChart data={flightTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="Freight Trends"
             subtitle="Freight volume by year (lbs)"
-            downloadData={{ summary: { data: freightTrend, filename: 'tx-intl-freight-trends' } }}
+            downloadData={{ summary: { data: freightTrend, filename: 'tx-intl-freight-trends', columns: DL.freightTrend } }}
           >
             <LineChart data={freightTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="Mail Trends"
             subtitle="Mail volume by year (lbs)"
-            downloadData={{ summary: { data: mailTrend, filename: 'tx-intl-mail-trends' } }}
+            downloadData={{ summary: { data: mailTrend, filename: 'tx-intl-mail-trends', columns: DL.mailTrend } }}
           >
             <LineChart data={mailTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>
@@ -613,20 +618,12 @@ export default function TexasInternationalPage() {
       <SectionBlock>
         <ChartCard
           title="Top International Destinations"
-          subtitle="From Texas (all filtered years)"
-          downloadData={{ summary: { data: topCountries, filename: 'tx-top-intl-destinations' } }}
-          className="max-w-3xl mx-auto"
-          footnote={<p className="text-base text-text-secondary mt-1 italic">Mexico accounts for the single largest share of Texas international passengers &mdash; more than the next several countries combined.</p>}
+          subtitle="By total passengers (all filtered years)"
+          downloadData={{ summary: { data: topCountries, filename: 'tx-top-intl-destinations', columns: DL.countriesPax } }}
+          emptyState={isEmptyOrAllZero(topCountries) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
+          footnote={<p className="text-base text-text-secondary mt-1 italic">Mexico accounts for the largest volume of Texas international passengers &mdash; more than the next several countries combined.</p>}
         >
-          <DonutChart
-            data={topCountries}
-            formatValue={fmtCompact}
-            onSliceClick={(d) => {
-              if (!d) return setSelectedCountry(null)
-              setSelectedCountry((prev) => (prev === d.label ? null : d.label))
-            }}
-            selectedSlice={selectedCountry}
-          />
+          <BarChart data={topCountries} xKey="label" yKey="value" horizontal formatValue={fmtCompact} maxBars={10} animate />
         </ChartCard>
       </SectionBlock>
 
@@ -635,7 +632,8 @@ export default function TexasInternationalPage() {
         <ChartCard
           title="Top International Routes"
           subtitle="Total passengers (all filtered years)"
-          downloadData={{ summary: { data: topRoutes, filename: 'tx-intl-top-routes' } }}
+          downloadData={{ summary: { data: topRoutes, filename: 'tx-intl-top-routes', columns: DL.routesPax } }}
+          emptyState={isEmptyOrAllZero(topRoutes) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
         >
           <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
         </ChartCard>
@@ -646,7 +644,8 @@ export default function TexasInternationalPage() {
         <ChartCard
           title="Schedule Adherence"
           subtitle={`Class F scheduled service, U.S. carriers only — departure-weighted${adherenceYear ? ` (${adherenceYear})` : ''}`}
-          downloadData={{ summary: { data: adherenceData, filename: 'tx-intl-schedule-adherence' } }}
+          downloadData={{ summary: { data: adherenceData, filename: 'tx-intl-schedule-adherence', columns: DL.adherence } }}
+          emptyState={!adherenceData.length ? 'Schedule adherence is only available for Class F (Scheduled Service) U.S. carrier flights.' : null}
           headerRight={
             <select
               value={adherenceYear}
@@ -659,15 +658,17 @@ export default function TexasInternationalPage() {
               ))}
             </select>
           }
+          footnote={
+            <p className="text-base text-text-secondary mt-1 italic">
+              Each bar shows the share of annual carrier-route records by how many flights were performed
+              vs. scheduled. For example, &ldquo;11+ fewer flights&rdquo; means the carrier operated 11+
+              fewer flights than scheduled on that route for the year &mdash; missing flights were cancelled,
+              consolidated, or simply never operated. Weighted by scheduled departures.
+              U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.
+            </p>
+          }
         >
           <BarChart data={adherenceData} xKey="label" yKey="value" horizontal colorAccessor={(d) => d.color} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={15} animate />
-          <p className="text-base text-text-secondary mt-3 italic">
-            Each bar shows the share of annual carrier-route records by how many flights were performed
-            vs. scheduled. For example, &ldquo;11+ fewer flights&rdquo; means the carrier operated 11+
-            fewer flights than scheduled on that route for the year &mdash; missing flights were cancelled,
-            consolidated, or simply never operated. Weighted by scheduled departures.
-            U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.
-          </p>
         </ChartCard>
       </SectionBlock>
     </DashboardLayout>

@@ -1,10 +1,12 @@
-import { useMemo, useState, useRef, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Users, Plane, Package, Route, BarChart3, Settings2, MapPin } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, CLASS_LABELS, AIRCRAFT_GROUP_LABELS, CARRIER_TYPE_LABELS, getCarrierType, BORDER_AIRPORTS, BORDER_AIRPORT_LIST, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
-import { formatNumber } from '@/lib/chartColors'
+import { formatNumber, CHART_COLORS } from '@/lib/chartColors'
+import { PAGE_MARKET_COLS, PAGE_SEGMENT_COLS } from '@/lib/downloadColumns'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
 import FilterMultiSelect from '@/components/filters/FilterMultiSelect'
@@ -16,6 +18,11 @@ import PassengersRoutesTab from './tabs/PassengersRoutesTab'
 import OperationsCapacityTab from './tabs/OperationsCapacityTab'
 import CargoTradeTab from './tabs/CargoTradeTab'
 import BorderAirportsTab from './tabs/BorderAirportsTab'
+
+/* ── stable color map for border airports (shared with BorderAirportsTab) */
+const ORIGIN_COLORS = Object.fromEntries(
+  BORDER_AIRPORT_LIST.map((a, i) => [a.code, CHART_COLORS[i % CHART_COLORS.length]])
+)
 
 /* ── tab configuration ─────────────────────────────────────────────── */
 const TAB_CONFIG = [
@@ -65,8 +72,14 @@ export default function TexasMexicoPage() {
   const [mapMetric, setMapMetric] = useState('PASSENGERS')
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
 
-  /* ── tab state ───────────────────────────────────────────────────── */
-  const [activeTab, setActiveTab] = useState('overview')
+  /* ── tab state (synced to URL for shareability) ──────────────────── */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const VALID_TABS = useMemo(() => new Set(TAB_CONFIG.map((t) => t.key)), [])
+  const rawTab = searchParams.get('tab')
+  const activeTab = VALID_TABS.has(rawTab) ? rawTab : 'overview'
+  const handleTabChange = useCallback((key) => {
+    setSearchParams({ tab: key }, { replace: true })
+  }, [setSearchParams])
   const tabBarRef = useRef(null)
 
   // Reset stale direction filter carried from other pages
@@ -697,6 +710,73 @@ export default function TexasMexicoPage() {
     return { rowLabels, colLabels, cells }
   }, [filtered, matrixMetric])
 
+  /* ── route evolution data (animated map + bar chart race) ───────────── */
+  const routeEvolutionData = useMemo(() => {
+    const field = matrixMetric === 'passengers' ? 'PASSENGERS' : 'FREIGHT'
+
+    const borderData = filteredNoYear.filter((d) => {
+      const txCode = isTxToMx(d) ? d.ORIGIN : d.DEST
+      return BORDER_AIRPORTS.has(txCode)
+    })
+
+    const years = [...new Set(borderData.map((d) => d.YEAR))].sort()
+    if (!years.length) return { years: [], mapFrames: [], raceFrames: [], globalMax: 0 }
+
+    let globalMax = 0
+    const mapFrames = []
+    const raceFrames = []
+
+    for (const year of years) {
+      const yearData = borderData.filter((d) => d.YEAR === year)
+
+      // Map frame — color routes by TX border airport origin
+      const routes = aggregateRoutes(yearData, airportIndex, field)
+      for (const r of routes) {
+        const txCode = BORDER_AIRPORTS.has(r.origin) ? r.origin : r.dest
+        r.color = ORIGIN_COLORS[txCode] || null
+      }
+      const volumes = aggregateAirportVolumes(yearData, field)
+      const seen = new Set()
+      const airports = []
+      for (const d of yearData) {
+        for (const code of [d.ORIGIN, d.DEST]) {
+          if (seen.has(code)) continue
+          seen.add(code)
+          const info = airportIndex?.get(code)
+          if (!info?.lat) continue
+          const isOrigin = code === d.ORIGIN
+          airports.push({
+            iata: code, name: info.name,
+            city: isOrigin ? d.ORIGIN_CITY_NAME : d.DEST_CITY_NAME,
+            country: isOrigin ? d.ORIGIN_COUNTRY_NAME : d.DEST_COUNTRY_NAME,
+            lat: info.lat, lng: info.lng,
+            volume: volumes.get(code) || 0,
+            color: BORDER_AIRPORTS.has(code) ? ORIGIN_COLORS[code] : '#6b7280',
+          })
+        }
+      }
+      mapFrames.push({ year, routes, airports })
+
+      // Race frame
+      const byRoute = new Map()
+      yearData.forEach((d) => {
+        const txCode = isTxToMx(d) ? d.ORIGIN : d.DEST
+        const mxCode = isTxToMx(d) ? d.DEST : d.ORIGIN
+        const key = `${txCode}-${mxCode}`
+        const txName = airportIndex?.get(txCode)?.name || txCode
+        const mxName = airportIndex?.get(mxCode)?.name || mxCode
+        const route = `${txName} → ${mxName}`
+        if (!byRoute.has(key)) byRoute.set(key, { route, value: 0, origin: txCode })
+        byRoute.get(key).value += d[field]
+      })
+      const sorted = [...byRoute.values()].sort((a, b) => b.value - a.value)
+      sorted.forEach((r) => { if (r.value > globalMax) globalMax = r.value })
+      raceFrames.push({ year, routes: sorted })
+    }
+
+    return { years, mapFrames, raceFrames, globalMax }
+  }, [filteredNoYear, airportIndex, matrixMetric])
+
   /* ── data table ────────────────────────────────────────────────────── */
   const tableData = useMemo(() => {
     const byKey = new Map()
@@ -915,6 +995,7 @@ export default function TexasMexicoPage() {
           name: info.name,
           city: isOrigin ? d.ORIGIN_CITY_NAME : d.DEST_CITY_NAME,
           country: isOrigin ? d.ORIGIN_COUNTRY_NAME : d.DEST_COUNTRY_NAME,
+          region: (isOrigin ? d.ORIGIN_STATE_NM : d.DEST_STATE_NM) || '',
           lat: info.lat, lng: info.lng,
           volume: volumes.get(code) || 0,
         })
@@ -1006,6 +1087,10 @@ export default function TexasMexicoPage() {
       onResetAll={resetFilters}
       activeCount={activeCount}
       activeTags={activeTags}
+      pageDownload={{
+        market: { data: filtered, filename: 'texas-mexico-market-data', columns: PAGE_MARKET_COLS },
+        segment: { data: filteredSegment, filename: 'texas-mexico-segment-data', columns: PAGE_SEGMENT_COLS },
+      }}
     >
       {/* KPI Cards — always visible above tabs */}
       <SectionBlock>
@@ -1045,7 +1130,7 @@ export default function TexasMexicoPage() {
           <TabBar
             tabs={TAB_CONFIG}
             activeTab={activeTab}
-            onChange={setActiveTab}
+            onChange={handleTabChange}
           />
       </div>
 
@@ -1123,6 +1208,7 @@ export default function TexasMexicoPage() {
           matrixMetric={matrixMetric}
           setMatrixMetric={setMatrixMetric}
           airportIndex={airportIndex}
+          routeEvolutionData={routeEvolutionData}
         />
       )}
     </DashboardLayout>

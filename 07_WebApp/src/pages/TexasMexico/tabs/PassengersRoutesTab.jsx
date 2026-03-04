@@ -6,8 +6,9 @@ import InsightCallout from '@/components/ui/InsightCallout'
 import BarChart from '@/components/charts/BarChart'
 import DonutChart from '@/components/charts/DonutChart'
 import DataTable from '@/components/ui/DataTable'
-import { fmtCompact } from '@/lib/aviationHelpers'
+import { fmtCompact, isEmptyOrAllZero } from '@/lib/aviationHelpers'
 import { formatNumber } from '@/lib/chartColors'
+import { DL } from '@/lib/downloadColumns'
 
 export default function PassengersRoutesTab({
   topRoutes, topTxAirports, topMxAirports, topMxStates,
@@ -51,7 +52,8 @@ export default function PassengersRoutesTab({
         <ChartCard
           title="Top 10 Texas–Mexico Routes"
           subtitle="By total passengers (all filtered years)"
-          downloadData={{ summary: { data: topRoutes, filename: 'tx-mx-top-routes' } }}
+          downloadData={{ summary: { data: topRoutes, filename: 'tx-mx-top-routes', columns: DL.routesPax } }}
+          emptyState={isEmptyOrAllZero(topRoutes) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
         >
           <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
         </ChartCard>
@@ -63,14 +65,16 @@ export default function PassengersRoutesTab({
           <ChartCard
             title="Top Texas Airports for Mexico Traffic"
             subtitle="By total passengers"
-            downloadData={{ summary: { data: topTxAirports, filename: 'tx-mx-top-tx-airports' } }}
+            downloadData={{ summary: { data: topTxAirports, filename: 'tx-mx-top-tx-airports', columns: DL.airportsPax } }}
+            emptyState={isEmptyOrAllZero(topTxAirports) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
           >
             <BarChart data={topTxAirports} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
           </ChartCard>
           <ChartCard
             title="Top Mexico Airports for Texas Traffic"
             subtitle="By total passengers"
-            downloadData={{ summary: { data: topMxAirports, filename: 'tx-mx-top-mx-airports' } }}
+            downloadData={{ summary: { data: topMxAirports, filename: 'tx-mx-top-mx-airports', columns: DL.airportsPax } }}
+            emptyState={isEmptyOrAllZero(topMxAirports) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
           >
             <BarChart data={topMxAirports} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
           </ChartCard>
@@ -82,7 +86,8 @@ export default function PassengersRoutesTab({
         <ChartCard
           title="Top Mexico Destinations by State"
           subtitle="Quintana Roo, Jalisco, Nuevo Leon, etc. by passenger volume"
-          downloadData={{ summary: { data: topMxStates, filename: 'tx-mx-top-mx-states' } }}
+          downloadData={{ summary: { data: topMxStates, filename: 'tx-mx-top-mx-states', columns: DL.statesPax } }}
+          emptyState={isEmptyOrAllZero(topMxStates) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
         >
           <BarChart data={topMxStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
         </ChartCard>
@@ -93,8 +98,9 @@ export default function PassengersRoutesTab({
         <ChartCard
           title="Carrier Market Share"
           subtitle={`By passengers (${filters.year.length === 1 ? filters.year[0] : 'all filtered years'})`}
-          downloadData={{ summary: { data: carrierMarketShare, filename: 'tx-mx-carrier-share' } }}
+          downloadData={{ summary: { data: carrierMarketShare, filename: 'tx-mx-carrier-share', columns: DL.carrierPax } }}
           className="max-w-5xl mx-auto"
+          emptyState={isEmptyOrAllZero(carrierMarketShare) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
         >
           <DonutChart data={carrierMarketShare} formatValue={fmtCompact} />
         </ChartCard>
@@ -105,7 +111,7 @@ export default function PassengersRoutesTab({
         <ChartCard
           title="Route Details"
           subtitle={`${formatNumber(tableData.length)} routes (filtered)`}
-          downloadData={{ summary: { data: tableData, filename: 'tx-mx-route-details' } }}
+          downloadData={{ summary: { data: tableData, filename: 'tx-mx-route-details', columns: DL.routeDetails } }}
         >
           <DataTable columns={tableColumns} data={tableData} />
         </ChartCard>

@@ -4,6 +4,13 @@
  * Extracted from Overview and Market pages to avoid duplication.
  */
 
+/* ── Empty-state helpers ──────────────────────────────────────────── */
+
+/** True when data array is empty or every value is zero/falsy.
+ *  Used with ChartCard `emptyState` prop to show contextual messages. */
+export const isEmptyOrAllZero = (data, key = 'value') =>
+  !data.length || data.every((d) => !d[key])
+
 /* ── Number formatters ─────────────────────────────────────────────── */
 
 export const fmtCompact = (v) => {

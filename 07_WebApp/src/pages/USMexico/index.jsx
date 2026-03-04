@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Users, PieChart, MapPin, Route, Package, Award, AlertTriangle } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, fmtLbs, isUsToMx, isMxToUs, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, isUsToMx, isMxToUs, computeAdherenceData, isEmptyOrAllZero, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { CHART_COLORS } from '@/lib/chartColors'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
+import { DL, PAGE_MARKET_COLS, PAGE_SEGMENT_COLS } from '@/lib/downloadColumns'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
 import FilterMultiSelect from '@/components/filters/FilterMultiSelect'
@@ -228,6 +229,7 @@ export default function USMexicoPage() {
 
   /* ── Schedule Adherence: local year selector ───────────────────────── */
   const [adherenceYear, setAdherenceYear] = useState('')
+  const [lfView, setLfView] = useState('box')              // 'line' | 'box'
   const adherenceYears = useMemo(() =>
     [...new Set(filteredSegment.map((d) => d.YEAR))].sort((a, b) => a - b),
   [filteredSegment])
@@ -568,6 +570,7 @@ export default function USMexicoPage() {
           name: info.name,
           city: isOrigin ? d.ORIGIN_CITY_NAME : d.DEST_CITY_NAME,
           country: isOrigin ? d.ORIGIN_COUNTRY_NAME : d.DEST_COUNTRY_NAME,
+          region: (isOrigin ? d.ORIGIN_STATE_NM : d.DEST_STATE_NM) || '',
           lat: info.lat, lng: info.lng,
           volume: volumes.get(code) || 0,
         })
@@ -639,6 +642,10 @@ export default function USMexicoPage() {
       onResetAll={resetFilters}
       activeCount={activeCount}
       activeTags={activeTags}
+      pageDownload={{
+        market: { data: filtered, filename: 'us-mexico-market-data', columns: PAGE_MARKET_COLS },
+        segment: { data: filteredSegment, filename: 'us-mexico-segment-data', columns: PAGE_SEGMENT_COLS },
+      }}
     >
       {/* Page Introduction */}
       <SectionBlock>
@@ -742,28 +749,28 @@ export default function USMexicoPage() {
           <ChartCard
             title="U.S.–Mexico Passenger Trends"
             subtitle="Total passengers by year (both directions)"
-            downloadData={{ summary: { data: paxTrend, filename: 'us-mx-passenger-trends' } }}
+            downloadData={{ summary: { data: paxTrend, filename: 'us-mx-passenger-trends', columns: DL.paxTrend } }}
           >
             <LineChart data={paxTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="U.S.–Mexico Flight Trends"
             subtitle="Flights operated by year (segment data)"
-            downloadData={{ summary: { data: flightTrend, filename: 'us-mx-flight-trends' } }}
+            downloadData={{ summary: { data: flightTrend, filename: 'us-mx-flight-trends', columns: DL.flightTrend } }}
           >
             <LineChart data={flightTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="U.S.–Mexico Freight Trends"
             subtitle="Freight volume by year (lbs)"
-            downloadData={{ summary: { data: freightTrend, filename: 'us-mx-freight-trends' } }}
+            downloadData={{ summary: { data: freightTrend, filename: 'us-mx-freight-trends', columns: DL.freightTrend } }}
           >
             <LineChart data={freightTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="U.S.–Mexico Mail Trends"
             subtitle="Mail volume by year (lbs)"
-            downloadData={{ summary: { data: mailTrend, filename: 'us-mx-mail-trends' } }}
+            downloadData={{ summary: { data: mailTrend, filename: 'us-mx-mail-trends', columns: DL.mailTrend } }}
           >
             <LineChart data={mailTrend} xKey="year" yKey="value" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>
@@ -781,7 +788,8 @@ export default function USMexicoPage() {
           <ChartCard
             title="Texas Share of U.S.–Mexico Air Traffic"
             subtitle="Passengers from U.S. to Mexico (all filtered years)"
-            downloadData={{ summary: { data: txShareData, filename: 'tx-share-us-mx' } }}
+            downloadData={{ summary: { data: txShareData, filename: 'tx-share-us-mx', columns: DL.regionPax } }}
+            emptyState={isEmptyOrAllZero(txShareData) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
             footnote={<p className="text-base text-text-secondary mt-1 italic">Texas's dominant share reflects both geographic proximity to Mexico and the state's concentration of major hub airports.</p>}
           >
             <DonutChart data={txShareData} formatValue={fmtCompact} maxSize={250} />
@@ -790,7 +798,8 @@ export default function USMexicoPage() {
             className="lg:col-span-2"
             title="Top U.S. States Serving Mexico"
             subtitle={`Total passengers, U.S. → Mexico (all filtered years)`}
-            downloadData={{ summary: { data: topStates, filename: 'top-us-states-to-mexico' } }}
+            downloadData={{ summary: { data: topStates, filename: 'top-us-states-to-mexico', columns: DL.statesPax } }}
+            emptyState={isEmptyOrAllZero(topStates) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
           >
             <BarChart data={topStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
           </ChartCard>
@@ -825,14 +834,15 @@ export default function USMexicoPage() {
           <ChartCard
             title="U.S. States by Mexico Passengers"
             subtitle="Top 15 states, U.S. &rarr; Mexico"
-            downloadData={{ summary: { data: stateRankingPax, filename: 'us-states-mx-passengers' } }}
+            downloadData={{ summary: { data: stateRankingPax, filename: 'us-states-mx-passengers', columns: DL.statesPax } }}
+            emptyState={isEmptyOrAllZero(stateRankingPax) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
           >
             <BarChart data={stateRankingPax} xKey="label" yKey="value" horizontal formatValue={fmtCompact} selectedBar="Texas" />
           </ChartCard>
           <ChartCard
             title="U.S. States by Mexico Cargo"
             subtitle="Top 15 states, U.S. &rarr; Mexico (freight lbs)"
-            downloadData={{ summary: { data: stateRankingCargo, filename: 'us-states-mx-cargo' } }}
+            downloadData={{ summary: { data: stateRankingCargo, filename: 'us-states-mx-cargo', columns: DL.statesCargo } }}
           >
             <BarChart data={stateRankingCargo} xKey="label" yKey="value" horizontal formatValue={fmtLbs} selectedBar="Texas" />
           </ChartCard>
@@ -844,7 +854,8 @@ export default function USMexicoPage() {
         <ChartCard
           title="Top U.S.–Mexico Routes"
           subtitle="Top 10 by passengers (all filtered years)"
-          downloadData={{ summary: { data: topRoutes, filename: 'top-us-mx-routes' } }}
+          downloadData={{ summary: { data: topRoutes, filename: 'top-us-mx-routes', columns: DL.routesPax } }}
+          emptyState={isEmptyOrAllZero(topRoutes) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
         >
           <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
         </ChartCard>
@@ -855,7 +866,8 @@ export default function USMexicoPage() {
         <ChartCard
           title="Schedule Adherence"
           subtitle={`Class F scheduled service, U.S. carriers only — departure-weighted${adherenceYear ? ` (${adherenceYear})` : ''}`}
-          downloadData={{ summary: { data: adherenceData, filename: 'us-mx-schedule-adherence' } }}
+          downloadData={{ summary: { data: adherenceData, filename: 'us-mx-schedule-adherence', columns: DL.adherence } }}
+          emptyState={!adherenceData.length ? 'Schedule adherence is only available for Class F (Scheduled Service) U.S. carrier flights.' : null}
           headerRight={
             <select
               value={adherenceYear}
@@ -868,15 +880,17 @@ export default function USMexicoPage() {
               ))}
             </select>
           }
+          footnote={
+            <p className="text-base text-text-secondary mt-1 italic">
+              Each bar shows the share of annual carrier-route records by how many flights were performed
+              vs. scheduled. For example, &ldquo;11+ fewer flights&rdquo; means the carrier operated 11+
+              fewer flights than scheduled on that route for the year &mdash; missing flights were cancelled,
+              consolidated, or simply never operated. Weighted by scheduled departures.
+              U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.
+            </p>
+          }
         >
           <BarChart data={adherenceData} xKey="label" yKey="value" horizontal colorAccessor={(d) => d.color} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={15} animate />
-          <p className="text-base text-text-secondary mt-3 italic">
-            Each bar shows the share of annual carrier-route records by how many flights were performed
-            vs. scheduled. For example, &ldquo;11+ fewer flights&rdquo; means the carrier operated 11+
-            fewer flights than scheduled on that route for the year &mdash; missing flights were cancelled,
-            consolidated, or simply never operated. Weighted by scheduled departures.
-            U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.
-          </p>
         </ChartCard>
       </SectionBlock>
 
@@ -887,35 +901,51 @@ export default function USMexicoPage() {
             Seat capacity and passenger load factors reveal whether airline supply is keeping pace with passenger demand.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="space-y-5">
           <ChartCard
             title="Seat Capacity Trends"
             subtitle="Total seats by year (segment data)"
-            downloadData={{ summary: { data: seatTrend, filename: 'us-mx-seat-trends' } }}
+            downloadData={{ summary: { data: seatTrend, filename: 'us-mx-seat-trends', columns: DL.seatTrend } }}
           >
             <LineChart data={seatTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
-            title="Passenger Load Factor Trends"
-            subtitle="Passengers &divide; Seats (%) by year and direction"
-            downloadData={{ summary: { data: loadFactorTrend, filename: 'us-mx-load-factor-trend' } }}
-          >
-            <LineChart data={loadFactorTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
-          </ChartCard>
-          <div className="md:col-span-2">
-            <ChartCard
-              title="Route-Level Passenger Load Factor Distribution by Year"
-              subtitle="Distribution of annual route load factors (routes with 100+ seats)"
-              downloadData={{ summary: { data: loadFactorDistribution, filename: 'us-mx-load-factor-distribution' } }}
-            >
-              <BoxPlotChart data={loadFactorDistribution} xKey="year" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} animate />
-              <p className="text-base text-text-secondary mt-3 italic">
+            title={lfView === 'line' ? 'Passenger Load Factor Trends' : 'Route-Level Passenger Load Factor Distribution by Year'}
+            subtitle={lfView === 'line' ? 'Passengers ÷ Seats (%) by year and direction' : 'Distribution of annual route load factors (routes with 100+ seats)'}
+            downloadData={lfView === 'line'
+              ? { summary: { data: loadFactorTrend, filename: 'us-mx-load-factor-trend', columns: DL.loadFactorDir } }
+              : { summary: { data: loadFactorDistribution, filename: 'us-mx-load-factor-distribution', columns: DL.boxPlotPct } }}
+            emptyState={lfView === 'line'
+              ? (!loadFactorTrend.length ? 'Load factor requires passenger flights with seat data. Cargo-only (Class G) and charter flights may not report seat capacity.' : null)
+              : (!loadFactorDistribution.length ? 'Load factor requires passenger flights with seat data. Cargo-only (Class G) and charter flights may not report seat capacity.' : null)}
+            footnote={lfView === 'box' ? (
+              <p className="text-base text-text-secondary mt-1 italic">
                 Each box shows the middle 50% of route-level load factors for that year. The line inside each box marks the median.
                 Whiskers extend to the most extreme non-outlier routes; red dots show statistical outliers (beyond 1.5&times;IQR from Q1/Q3).
                 Only routes with 100+ annual seats are included.
               </p>
-            </ChartCard>
-          </div>
+            ) : null}
+            headerRight={
+              <div className="flex rounded-md overflow-hidden border border-gray-300">
+                <button
+                  onClick={() => setLfView('line')}
+                  className={`px-3 py-1 text-base font-medium transition-colors ${lfView === 'line' ? 'bg-brand-blue text-white' : 'bg-white text-text-primary hover:bg-gray-100'}`}
+                >
+                  Line Chart
+                </button>
+                <button
+                  onClick={() => setLfView('box')}
+                  className={`px-3 py-1 text-base font-medium transition-colors ${lfView === 'box' ? 'bg-brand-blue text-white' : 'bg-white text-text-primary hover:bg-gray-100'}`}
+                >
+                  Box Chart
+                </button>
+              </div>
+            }
+          >
+            {lfView === 'line'
+              ? <LineChart data={loadFactorTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
+              : <BoxPlotChart data={loadFactorDistribution} xKey="year" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} animate />}
+          </ChartCard>
         </div>
       </SectionBlock>
     </DashboardLayout>

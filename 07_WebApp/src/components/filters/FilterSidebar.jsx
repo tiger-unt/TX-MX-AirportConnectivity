@@ -31,12 +31,15 @@
  * layout, styling, collapse behavior, or add/remove global sidebar features.
  */
 import { useState, useEffect, useRef } from 'react'
-import { Filter, RotateCcw, PanelRightClose, PanelRightOpen, ArrowUp } from 'lucide-react'
+import { Filter, RotateCcw, PanelRightClose, PanelRightOpen, ArrowUp, Download } from 'lucide-react'
 import ActiveFilterTags from '@/components/filters/ActiveFilterTags'
+import { downloadCsv } from '@/lib/downloadCsv'
 
-export default function FilterSidebar({ children, onResetAll, activeCount = 0, activeTags = [], title = 'Filters' }) {
+export default function FilterSidebar({ children, onResetAll, activeCount = 0, activeTags = [], title = 'Filters', pageDownload }) {
   const [collapsed, setCollapsed] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [dlOpen, setDlOpen] = useState(false)
+  const dlRef = useRef(null)
   const asideRef = useRef(null)
   const chromeHeightRef = useRef(0)
   const rafRef = useRef(0)
@@ -86,6 +89,16 @@ export default function FilterSidebar({ children, onResetAll, activeCount = 0, a
       window.removeEventListener('resize', onResize)
     }
   }, [])
+
+  // Close download dropdown on outside click
+  useEffect(() => {
+    if (!dlOpen) return
+    const handler = (e) => {
+      if (dlRef.current && !dlRef.current.contains(e.target)) setDlOpen(false)
+    }
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [dlOpen])
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -169,6 +182,41 @@ export default function FilterSidebar({ children, onResetAll, activeCount = 0, a
                   <ArrowUp size={12} />
                   Back to top
                 </button>
+              )}
+
+              {/* Page-level data download */}
+              {pageDownload && (
+                <div className="border-t border-border-light pt-4 mt-2 relative" ref={dlRef}>
+                  <button
+                    onClick={() => setDlOpen((o) => !o)}
+                    className="flex items-center justify-center gap-2 w-full px-3 py-2.5 text-base font-medium
+                               text-brand-blue border border-brand-blue/30 rounded-lg
+                               hover:bg-brand-blue/5 transition-all duration-150"
+                  >
+                    <Download size={14} />
+                    Download Page Data
+                  </button>
+                  {dlOpen && (
+                    <div className="mt-1 bg-white rounded-lg shadow-lg border border-border-light py-1 z-50">
+                      {pageDownload.market?.data?.length > 0 && (
+                        <button
+                          onClick={() => { downloadCsv(pageDownload.market.data, pageDownload.market.filename, pageDownload.market.columns); setDlOpen(false) }}
+                          className="w-full text-left px-3 py-2 text-base text-text-primary hover:bg-surface-alt transition-colors"
+                        >
+                          Market Data (CSV)
+                        </button>
+                      )}
+                      {pageDownload.segment?.data?.length > 0 && (
+                        <button
+                          onClick={() => { downloadCsv(pageDownload.segment.data, pageDownload.segment.filename, pageDownload.segment.columns); setDlOpen(false) }}
+                          className="w-full text-left px-3 py-2 text-base text-text-primary hover:bg-surface-alt transition-colors"
+                        >
+                          Segment Data (CSV)
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

@@ -9,6 +9,7 @@ import DivergingBarChart from '@/components/charts/DivergingBarChart'
 import ScatterPlot from '@/components/charts/ScatterPlot'
 import { fmtCompact, fmtLbs } from '@/lib/aviationHelpers'
 import { CHART_COLORS } from '@/lib/chartColors'
+import { DL } from '@/lib/downloadColumns'
 
 const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
@@ -85,14 +86,14 @@ export default function CargoTradeTab({
           <ChartCard
             title="Freight Volume Trends"
             subtitle="TX→MX exports vs MX→TX imports by year"
-            downloadData={{ summary: { data: freightTrend, filename: 'tx-mx-freight-trends' } }}
+            downloadData={{ summary: { data: freightTrend, filename: 'tx-mx-freight-trends', columns: DL.freightTrendDir } }}
           >
             <LineChart data={freightTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="Mail Volume Trends"
             subtitle="Bidirectional mail volume by year"
-            downloadData={{ summary: { data: mailTrend, filename: 'tx-mx-mail-trends' } }}
+            downloadData={{ summary: { data: mailTrend, filename: 'tx-mx-mail-trends', columns: DL.mailTrendDir } }}
           >
             <LineChart data={mailTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>
@@ -104,7 +105,7 @@ export default function CargoTradeTab({
         <ChartCard
           title="TX–MX Freight Imbalance by Airport"
           subtitle="Exports vs Imports in freight lbs per Texas airport"
-          downloadData={{ summary: { data: freightImbalance.map((d) => ({ label: d.label, Exports: d.exports, Imports: d.imports })), filename: 'tx-mx-freight-imbalance' } }}
+          downloadData={{ summary: { data: freightImbalance.map((d) => ({ label: d.label, Exports: d.exports, Imports: d.imports })), filename: 'tx-mx-freight-imbalance', columns: DL.freightImbalance } }}
           footnote={<p className="text-base text-text-secondary mt-1 italic">Airports with larger bars on the right ship more freight to Mexico; those extending left receive more. This asymmetry is analogous to "deadheading" in trucking — cargo flights often move loaded in one direction and return empty, which increases per-unit transportation costs and influences the economic viability of air versus surface freight.</p>}
         >
           <DivergingBarChart
@@ -121,7 +122,7 @@ export default function CargoTradeTab({
         <ChartCard
           title="Freight Intensity by Route"
           subtitle="Average freight per departure (lbs/flight) &mdash; top 10 routes with &ge;10 departures"
-          downloadData={{ summary: { data: freightPerDep, filename: 'tx-mx-freight-per-departure' } }}
+          downloadData={{ summary: { data: freightPerDep, filename: 'tx-mx-freight-per-departure', columns: DL.freightIntensity } }}
           footnote={<p className="text-base text-text-secondary mt-1 italic">Segment-level metric: shows how much cargo each flight actually carries. Routes with irregular, high-intensity spikes may reflect "emergency supply chain" usage — airports serving as last-resort modal options for urgent, high-value shipments when surface transport cannot meet delivery timelines.</p>}
         >
           <BarChart data={freightPerDep} xKey="label" yKey="value" horizontal formatValue={fmtLbs} color={CHART_COLORS[4]} />
@@ -156,7 +157,7 @@ export default function CargoTradeTab({
             <ChartCard
               title="Freight Payload Utilization Trend"
               subtitle="(Freight + Mail) ÷ Payload Capacity (%) — Class G flights only"
-              downloadData={{ summary: { data: classGFreightUtilTrend, filename: 'tx-mx-class-g-freight-util-trend' } }}
+              downloadData={{ summary: { data: classGFreightUtilTrend, filename: 'tx-mx-class-g-freight-util-trend', columns: DL.classGUtilTrend } }}
             >
               <LineChart data={classGFreightUtilTrend} xKey="year" yKey="value" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
             </ChartCard>
@@ -164,7 +165,7 @@ export default function CargoTradeTab({
             <ChartCard
               title="Top Routes by Freight Payload Utilization"
               subtitle="Class G routes with ≥5 departures — (Freight + Mail) ÷ Payload (%)"
-              downloadData={{ summary: { data: classGFreightUtilByRoute, filename: 'tx-mx-class-g-freight-util-by-route' } }}
+              downloadData={{ summary: { data: classGFreightUtilByRoute, filename: 'tx-mx-class-g-freight-util-by-route', columns: DL.classGUtilRoute } }}
             >
               <BarChart
                 data={classGFreightUtilByRoute}
@@ -214,7 +215,7 @@ export default function CargoTradeTab({
         <ChartCard
           title="Airport Activity: Passengers vs Freight"
           subtitle="Texas airports with Mexico service"
-          downloadData={{ summary: { data: borderSummaryTable, filename: 'tx-mx-airport-scatter' } }}
+          downloadData={{ summary: { data: borderSummaryTable, filename: 'tx-mx-airport-scatter', columns: DL.airportScatter } }}
           headerRight={
             <select
               value={scatterScale}

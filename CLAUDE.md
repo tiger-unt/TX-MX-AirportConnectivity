@@ -86,7 +86,7 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 ### Tech Stack
 - **React 19** + Vite 7 — SPA with HashRouter (static-hosting friendly)
 - **Zustand** — lightweight state management (aviationStore, chatStore)
-- **D3.js** — chart rendering (bar, line, donut, stacked bar, treemap, diverging bar, heatmap table, scatter plot, lollipop)
+- **D3.js** — chart rendering (bar, line, donut, stacked bar, treemap, diverging bar, heatmap table, scatter plot, lollipop, bar chart race)
 - **Leaflet + React-Leaflet** — interactive airport maps with route arcs
 - **Tailwind CSS 4** — utility-first styling with TxDOT brand tokens
 - **Lucide React** — icon library
@@ -125,7 +125,7 @@ src/
 ├── components/
 │   ├── layout/         # SiteHeader, MainNav, DashboardLayout, PageWrapper, Footer, UtilityBar
 │   ├── ui/             # StatCard, ChartCard, DataTable, FullscreenChart, DownloadButton, PageHeader, SectionBlock, TabBar, InsightCallout, ErrorBoundary, MapPlaceholder
-│   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot, LollipopChart, BoxPlotChart
+│   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot, LollipopChart, BoxPlotChart, BarChartRace
 │   ├── maps/           # AirportMap (Leaflet markers + great-circle route arcs)
 │   ├── filters/        # FilterSidebar, FilterBar, FilterSelect, FilterMultiSelect, ActiveFilterTags
 │   └── ai/             # AskAIDrawer, ChatInput, ChatMessage, SuggestedQuestions
@@ -139,7 +139,8 @@ src/
 │   ├── pageContext.js       # Gathers current page state for AI chat
 │   ├── useCascadingFilters.js # Cross-filter hook for interdependent dropdowns
 │   ├── useChartResize.js   # Responsive chart resize hook
-│   ├── downloadCsv.js      # CSV export helper
+│   ├── downloadCsv.js      # CSV export helper (supports column renaming via `columns` map)
+│   ├── downloadColumns.js  # Reusable column-rename maps for chart + page-level CSV downloads
 │   └── exportPng.js        # Chart-to-PNG screenshot utility
 ├── contexts/           # FilterContext (React Context for filter state)
 └── styles/             # globals.css (Tailwind + tokens), leaflet-overrides.css
@@ -198,6 +199,19 @@ src/
 - **StatCard latest-year labeling**: When a StatCard displays a metric that is specific to a single year (e.g., passengers, flights, destinations served, top destination), its label should include `(${latestYear})` to indicate the year. This uses the latest year available in the (filtered) dataset, computed dynamically. Only omit the year suffix for metrics that are inherently time-independent.
 - **Year filter and full-range trend charts**: Charts that display a trend across the full time series (e.g., 2015–2024 line charts showing passenger, freight, or flight trends over time) should NOT be filtered by the year filter. Their purpose is to show the complete historical trend, which would be defeated by narrowing to a single year. The year filter should only apply to point-in-time visualizations (stat cards, rankings, donut charts, bar charts showing a single year's breakdown, maps, tables). When building or modifying a page, ensure that trend LineCharts receive unfiltered-by-year data (or the full dataset filtered only by non-year filters), while snapshot visualizations use the year-filtered dataset.
 
+### CSV Download Column Naming
+Chart-level and page-level CSV downloads use `downloadCsv(data, filename, columns)` from `downloadCsv.js`. The optional `columns` parameter is an object map `{ dataKey: 'CSV Header Name' }` that renames columns and filters out internal-only fields (e.g., `color`). When `columns` is omitted, all keys export as-is (backward compatible).
+
+**Reusable column maps** are defined in `downloadColumns.js`:
+- **`DL`** — chart-level maps (e.g., `DL.paxTrend`, `DL.adherence`, `DL.routesPax`, `DL.boxPlotPct`)
+- **`PAGE_MARKET_COLS`** — page-level market data columns (Year, Origin Code, Origin Airport, ..., Passengers, Freight, Mail, Distance)
+- **`PAGE_SEGMENT_COLS`** — page-level segment data columns (all market cols + Departures, Seats, Payload, Aircraft Group, etc.)
+
+**Rules:**
+1. **Always pass `columns`** in `downloadData` for chart-level downloads — never export generic "label"/"value" headers or internal "color" fields.
+2. **Page-level downloads** use `pageDownload` prop on `DashboardLayout` → `FilterSidebar`. Shape: `{ market: { data, filename, columns }, segment: { data, filename, columns } }`. Buttons appear below filter controls in the sidebar.
+3. When adding a new chart with `downloadData`, pick the appropriate `DL.*` constant or create a new one in `downloadColumns.js`.
+
 ### Chart Value Formatting (IMPORTANT)
 All chart components accept a `formatValue` prop that controls how numeric values are displayed in **both** tooltips and axis labels. The page passing data to a chart is responsible for choosing the correct formatter based on the metric being displayed.
 
@@ -233,6 +247,8 @@ All chart components accept a `formatValue` prop that controls how numeric value
 - **LollipopChart**: Horizontal lollipop chart (thin stem + dot) for ranked data with long labels. Props: `data`, `xKey`, `yKey`, `color`, `formatValue`, `maxBars`, `animate`, `dotRadius`. Route labels auto-split on " → " for two-line display (origin / destination). Subtle guide lines and animated entrance.
 - **BoxPlotChart**: Vertical box-and-whisker chart showing statistical distributions per category. Props: `data` (pre-computed five-number summaries), `xKey`, `color`, `formatValue`, `animate`, `annotations`. Data shape: array of `{ [xKey], min, q1, median, q3, max, outliers: [{value, label}], count }`. Visual: filled box (Q1–Q3) with median line, whiskers (min–max), red outlier dots. HTML tooltip showing all statistics. Supports annotation bands (same format as LineChart). Used for route-level passenger load factor distribution by year on US-Mexico and Texas-Mexico pages.
 - **ScatterPlot**: Scatter/bubble chart with two numeric axes. Props: `data`, `xKey`, `yKey`, `labelKey`, `colorKey`, `sizeKey`, `formatX`, `formatY`, `colorMap`, `labelThreshold`, `scaleType` (`'symlog'`/`'linear'`/`'log'`), `animate`. Supports `d3.scaleSymlog()` for data with extreme skew and zero values. Optional bubble sizing via `scaleSqrt`. Permanent labels on top-N points, tooltip on hover for all. Used on Texas-Mexico Cargo & Trade tab for Passengers vs Freight airport activity (uniform dot size — no `sizeKey` — to avoid mixing incompatible units).
+- **BarChartRace**: Animated horizontal bar chart race that transitions between yearly frames (`components/charts/BarChartRace.jsx`). Props: `frames` (array of `{year, routes: [{route, value, origin}]}`), `currentYear`, `globalMax`, `maxBars` (default 12), `formatValue`, `originColors` (`{airportCode: '#hex'}`). Uses persistent SVG elements with D3 keyed data joins for smooth enter/update/exit transitions (750ms). Bars reorder vertically and grow/shrink horizontally as years change. New routes enter from below; dropped routes exit downward. Large year watermark in bottom-right. Height is bar-count-based (never uses `containerHeight` in normal mode). Used on Texas-Mexico Border Airports tab for route network evolution animation.
+- **Route Network Evolution**: Texas-Mexico Border Airports tab includes an animated section with shared playback controls (play/pause, skip, year slider) that drives two synchronized visualizations: (1) an AirportMap showing border airport route arcs that appear/disappear per year, and (2) a BarChartRace showing top routes ranked by volume. Data uses `filteredNoYear` (respects all filters except year) to compute per-year frames. The `matrixMetric` state (passengers/freight) is shared with the heatmap route matrix. Playback state (`currentYearIdx`, `isPlaying`) is local to `BorderAirportsTab`. Color-coding is by origin border airport (6 airports → 6 colors from `CHART_COLORS`).
 - **Map metric selector**: Each page's AirportMap has a `<select>` dropdown (via ChartCard `headerRight`) letting users switch between Passengers, Freight (lbs), Mail (lbs), and Flights. Configuration is centralized in `MAP_METRIC_OPTIONS` (aviationHelpers.js). Each option specifies the CSV field, data source (market/segment), formatter, and unit label. The map metric is page-local state (`useState`), not global store state, since it only affects map visualization. `aggregateRoutes(data, airportIndex, field)` and `aggregateAirportVolumes(data, field)` accept an optional field parameter (default `'PASSENGERS'`). AirportMap accepts `formatValue` and `metricLabel` props for popup formatting.
 - **AIRCRAFT_GROUP_LABELS constant**: `aviationHelpers.js` exports `AIRCRAFT_GROUP_LABELS` mapping BTS aircraft group codes (0–8) to readable names. Used on the Texas-Mexico page for Aircraft Mix donut chart and trend line. The segment CSV includes `AIRCRAFT_GROUP` as a dimension column (added to `SEGMENT_EXTRA_GROUP_BY` in Extract_BTS_Data.py).
 - **Service class analysis**: Texas-Mexico page includes a Service Class Breakdown section showing flight share by CLASS (F/G/L/P) as a donut chart and multi-series trend line. Uses `CLASS_LABELS` for readable names.
@@ -251,7 +267,7 @@ All chart components accept a `formatValue` prop that controls how numeric value
 | Passengers & Routes | `passengers` | Top 10 routes, TX/MX airport rankings, Mexico states, carrier market share, route details table |
 | Operations & Capacity | `operations` | Seat capacity, scheduled vs performed departures, schedule adherence, load factor (trend + distribution box plot), payload weight utilization (200 lb/pax estimate), service class breakdown, aircraft mix |
 | Cargo & Trade | `cargo` | Freight/mail trends, freight imbalance by airport (diverging bar), freight intensity by route, Class G (all-cargo) freight payload utilization (trend + route rankings), passengers-vs-freight scatter |
-| Border Airports | `border` | Border airport intro (mini-map + buttons), border vs non-border share (donut), O-D route matrix (heatmap) |
+| Border Airports | `border` | Border airport intro (mini-map + buttons), border vs non-border share (donut), route network evolution (animated map + bar chart race with shared playback controls), O-D route matrix (heatmap) |
 
 ### Running the WebApp
 ```bash

@@ -101,6 +101,7 @@ export default function OverviewPage() {
           name: info.name,
           city: isOrigin ? d.ORIGIN_CITY_NAME : d.DEST_CITY_NAME,
           country: isOrigin ? d.ORIGIN_COUNTRY_NAME : d.DEST_COUNTRY_NAME,
+          region: (isOrigin ? d.ORIGIN_STATE_NM : d.DEST_STATE_NM) || '',
           lat: info.lat,
           lng: info.lng,
           volume: volumes.get(code) || 0,

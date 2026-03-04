@@ -54,7 +54,7 @@ export default function DownloadButton({ summary, detail, size = 'default' }) {
 
   const handleClick = (type) => {
     const src = type === 'summary' ? summary : detail
-    if (src?.data?.length) downloadCsv(src.data, src.filename)
+    if (src?.data?.length) downloadCsv(src.data, src.filename, src.columns)
     setOpen(false)
   }
 

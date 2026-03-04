@@ -6,7 +6,7 @@ import AskAIDrawer from '@/components/ai/AskAIDrawer'
 
 export default function PageWrapper({ children }) {
   const { pathname } = useLocation()
-  const hideFooter = pathname === '/'
+  const hideFooter = pathname === '/' || pathname === '/about-data'
 
   return (
     <div className="min-h-screen flex flex-col">

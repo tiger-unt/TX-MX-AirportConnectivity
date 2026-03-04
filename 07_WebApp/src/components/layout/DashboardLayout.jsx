@@ -27,7 +27,7 @@ import FilterSidebar from '@/components/filters/FilterSidebar'
 import FilterBar from '@/components/filters/FilterBar'
 import FilterContext from '@/contexts/FilterContext'
 
-export default function DashboardLayout({ children, hero, filters, onResetAll, activeCount, activeTags }) {
+export default function DashboardLayout({ children, hero, filters, onResetAll, activeCount, activeTags, pageDownload }) {
   return (
     <FilterContext.Provider value={filters ? { filters, onResetAll, activeCount, activeTags } : null}>
       {/* Hero — full-width, above the filter sidebar */}
@@ -68,7 +68,7 @@ export default function DashboardLayout({ children, hero, filters, onResetAll, a
         {/* Desktop sidebar filters */}
         {filters && (
           <div className="hidden lg:block">
-            <FilterSidebar onResetAll={onResetAll} activeCount={activeCount} activeTags={activeTags}>
+            <FilterSidebar onResetAll={onResetAll} activeCount={activeCount} activeTags={activeTags} pageDownload={pageDownload}>
               {filters}
             </FilterSidebar>
           </div>

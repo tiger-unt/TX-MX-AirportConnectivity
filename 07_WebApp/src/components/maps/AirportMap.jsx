@@ -3,7 +3,11 @@
  * Reusable Leaflet map showing airport markers and route arcs.
  *
  * Props:
- *   airports      — Array of { iata, name, city, country, lat, lng, volume }
+ *   airports      — Array of { iata, name, city, country, lat, lng, volume, region? }
+ *                   region — optional state/country name shown in popup after the city
+ *                   BTS city names include a trailing ", ST" or ", Country" suffix.
+ *                   When region is provided the component strips that suffix and shows
+ *                   "City, Region" to avoid redundancy like "Abilene, TX, Texas".
  *   routes        — Array of { origin, dest, originLat, originLng, destLat, destLng, value, label }
  *   topN          — Number of top routes to show by default (default 15)
  *   selectedAirport / onAirportSelect — controlled selection state
@@ -42,6 +46,19 @@ const STROKE = {
   usOther: '#6d9bb8',
   mx: '#a84410',
   other: '#3a5252',
+}
+
+/**
+ * Format city + region for display.
+ * BTS city names end with ", ST" or ", Country" (e.g. "Abilene, TX" or "Cancun, Mexico").
+ * When a region is provided, strip that trailing suffix and replace it with the full
+ * region name to avoid redundancy like "Abilene, TX, Texas".
+ */
+function formatCityRegion(city, region) {
+  if (!region) return city || ''
+  // Strip the trailing ", XX" or ", Country" from BTS city name
+  const bare = city ? city.replace(/,\s*[^,]+$/, '') : ''
+  return `${bare}, ${region}`
 }
 
 function radiusScale(volume, maxVolume) {
@@ -336,7 +353,7 @@ export default function AirportMap({
               key={`arc-${arc.origin}-${arc.dest}-${i}`}
               positions={arc.positions}
               pathOptions={{
-                color: selectedAirport ? COLORS.arcHover : COLORS.arc,
+                color: arc.color || (selectedAirport ? COLORS.arcHover : COLORS.arc),
                 weight: 2,
                 opacity: 0.5,
                 dashArray: selectedAirport ? undefined : '6 4',
@@ -382,7 +399,7 @@ export default function AirportMap({
                   radius={isSelected ? r + 3 : isHovered ? r + 2 : r}
                   bubblingMouseEvents={false}
                   pathOptions={{
-                    fillColor: markerColor(a.country),
+                    fillColor: a.color || markerColor(a.country),
                     color: isSelected ? '#fff' : (isHovered || isHighlighted) ? '#E8B923' : markerStroke(a.country),
                     weight: isSelected ? 3 : isHovered ? 3 : isHighlighted ? 2.5 : 1.5,
                     opacity: 0.9,
@@ -396,7 +413,7 @@ export default function AirportMap({
                       const pt = map.latLngToContainerPoint([a.lat, a.lng])
                       const rect = map.getContainer().getBoundingClientRect()
                       setTooltip({
-                        content: (<><strong>{a.iata}</strong> — {a.name}{!hideVolume && (<><br />{formatValue(a.volume)} {metricLabel}</>)}</>),
+                        content: (<><strong>{a.iata}</strong> — {a.name}{a.region ? ` (${a.region})` : ''}{!hideVolume && (<><br />{formatValue(a.volume)} {metricLabel}</>)}</>),
                         x: rect.left + pt.x,
                         y: rect.top + pt.y - r - 8,
                         latLng: [a.lat, a.lng],
@@ -410,7 +427,7 @@ export default function AirportMap({
                     <div className="text-sm">
                       <strong>{a.name}</strong>
                       <br />
-                      {a.city}
+                      {formatCityRegion(a.city, a.region)}
                       {!hideVolume && (
                         <>
                           <br />

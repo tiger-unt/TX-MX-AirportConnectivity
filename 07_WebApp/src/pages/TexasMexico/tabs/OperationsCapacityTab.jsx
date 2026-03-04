@@ -8,8 +8,9 @@ import BarChart from '@/components/charts/BarChart'
 import BoxPlotChart from '@/components/charts/BoxPlotChart'
 
 import StackedBarChart from '@/components/charts/StackedBarChart'
-import { fmtCompact, fmtLbs, computeAdherenceData } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, computeAdherenceData, isEmptyOrAllZero } from '@/lib/aviationHelpers'
 import { CHART_COLORS } from '@/lib/chartColors'
+import { DL } from '@/lib/downloadColumns'
 
 const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
@@ -21,6 +22,9 @@ export default function OperationsCapacityTab({
   aircraftMixInsight, aircraftFreightByYear, aircraftFreightIntensity,
   nonNbCargoCarriers, nonNbDepTrend,
 }) {
+  /* ── Load Factor chart view toggle ──────────────────────────────────── */
+  const [lfView, setLfView] = useState('box')              // 'line' | 'box'
+
   /* ── Schedule Adherence: local year selector ───────────────────────── */
   const [adherenceYear, setAdherenceYear] = useState('')   // '' = all years
 
@@ -73,14 +77,16 @@ export default function OperationsCapacityTab({
           <ChartCard
             title="Seat Capacity Trends"
             subtitle="Total seats by year (segment data)"
-            downloadData={{ summary: { data: seatTrend, filename: 'tx-mx-seat-trends' } }}
+            downloadData={{ summary: { data: seatTrend, filename: 'tx-mx-seat-trends', columns: DL.seatTrend } }}
+            emptyState={isEmptyOrAllZero(seatTrend) ? 'No seat capacity data for the current filter selection. Cargo (Class G) flights do not report seat counts.' : null}
           >
             <LineChart data={seatTrend} xKey="year" yKey="value" formatValue={fmtCompact} />
           </ChartCard>
           <ChartCard
             title="Departures: Scheduled vs Performed"
             subtitle="Scheduled service by year (Class F, sched > 0)"
-            downloadData={{ summary: { data: depTrend, filename: 'tx-mx-dep-trends' } }}
+            downloadData={{ summary: { data: depTrend, filename: 'tx-mx-dep-trends', columns: DL.depTrendMetric } }}
+            emptyState={!depTrend.length ? 'Scheduled vs. performed departures are only available for Class F (Scheduled Service) U.S. carrier flights.' : null}
             footnote={<p className="text-base text-text-secondary mt-1 italic">Note: U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.</p>}
           >
             <LineChart data={depTrend} xKey="year" yKey="value" seriesKey="Metric" formatValue={fmtCompact} />
@@ -90,7 +96,8 @@ export default function OperationsCapacityTab({
           <ChartCard
             title="Schedule Adherence"
             subtitle={`Class F scheduled service, U.S. carriers only — departure-weighted${adherenceYear ? ` (${adherenceYear})` : ''}`}
-            downloadData={{ summary: { data: adherenceData, filename: 'tx-mx-schedule-adherence' } }}
+            downloadData={{ summary: { data: adherenceData, filename: 'tx-mx-schedule-adherence', columns: DL.adherence } }}
+            emptyState={!adherenceData.length ? 'Schedule adherence is only available for Class F (Scheduled Service) U.S. carrier flights.' : null}
             headerRight={
               <select
                 value={adherenceYear}
@@ -121,26 +128,42 @@ export default function OperationsCapacityTab({
       {/* Load Factor Analysis */}
       <SectionBlock>
         <ChartCard
-          title="Passenger Load Factor Trends"
-          subtitle="Passengers &divide; Seats (%) by year and direction"
-          downloadData={{ summary: { data: loadFactorTrend, filename: 'tx-mx-load-factor-trend' } }}
-        >
-          <LineChart data={loadFactorTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
-        </ChartCard>
-        <div className="mt-5">
-          <ChartCard
-            title="Route-Level Passenger Load Factor Distribution by Year"
-            subtitle="Distribution of annual route load factors (routes with 100+ seats)"
-            downloadData={{ summary: { data: loadFactorDistribution, filename: 'tx-mx-load-factor-distribution' } }}
-          >
-            <BoxPlotChart data={loadFactorDistribution} xKey="year" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} animate />
-            <p className="text-base text-text-secondary mt-3 italic">
+          title={lfView === 'line' ? 'Passenger Load Factor Trends' : 'Route-Level Passenger Load Factor Distribution by Year'}
+          subtitle={lfView === 'line' ? 'Passengers ÷ Seats (%) by year and direction' : 'Distribution of annual route load factors (routes with 100+ seats)'}
+          downloadData={lfView === 'line'
+            ? { summary: { data: loadFactorTrend, filename: 'tx-mx-load-factor-trend', columns: DL.loadFactorDir } }
+            : { summary: { data: loadFactorDistribution, filename: 'tx-mx-load-factor-distribution', columns: DL.boxPlotPct } }}
+          emptyState={lfView === 'line'
+            ? (!loadFactorTrend.length ? 'Load factor requires passenger flights with seat data. Cargo-only (Class G) and charter flights may not report seat capacity.' : null)
+            : (!loadFactorDistribution.length ? 'Load factor requires passenger flights with seat data. Cargo-only (Class G) and charter flights may not report seat capacity.' : null)}
+          footnote={lfView === 'box' ? (
+            <p className="text-base text-text-secondary mt-1 italic">
               Each box shows the middle 50% of route-level load factors for that year. The line inside each box marks the median.
               Whiskers extend to the most extreme non-outlier routes; red dots show statistical outliers (beyond 1.5&times;IQR from Q1/Q3).
               Only routes with 100+ annual seats are included.
             </p>
-          </ChartCard>
-        </div>
+          ) : null}
+          headerRight={
+            <div className="flex rounded-md overflow-hidden border border-gray-300">
+              <button
+                onClick={() => setLfView('line')}
+                className={`px-3 py-1 text-base font-medium transition-colors ${lfView === 'line' ? 'bg-brand-blue text-white' : 'bg-white text-text-primary hover:bg-gray-100'}`}
+              >
+                Line Chart
+              </button>
+              <button
+                onClick={() => setLfView('box')}
+                className={`px-3 py-1 text-base font-medium transition-colors ${lfView === 'box' ? 'bg-brand-blue text-white' : 'bg-white text-text-primary hover:bg-gray-100'}`}
+              >
+                Box Chart
+              </button>
+            </div>
+          }
+        >
+          {lfView === 'line'
+            ? <LineChart data={loadFactorTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
+            : <BoxPlotChart data={loadFactorDistribution} xKey="year" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} animate />}
+        </ChartCard>
       </SectionBlock>
 
       {/* Payload Weight Utilization */}
@@ -148,7 +171,7 @@ export default function OperationsCapacityTab({
         <ChartCard
           title="Payload Weight Utilization"
           subtitle="Estimated total carried weight ÷ aircraft payload capacity (%) by year and direction"
-          downloadData={{ summary: { data: payloadUtilTrend, filename: 'tx-mx-payload-weight-utilization' } }}
+          downloadData={{ summary: { data: payloadUtilTrend, filename: 'tx-mx-payload-weight-utilization', columns: DL.payloadUtilDir } }}
         >
           <LineChart data={payloadUtilTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
           <div className="mt-4 space-y-2">
@@ -185,7 +208,7 @@ export default function OperationsCapacityTab({
         <ChartCard
           title="Flight Share by Service Class"
           subtitle="Departures performed by class (all filtered years)"
-          downloadData={{ summary: { data: serviceClassShare, filename: 'tx-mx-service-class-share' } }}
+          downloadData={{ summary: { data: serviceClassShare, filename: 'tx-mx-service-class-share', columns: DL.serviceClass } }}
         >
           <BarChart data={serviceClassShare} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
         </ChartCard>
@@ -200,7 +223,7 @@ export default function OperationsCapacityTab({
                 key={cls}
                 title={cls}
                 subtitle="Departures performed by year"
-                downloadData={{ summary: { data: classData, filename: `tx-mx-${cls.replace(/\s+/g, '-').toLowerCase()}` } }}
+                downloadData={{ summary: { data: classData, filename: `tx-mx-${cls.replace(/\s+/g, '-').toLowerCase()}`, columns: DL.classTrend } }}
               >
                 <LineChart data={classData} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
               </ChartCard>
@@ -246,7 +269,7 @@ export default function OperationsCapacityTab({
           <ChartCard
             title="Freight per Departure by Aircraft Type"
             subtitle="Average freight load (lbs/flight) by aircraft group — label shows each type's share of total departures"
-            downloadData={{ summary: { data: aircraftFreightIntensity, filename: 'tx-mx-aircraft-freight-intensity' } }}
+            downloadData={{ summary: { data: aircraftFreightIntensity, filename: 'tx-mx-aircraft-freight-intensity', columns: DL.aircraftIntensity } }}
           >
             <BarChart
               data={aircraftFreightIntensity}
@@ -267,7 +290,7 @@ export default function OperationsCapacityTab({
           <ChartCard
             title="Top Cargo Carriers (Non-Narrow-Body)"
             subtitle="Total freight by carriers using wide-body, turboprop, or piston aircraft"
-            downloadData={{ summary: { data: nonNbCargoCarriers, filename: 'tx-mx-non-nb-cargo-carriers' } }}
+            downloadData={{ summary: { data: nonNbCargoCarriers, filename: 'tx-mx-non-nb-cargo-carriers', columns: DL.nonNbCarriers } }}
           >
             <BarChart data={nonNbCargoCarriers} xKey="label" yKey="value" horizontal formatValue={fmtLbs} color={CHART_COLORS[4]} />
           </ChartCard>
@@ -277,7 +300,7 @@ export default function OperationsCapacityTab({
           <ChartCard
             title="Non-Narrow-Body Departure Trends"
             subtitle="Departures by aircraft type over time (narrow-body excluded)"
-            downloadData={{ summary: { data: nonNbDepTrend, filename: 'tx-mx-non-nb-departure-trends' } }}
+            downloadData={{ summary: { data: nonNbDepTrend, filename: 'tx-mx-non-nb-departure-trends', columns: DL.depTrendAircraft } }}
           >
             <LineChart data={nonNbDepTrend} xKey="year" yKey="value" seriesKey="Aircraft" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
             <p className="text-base text-text-secondary mt-3 italic">

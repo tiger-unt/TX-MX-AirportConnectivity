@@ -6,6 +6,7 @@ import InsightCallout from '@/components/ui/InsightCallout'
 import LineChart from '@/components/charts/LineChart'
 import AirportMap from '@/components/maps/AirportMap'
 import { fmtCompact, fmtLbs, MAP_METRIC_OPTIONS, BORDER_AIRPORTS } from '@/lib/aviationHelpers'
+import { DL } from '@/lib/downloadColumns'
 
 const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
@@ -95,7 +96,7 @@ export default function OverviewTab({
           <ChartCard
             title="Texas–Mexico Passenger Trends"
             subtitle="Bidirectional passenger flows by year"
-            downloadData={{ summary: { data: paxTrend, filename: 'tx-mx-passenger-trends' } }}
+            downloadData={{ summary: { data: paxTrend, filename: 'tx-mx-passenger-trends', columns: DL.paxTrendDir } }}
             footnote={<p className="text-base text-text-secondary mt-1 italic">Both directions show a sharp 2020 decline. Texas-to-Mexico volumes have consistently exceeded the reverse direction.</p>}
           >
             <LineChart data={paxTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
@@ -103,21 +104,21 @@ export default function OverviewTab({
           <ChartCard
             title="Texas–Mexico Flight Trends"
             subtitle="Flights operated by year (segment data)"
-            downloadData={{ summary: { data: flightTrend, filename: 'tx-mx-flight-trends' } }}
+            downloadData={{ summary: { data: flightTrend, filename: 'tx-mx-flight-trends', columns: DL.flightTrendDir } }}
           >
             <LineChart data={flightTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="Texas–Mexico Freight Trends"
             subtitle="Bidirectional freight volume by year"
-            downloadData={{ summary: { data: freightTrend, filename: 'tx-mx-freight-trends' } }}
+            downloadData={{ summary: { data: freightTrend, filename: 'tx-mx-freight-trends', columns: DL.freightTrendDir } }}
           >
             <LineChart data={freightTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
             title="Texas–Mexico Mail Trends"
             subtitle="Bidirectional mail volume by year"
-            downloadData={{ summary: { data: mailTrend, filename: 'tx-mx-mail-trends' } }}
+            downloadData={{ summary: { data: mailTrend, filename: 'tx-mx-mail-trends', columns: DL.mailTrendDir } }}
           >
             <LineChart data={mailTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>

@@ -30,6 +30,8 @@
  *   @param {ReactNode}  [headerRight]   — Extra controls rendered in the header row
  *   @param {object}     [downloadData]  — { summary?: { data, filename }, detail?: { data, filename } }
  *   @param {ReactNode}  [footnote]      — Annotation text rendered below the chart area but inside the card
+ *   @param {string}     [emptyState]    — When truthy, replaces chart content with a centered message
+ *                                         (e.g. "No passenger data for the current filter selection.")
  *
  * BOILERPLATE NOTE:
  *   This component is fully data-agnostic. When adapting this boilerplate for a
@@ -57,6 +59,7 @@ export default function ChartCard({
   headerRight,
   downloadData,
   footnote,
+  emptyState,
 }) {
   const chartAreaRef = useRef(null)
   const [zoomRange, setZoomRange] = useState(null)
@@ -175,13 +178,20 @@ export default function ChartCard({
             Chart components set their own minHeight based on data/legend needs.
             The flex-1 lets this area grow; the chart's inline minHeight drives expansion.
             When fullscreen is active, hide card children to avoid duplicate Leaflet maps. */}
-        <div ref={chartAreaRef} className={`px-3 flex-1 ${footnote ? 'pb-2' : 'pb-5'}`} style={{ minHeight }}>
-          {!isFullscreen && children}
+        <div ref={chartAreaRef} className={`px-3 flex-1 ${footnote && !emptyState ? 'pb-2' : 'pb-5'}`} style={{ minHeight }}>
+          {emptyState ? (
+            <div className="flex items-center justify-center h-48 text-text-secondary italic text-base px-4 text-center">
+              {emptyState}
+            </div>
+          ) : (
+            !isFullscreen && children
+          )}
         </div>
 
         {/* Footnote — rendered outside the chart area (separate flex child) so it
-            is never clipped by overflow-hidden when chart containers use h-full. */}
-        {footnote && !isFullscreen && (
+            is never clipped by overflow-hidden when chart containers use h-full.
+            Hidden when emptyState is active (footnote describes chart that isn't shown). */}
+        {footnote && !emptyState && !isFullscreen && (
           <div className="px-3 pb-5">
             {footnote}
           </div>
