@@ -11,7 +11,7 @@ import { formatNumber } from '@/lib/chartColors'
 
 export default function PassengersRoutesTab({
   topRoutes, topTxAirports, topMxAirports, topMxStates,
-  carrierMarketShare, topCarriers,
+  carrierMarketShare,
   tableData, tableColumns, filters, latestYear,
 }) {
   const routeConcentration = useMemo(() => {
@@ -37,7 +37,7 @@ export default function PassengersRoutesTab({
           </p>
           {routeConcentration && (
             <InsightCallout
-              finding={`The top two routes account for ${routeConcentration.pct}% of all Texas\u2013Mexico passenger traffic.`}
+              finding={`The top two routes account for ${routeConcentration.pct}% of all Texas–Mexico passenger traffic.`}
               context="A handful of hub-to-resort corridors dominate this market."
               variant="warning"
               icon={Route}
@@ -49,7 +49,7 @@ export default function PassengersRoutesTab({
       {/* Top 10 Routes */}
       <SectionBlock alt>
         <ChartCard
-          title="Top 10 Texas\u2013Mexico Routes"
+          title="Top 10 Texas–Mexico Routes"
           subtitle="By total passengers (all filtered years)"
           downloadData={{ summary: { data: topRoutes, filename: 'tx-mx-top-routes' } }}
         >
@@ -90,23 +90,14 @@ export default function PassengersRoutesTab({
 
       {/* Airlines */}
       <SectionBlock>
-        <div className="space-y-5">
-          <ChartCard
-            title="Carrier Market Share"
-            subtitle={`${filters.year.length === 1 ? filters.year[0] : latestYear || '\u2014'} passengers`}
-            downloadData={{ summary: { data: carrierMarketShare, filename: 'tx-mx-carrier-share' } }}
-            className="max-w-3xl mx-auto"
-          >
-            <DonutChart data={carrierMarketShare} formatValue={fmtCompact} />
-          </ChartCard>
-          <ChartCard
-            title="Top Carriers by Passengers"
-            subtitle="All filtered data"
-            downloadData={{ summary: { data: topCarriers, filename: 'tx-mx-top-carriers' } }}
-          >
-            <BarChart data={topCarriers} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-          </ChartCard>
-        </div>
+        <ChartCard
+          title="Carrier Market Share"
+          subtitle={`By passengers (${filters.year.length === 1 ? filters.year[0] : 'all filtered years'})`}
+          downloadData={{ summary: { data: carrierMarketShare, filename: 'tx-mx-carrier-share' } }}
+          className="max-w-5xl mx-auto"
+        >
+          <DonutChart data={carrierMarketShare} formatValue={fmtCompact} />
+        </ChartCard>
       </SectionBlock>
 
       {/* Route Details Table */}

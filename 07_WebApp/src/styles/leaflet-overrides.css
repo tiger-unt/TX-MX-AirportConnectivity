@@ -38,3 +38,16 @@
 .leaflet-control-attribution {
   font-size: 10px !important;
 }
+
+/* Tooltip styling */
+.leaflet-tooltip {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border: 1px solid #d1d5db;
+  max-width: none;
+  white-space: nowrap;
+}

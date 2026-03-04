@@ -201,7 +201,7 @@ function replaceForeignObjects(svgClone) {
       const maxChars = Math.max(1, Math.floor((w - pad * 2) / (fs * 0.6)))
       textEl.textContent =
         leaf.text.length > maxChars
-          ? leaf.text.slice(0, maxChars - 1) + '\u2026'
+          ? leaf.text.slice(0, maxChars - 1) + '…'
           : leaf.text
 
       g.appendChild(textEl)

@@ -15,14 +15,14 @@ const SUGGESTIONS_BY_ROUTE = {
     'Which Texas airports handle the most domestic traffic?',
   ],
   '/texas-international': [
-    'Which countries are Texas\u2019s top international destinations?',
+    "Which countries are Texas's top international destinations?",
     'How much of Texas international traffic goes to Mexico?',
     'How has Texas international passenger traffic grown?',
     'Which Texas airports have the most international routes?',
   ],
   '/us-mexico': [
     'How does Texas rank among U.S. states for Mexico flights?',
-    'What is the U.S.-Mexico load factor trend?',
+    'What is the U.S.-Mexico passenger load factor trend?',
     'Which U.S. airports carry the most Mexico-bound passengers?',
     'How has U.S.-Mexico air traffic recovered since COVID?',
   ],

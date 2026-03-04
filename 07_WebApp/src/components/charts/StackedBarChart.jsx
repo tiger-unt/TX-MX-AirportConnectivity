@@ -117,8 +117,11 @@ export default function StackedBarChart({
     const legendSpace = 16 + legendRows * 28
 
     const defaultH = 320 + legendSpace
-    // Always use at least defaultH so legend doesn't compress the chart area
-    const height = Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+    // Use computed default height in normal mode to prevent feedback loops
+    // in CSS grid layouts. In fullscreen mode, fill available space.
+    const height = isFullscreen
+      ? Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+      : defaultH
     const innerW = Math.max(1, width - margin.left - margin.right)
     const innerH = Math.max(1, height - margin.top - margin.bottom - legendSpace)
 

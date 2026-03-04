@@ -32,6 +32,10 @@
  *   Fill color for bars. When a bar is not selected, it's rendered with
  *   25% opacity (`${color}40`).
  *
+ * @param {Function} [colorAccessor]
+ *   Optional function `(d) => colorString` returning a fill color per datum.
+ *   When provided, overrides the uniform `color` prop for individual bars.
+ *
  * @param {boolean} [horizontal=false]
  *   If true, bars grow left-to-right and labels appear on the y-axis.
  *   If false, bars grow bottom-to-top with labels on the x-axis.
@@ -77,6 +81,7 @@ export default function BarChart({
   xKey = 'label',
   yKey = 'value',
   color = CHART_COLORS[0],
+  colorAccessor,
   horizontal = false,
   formatValue = formatCompact,
   labelAccessor,
@@ -92,6 +97,12 @@ export default function BarChart({
 
   useEffect(() => {
     if (!data.length || !width) return
+
+    /** Resolve fill color for a datum, respecting colorAccessor and selection dimming. */
+    const barFill = (d) => {
+      const c = colorAccessor ? colorAccessor(d) : color
+      return selectedBar && d[xKey] !== selectedBar ? `${c}40` : c
+    }
 
     const FS = getResponsiveFontSize(width, isFullscreen)
     const charW = FS * 0.55
@@ -110,12 +121,14 @@ export default function BarChart({
       : { top: 24, right: 12, bottom: vLabelRotated ? 100 : 48, left: 12 }
 
     const defaultH = horizontal ? Math.max(220, displayData.length * 32 + margin.top + margin.bottom) : 320
-    // For horizontal bars, use bar-count-based height (not containerHeight) to avoid
-    // feedback loops with CSS grid/flex layouts where h-full causes unbounded growth.
-    // For vertical bars, fill the available container height.
+    // Use computed default height in normal mode to prevent feedback loops
+    // where h-full containers in CSS grids cause unbounded SVG growth.
+    // In fullscreen mode, fill the available container height.
     const height = horizontal
       ? defaultH
-      : (containerHeight > 100 ? containerHeight : defaultH)
+      : isFullscreen
+        ? Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+        : defaultH
     const innerW = Math.max(1, width - margin.left - margin.right)
     const innerH = Math.max(1, height - margin.top - margin.bottom)
 
@@ -153,8 +166,7 @@ export default function BarChart({
         .attr('height', y.bandwidth())
         .attr('x', 0)
         .attr('rx', 3)
-        // Dim non-selected bars to 25% opacity via hex alpha suffix
-        .attr('fill', (d) => (selectedBar && d[xKey] !== selectedBar ? `${color}40` : color))
+        .attr('fill', barFill)
         .attr('cursor', onBarClick ? 'pointer' : 'default')
         .attr('width', 0)
         .on('click', (e, d) => onBarClick?.(d))
@@ -251,7 +263,7 @@ export default function BarChart({
         .attr('x', (d) => x(d[xKey]))
         .attr('width', x.bandwidth())
         .attr('rx', 3)
-        .attr('fill', (d) => (selectedBar && d[xKey] !== selectedBar ? `${color}40` : color))
+        .attr('fill', barFill)
         .attr('cursor', onBarClick ? 'pointer' : 'default')
         .attr('y', innerH)
         .attr('height', 0)
@@ -322,7 +334,7 @@ export default function BarChart({
         })
     }
 
-  }, [data, width, containerHeight, isFullscreen, xKey, yKey, color, horizontal, selectedBar, maxBars, animate, labelAccessor])
+  }, [data, width, containerHeight, isFullscreen, xKey, yKey, color, colorAccessor, horizontal, selectedBar, maxBars, animate, labelAccessor])
 
   // In horizontal mode, set a minimum height so each bar gets enough space
   // (~32px per bar). This allows the parent grid cell to grow accordingly.

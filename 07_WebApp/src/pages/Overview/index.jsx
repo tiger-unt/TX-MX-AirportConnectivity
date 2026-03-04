@@ -1,25 +1,24 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
-  Users, ArrowRightLeft, Route, Calendar, Plane, Globe, ArrowRight,
-  Building2, PlaneTakeoff, MapPin, Database, TrendingUp
+  ArrowRightLeft, Route, Plane, Globe, ArrowRight,
+  Building2, Database, TrendingUp, Layers,
+  Users, PlaneTakeoff, Package, Mail
 } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import {
-  fmtCompact, isTxOrigin, isTxMx, isTxToMx, isMxToTx,
+  fmtCompact, fmtLbs, isTxMx, isTxToMx, isMxToTx,
   isTxDomestic, isTxIntl, isUsToMx, isMxToUs,
-  BORDER_AIRPORTS, BORDER_AIRPORT_LIST
+  MAP_METRIC_OPTIONS, BORDER_AIRPORTS,
 } from '@/lib/aviationHelpers'
-import { aggregateAirportVolumes, aggregateRoutes } from '@/lib/airportUtils'
-import StatCard from '@/components/ui/StatCard'
+import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
 import InsightCallout from '@/components/ui/InsightCallout'
 import AirportMap from '@/components/maps/AirportMap'
+import ChartCard from '@/components/ui/ChartCard'
 
 export default function OverviewPage() {
-  const { marketData, airportIndex, loading } = useAviationStore()
+  const { marketData, segmentData, airportIndex, loading } = useAviationStore()
   const navigate = useNavigate()
-  const [selectedAirport, setSelectedAirport] = useState(null)
-  const [hoveredBorderAirport, setHoveredBorderAirport] = useState(null)
 
   const latestYear = useMemo(() => {
     if (!marketData?.length) return null
@@ -31,52 +30,70 @@ export default function OverviewPage() {
     return Math.min(...marketData.map((d) => d.YEAR).filter(Number.isFinite))
   }, [marketData])
 
-  const stats = useMemo(() => {
-    if (!marketData?.length || !latestYear) return null
-    const latest = marketData.filter((d) => d.YEAR === latestYear)
-    const txPax = latest.filter(isTxOrigin).reduce((s, d) => s + d.PASSENGERS, 0)
-    const txMxPax = latest.filter(isTxMx).reduce((s, d) => s + d.PASSENGERS, 0)
-    const txMxRoutes = new Set(
-      latest.filter(isTxMx).map((d) => `${d.ORIGIN}-${d.DEST}`)
-    ).size
-    return { txPax, txMxPax, txMxRoutes }
-  }, [marketData, latestYear])
-
-  /* preview stats per page (for nav cards) */
+  /* page stats (for nav cards) — passengers, freight, mail from market; flights from segment */
   const pageStats = useMemo(() => {
     if (!marketData?.length || !latestYear) return {}
-    const latest = marketData.filter((d) => d.YEAR === latestYear)
-    return {
-      domestic: fmtCompact(latest.filter(isTxDomestic).reduce((s, d) => s + d.PASSENGERS, 0)),
-      intl: fmtCompact(latest.filter(isTxIntl).reduce((s, d) => s + d.PASSENGERS, 0)),
-      usMx: fmtCompact(latest.filter((d) => isUsToMx(d) || isMxToUs(d)).reduce((s, d) => s + d.PASSENGERS, 0)),
-      txMx: fmtCompact(latest.filter(isTxMx).reduce((s, d) => s + d.PASSENGERS, 0)),
-    }
-  }, [marketData, latestYear])
+    const mkt = marketData.filter((d) => d.YEAR === latestYear)
+    const seg = segmentData?.length
+      ? segmentData.filter((d) => d.YEAR === latestYear)
+      : []
 
-  /* ── TX-MX data for map + summary ──────────────────────────────── */
+    const sum = (rows, field) => rows.reduce((s, d) => s + (d[field] || 0), 0)
+
+    const filters = {
+      domestic: (d) => isTxDomestic(d),
+      intl: (d) => isTxIntl(d),
+      usMx: (d) => isUsToMx(d) || isMxToUs(d),
+      txMx: (d) => isTxMx(d),
+    }
+
+    const stats = {}
+    for (const [key, pred] of Object.entries(filters)) {
+      const mktRows = mkt.filter(pred)
+      const segRows = seg.filter(pred)
+      stats[key] = {
+        passengers: sum(mktRows, 'PASSENGERS'),
+        flights: sum(segRows, 'DEPARTURES_PERFORMED'),
+        freight: sum(mktRows, 'FREIGHT'),
+        mail: sum(mktRows, 'MAIL'),
+      }
+    }
+    return stats
+  }, [marketData, segmentData, latestYear])
+
   const allTxMx = useMemo(() => {
     if (!marketData?.length) return []
     return marketData.filter(isTxMx)
   }, [marketData])
 
-  const mapRoutes = useMemo(() => {
-    if (!allTxMx.length || !latestYear || !airportIndex) return []
-    const latest = allTxMx.filter((d) => d.YEAR === latestYear)
-    return aggregateRoutes(latest, airportIndex)
-  }, [allTxMx, latestYear, airportIndex])
+  /* ── homepage map ────────────────────────────────────────────────── */
+  const [mapMetric, setMapMetric] = useState('PASSENGERS')
+  const [selectedAirport, setSelectedAirport] = useState(null)
+  const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
+
+  const mapDataSource = useMemo(() => {
+    if (!latestYear) return []
+    const source = mapMetricConfig.source === 'segment'
+      ? (segmentData || []).filter((d) => d.YEAR === latestYear && isTxMx(d))
+      : allTxMx.filter((d) => d.YEAR === latestYear)
+    return source
+  }, [allTxMx, segmentData, latestYear, mapMetricConfig.source])
+
+  const mapRoutes = useMemo(
+    () => aggregateRoutes(mapDataSource, airportIndex, mapMetricConfig.field),
+    [mapDataSource, airportIndex, mapMetricConfig.field]
+  )
 
   const mapAirports = useMemo(() => {
-    if (!allTxMx.length || !latestYear || !airportIndex) return []
-    const latest = allTxMx.filter((d) => d.YEAR === latestYear)
-    const volumes = aggregateAirportVolumes(latest)
+    if (!mapDataSource.length || !airportIndex) return []
+    const volumes = aggregateAirportVolumes(mapDataSource, mapMetricConfig.field)
     const seen = new Set()
     const airports = []
-    for (const d of latest) {
+    for (const d of mapDataSource) {
       for (const code of [d.ORIGIN, d.DEST]) {
         if (seen.has(code)) continue
         seen.add(code)
-        const info = airportIndex.get(code)
+        const info = airportIndex?.get(code)
         if (!info?.lat) continue
         const isOrigin = code === d.ORIGIN
         airports.push({
@@ -91,27 +108,60 @@ export default function OverviewPage() {
       }
     }
     return airports
-  }, [allTxMx, latestYear, airportIndex])
-
-  const summaryStats = useMemo(() => {
-    if (!allTxMx.length || !latestYear) return null
-    const latest = allTxMx.filter((d) => d.YEAR === latestYear)
-    const airlines = new Set(latest.map((d) => d.CARRIER_NAME)).size
-    const txAirports = new Set(
-      latest.filter(isTxToMx).map((d) => d.ORIGIN)
-        .concat(latest.filter(isMxToTx).map((d) => d.DEST))
-    ).size
-    const mxAirports = new Set(
-      latest.filter(isTxToMx).map((d) => d.DEST)
-        .concat(latest.filter(isMxToTx).map((d) => d.ORIGIN))
-    ).size
-    const totalPax = latest.reduce((s, d) => s + d.PASSENGERS, 0)
-    const routes = new Set(latest.map((d) => `${d.ORIGIN}-${d.DEST}`)).size
-
-    return { airlines, txAirports, mxAirports, totalPax, routes }
-  }, [allTxMx, latestYear])
+  }, [mapDataSource, airportIndex, mapMetricConfig.field])
 
   /* ── storytelling insights ───────────────────────────────────────── */
+
+  /* Texas Domestic: scale + state reach */
+  const domesticScale = useMemo(() => {
+    if (!marketData?.length || !latestYear) return null
+    const latest = marketData.filter((d) => d.YEAR === latestYear && isTxDomestic(d))
+    const pax = latest.reduce((s, d) => s + d.PASSENGERS, 0)
+    const states = new Set(
+      latest.map((d) =>
+        d.ORIGIN_STATE_NM === 'Texas' ? d.DEST_STATE_NM : d.ORIGIN_STATE_NM
+      )
+    ).size
+    return pax ? { pax: fmtCompact(pax), states } : null
+  }, [marketData, latestYear])
+
+  /* Texas International: Mexico's share */
+  const mexicoIntlShare = useMemo(() => {
+    if (!marketData?.length || !latestYear) return null
+    const latest = marketData.filter((d) => d.YEAR === latestYear && isTxIntl(d))
+    const totalPax = latest.reduce((s, d) => s + d.PASSENGERS, 0)
+    const mxPax = latest.filter((d) =>
+      d.DEST_COUNTRY_NAME === 'Mexico' || d.ORIGIN_COUNTRY_NAME === 'Mexico'
+    ).reduce((s, d) => s + d.PASSENGERS, 0)
+    if (!totalPax) return null
+    return { pct: (mxPax / totalPax * 100).toFixed(0) }
+  }, [marketData, latestYear])
+
+  /* Texas International: long-term growth */
+  const intlGrowth = useMemo(() => {
+    if (!marketData?.length || !latestYear || !minYear) return null
+    const paxEarliest = marketData.filter((d) => d.YEAR === minYear && isTxIntl(d))
+      .reduce((s, d) => s + d.PASSENGERS, 0)
+    const paxLatest = marketData.filter((d) => d.YEAR === latestYear && isTxIntl(d))
+      .reduce((s, d) => s + d.PASSENGERS, 0)
+    if (!paxEarliest) return null
+    const pct = Math.abs((paxLatest - paxEarliest) / paxEarliest * 100).toFixed(0)
+    return { pct, direction: paxLatest >= paxEarliest ? 'grown' : 'declined' }
+  }, [marketData, latestYear, minYear])
+
+  /* U.S.-Mexico: Texas's national share */
+  const txNationalShare = useMemo(() => {
+    if (!marketData?.length || !latestYear) return null
+    const latest = marketData.filter((d) => d.YEAR === latestYear)
+    const usMxLatest = latest.filter((d) => isUsToMx(d) || isMxToUs(d))
+    const txPax = usMxLatest
+      .filter((d) => d.ORIGIN_STATE_NM === 'Texas' || d.DEST_STATE_NM === 'Texas')
+      .reduce((s, d) => s + d.PASSENGERS, 0)
+    const totalPax = usMxLatest.reduce((s, d) => s + d.PASSENGERS, 0)
+    return totalPax ? (txPax / totalPax * 100).toFixed(0) : null
+  }, [marketData, latestYear])
+
+  /* TX-MX: hub concentration */
   const hubConcentration = useMemo(() => {
     if (!allTxMx.length || !latestYear) return null
     const latest = allTxMx.filter((d) => d.YEAR === latestYear)
@@ -128,6 +178,7 @@ export default function OverviewPage() {
     return { share, airports: [top2[0][0], top2[1][0]] }
   }, [allTxMx, latestYear])
 
+  /* TX-MX: COVID recovery */
   const covidRecovery = useMemo(() => {
     if (!allTxMx.length || !latestYear) return null
     const pax2019 = allTxMx.filter((d) => d.YEAR === 2019).reduce((s, d) => s + d.PASSENGERS, 0)
@@ -136,17 +187,6 @@ export default function OverviewPage() {
     const pct = ((paxLatest - pax2019) / pax2019 * 100).toFixed(1)
     return { pct: Math.abs(pct), direction: paxLatest >= pax2019 ? 'above' : 'below', year: latestYear }
   }, [allTxMx, latestYear])
-
-  const txNationalShare = useMemo(() => {
-    if (!marketData?.length || !latestYear) return null
-    const latest = marketData.filter((d) => d.YEAR === latestYear)
-    const usMxLatest = latest.filter((d) => isUsToMx(d) || isMxToUs(d))
-    const txPax = usMxLatest
-      .filter((d) => d.ORIGIN_STATE_NM === 'Texas' || d.DEST_STATE_NM === 'Texas')
-      .reduce((s, d) => s + d.PASSENGERS, 0)
-    const totalPax = usMxLatest.reduce((s, d) => s + d.PASSENGERS, 0)
-    return totalPax ? (txPax / totalPax * 100).toFixed(0) : null
-  }, [marketData, latestYear])
 
   if (loading) {
     return (
@@ -159,306 +199,275 @@ export default function OverviewPage() {
     )
   }
 
+  const metricDefs = [
+    { key: 'flights',    label: 'flights',    Icon: PlaneTakeoff, fmt: fmtCompact },
+    { key: 'passengers', label: 'passengers', Icon: Users,        fmt: fmtCompact },
+    { key: 'freight',    label: 'freight',    Icon: Package,      fmt: fmtLbs },
+    { key: 'mail',       label: 'mail',       Icon: Mail,         fmt: fmtLbs },
+  ]
+
   const pages = [
     {
       path: '/texas-domestic',
       title: 'Texas Domestic',
-      desc: 'Air connections between Texas and other U.S. states',
-      stat: pageStats.domestic,
-      statLabel: `passengers (${latestYear})`,
+      depth: 'Context',
+      desc: 'Domestic flights between Texas and other U.S. states — setting the baseline for Texas as an aviation hub.',
+      stats: pageStats.domestic,
       Icon: Plane,
+      intensity: 1,
     },
     {
       path: '/texas-international',
       title: 'Texas International',
-      desc: "Texas's air connections to the world",
-      stat: pageStats.intl,
-      statLabel: `passengers (${latestYear})`,
+      depth: 'Context',
+      desc: "International flights from Texas to all destination countries — showing where Mexico ranks among Texas's global air connections.",
+      stats: pageStats.intl,
       Icon: Globe,
+      intensity: 1,
     },
     {
       path: '/us-mexico',
       title: 'U.S.–Mexico',
-      desc: 'National perspective on cross-border air traffic',
-      stat: pageStats.usMx,
-      statLabel: `passengers (${latestYear})`,
+      depth: 'Comparison',
+      desc: 'All U.S.–Mexico air traffic at the national level — establishing how Texas compares to other states in the cross-border corridor.',
+      stats: pageStats.usMx,
       Icon: ArrowRightLeft,
+      intensity: 2,
     },
     {
       path: '/texas-mexico',
       title: 'Texas–Mexico',
-      desc: 'Comprehensive Texas–Mexico market and segment analysis',
-      stat: pageStats.txMx,
-      statLabel: `passengers (${latestYear})`,
+      depth: 'Deep Dive',
+      desc: 'Comprehensive analysis of the Texas–Mexico air market — passengers & routes, operations & capacity, cargo & trade, and border airports.',
+      stats: pageStats.txMx,
       Icon: Route,
-    },
-  ]
-
-  const highlights = [
-    {
-      Icon: PlaneTakeoff,
-      label: 'Airlines Serving TX–MX',
-      value: summaryStats ? String(summaryStats.airlines) : '\u2014',
-    },
-    {
-      Icon: Building2,
-      label: 'Texas Airports',
-      value: summaryStats ? String(summaryStats.txAirports) : '\u2014',
-    },
-    {
-      Icon: MapPin,
-      label: 'Mexico Airports',
-      value: summaryStats ? String(summaryStats.mxAirports) : '\u2014',
-    },
-    {
-      Icon: Users,
-      label: 'Passengers',
-      value: summaryStats ? fmtCompact(summaryStats.totalPax) : '\u2014',
-    },
-    {
-      Icon: Route,
-      label: 'Active Routes',
-      value: summaryStats ? String(summaryStats.routes) : '\u2014',
+      intensity: 3,
     },
   ]
 
   return (
     <>
       {/* Hero */}
-      <div className="gradient-blue text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14">
+      <div className="gradient-blue text-white relative overflow-hidden">
+        {/* Subtle aviation-themed background pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5 L35 25 L55 30 L35 35 L30 55 L25 35 L5 30 L25 25 Z' fill='%23ffffff' fill-opacity='1'/%3E%3C/svg%3E")`,
+            backgroundSize: '60px 60px',
+          }}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14 relative">
           <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
             Airport Connectivity Dashboard
           </h1>
-          <p className="text-white/70 mt-3 text-base md:text-lg">
-            Exploring air connectivity between Texas, Mexico, and the broader U.S.
-            using BTS T-100 Air Carrier Statistics.
-          </p>
-          <p className="text-white/50 mt-4 text-base border-l-2 border-white/30 pl-4 leading-relaxed">
-            How has air connectivity between Texas and Mexico evolved over
-            {minYear && latestYear ? ` ${minYear}\u2013${latestYear}` : ' the past decade'},
-            and which airports, routes, and carriers drive that relationship?
+          <p className="text-white/80 mt-3 text-base md:text-lg max-w-3xl">
+            A data-driven exploration of air connectivity between Texas, Mexico, and the broader
+            United States — built on BTS T-100 Air Carrier Statistics
+            {minYear && latestYear ? ` (${minYear}–${latestYear})` : ''}.
           </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        {/* Summary Stats */}
-        <section className="py-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              label={`Texas Passengers (${latestYear || '\u2014'})`}
-              value={stats ? fmtCompact(stats.txPax) : '\u2014'}
-              highlight variant="primary" icon={Users} delay={0}
-            />
-            <StatCard
-              label={`Texas–Mexico Passengers (${latestYear || '\u2014'})`}
-              value={stats ? fmtCompact(stats.txMxPax) : '\u2014'}
-              highlight icon={ArrowRightLeft} delay={100}
-            />
-            <StatCard
-              label={`Active Texas–Mexico Routes (${latestYear || '\u2014'})`}
-              value={stats ? String(stats.txMxRoutes) : '\u2014'}
-              highlight icon={Route} delay={200}
-            />
-            <StatCard
-              label="Data Coverage"
-              value={minYear && latestYear ? `${minYear}–${latestYear}` : '\u2014'}
-              highlight icon={Calendar} delay={300}
-            />
-          </div>
-        </section>
-
-        {/* ── Map + Summary Sidebar ──────────────────────────────────── */}
-        <section className="pb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Map */}
-            <div className="lg:col-span-3">
-              <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-hidden h-full flex flex-col">
-                <div className="px-5 pt-5 pb-3">
-                  <h3 className="text-lg font-bold text-text-primary">Airports Analyzed</h3>
-                  <p className="text-base text-text-secondary mt-0.5">
-                    Texas and Mexico airports in the TX–MX air connectivity dataset ({latestYear})
-                  </p>
-                </div>
-                <div className="flex-1 min-h-[380px]">
-                  <AirportMap
-                    airports={mapAirports}
-                    routes={mapRoutes}
-                    topN={0}
-                    selectedAirport={selectedAirport}
-                    onAirportSelect={setSelectedAirport}
-                    highlightAirports={BORDER_AIRPORTS}
-                    hoveredAirport={hoveredBorderAirport}
-                    legendItems={[
-                      { color: '#0056a9', label: 'Texas' },
-                      { color: '#df5c16', label: 'Mexico' },
-                      { color: '#0056a9', borderColor: '#E8B923', label: 'Texas Border' },
-                    ]}
-                    height="100%"
-                    center={[25.5, -99.5]}
-                    zoom={5}
-                    metricLabel={`passengers (${latestYear})`}
-                    formatValue={fmtCompact}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Summary sidebar */}
-            <div className="lg:col-span-2 flex flex-col gap-4">
-              <div className="bg-white rounded-xl border border-border-light shadow-sm p-5">
-                <h3 className="text-lg font-bold text-text-primary mb-4">At a Glance ({latestYear})</h3>
-                <div className="space-y-3">
-                  {highlights.map((h) => (
-                    <div key={h.label} className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center flex-shrink-0">
-                        <h.Icon size={16} className="text-brand-blue" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-base text-text-secondary leading-tight">{h.label}</p>
-                        <p className="text-base font-bold text-text-primary">{h.value}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl border border-border-light shadow-sm p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <MapPin size={16} className="text-brand-blue" />
-                  <h4 className="text-base font-bold text-text-primary">Border Airports</h4>
-                </div>
-                <p className="text-base text-text-secondary leading-relaxed mb-3">
-                  Six Texas airports located within a TxDOT border district play a key role in
-                  cross-border connectivity, highlighted on the map with a gold ring.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {BORDER_AIRPORT_LIST.map((b) => (
-                    <button
-                      key={b.code}
-                      type="button"
-                      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors duration-150 cursor-pointer
-                        ${hoveredBorderAirport === b.code || selectedAirport === b.code
-                          ? 'bg-brand-blue/15 border border-brand-blue/40'
-                          : 'bg-brand-blue/5 border border-brand-blue/15 hover:bg-brand-blue/10'}`}
-                      onMouseEnter={() => setHoveredBorderAirport(b.code)}
-                      onMouseLeave={() => setHoveredBorderAirport(null)}
-                      onClick={() => setSelectedAirport(selectedAirport === b.code ? null : b.code)}
-                    >
-                      <span
-                        className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ background: '#0056a9', border: '1.5px solid #E8B923' }}
-                      />
-                      <span className="text-base font-semibold text-brand-blue">{b.code}</span>
-                      <span className="text-base text-text-secondary">{b.city}</span>
-                    </button>
-                  ))}
-                </div>
-                <Link
-                  to="/texas-mexico"
-                  className="inline-flex items-center gap-1.5 mt-3 text-base font-semibold text-brand-blue hover:underline"
+      {/* ── TX-MX Route Map ─────────────────────────────────────────── */}
+      {!loading && mapAirports.length > 0 && (
+        <div className="bg-surface-alt border-y border-border-light">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+            <ChartCard
+              title={`Texas–Mexico Route Network (${latestYear})`}
+              subtitle="Top routes and airport volumes — click an airport to explore its connections"
+              headerRight={
+                <select
+                  value={mapMetric}
+                  onChange={(e) => setMapMetric(e.target.value)}
+                  className="text-base border border-border rounded-md px-2 py-1 bg-surface-primary"
                 >
-                  Border airport analysis
-                  <ArrowRight size={14} />
-                </Link>
-              </div>
-
-              <div className="bg-white rounded-xl border border-border-light shadow-sm p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Database size={16} className="text-brand-blue" />
-                  <h4 className="text-base font-bold text-text-primary">Data Source</h4>
-                </div>
-                <p className="text-base text-text-secondary leading-relaxed">
-                  Bureau of Transportation Statistics (BTS) T-100 Air Carrier Statistics,
-                  covering both <strong>market data</strong> (passenger journeys) and{' '}
-                  <strong>segment data</strong> (individual flight legs). Includes reports
-                  from U.S. carriers (T-100) and foreign carriers (T-100(f)).
-                </p>
-                <Link
-                  to="/about-data"
-                  className="inline-flex items-center gap-1.5 mt-3 text-base font-semibold text-brand-blue hover:underline"
-                >
-                  Data details, methodology & limitations
-                  <ArrowRight size={14} />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Key Findings */}
-        {(hubConcentration || covidRecovery || txNationalShare) && (
-          <section className="pb-8">
-            <h3 className="text-xl font-bold text-text-primary mb-5">Key Findings</h3>
-            <div className="space-y-4">
-              {hubConcentration && (
-                <InsightCallout
-                  finding={`${hubConcentration.airports[0]} and ${hubConcentration.airports[1]} together handle ${hubConcentration.share}% of all Texas\u2013Mexico passenger traffic (${latestYear}).`}
-                  context="Two airports dominate Texas's side of the corridor. Disruptions at either hub have outsized effects on cross-border connectivity."
-                  variant="warning"
-                  icon={Building2}
-                />
-              )}
-              {covidRecovery && (
-                <InsightCallout
-                  finding={`Texas\u2013Mexico passenger traffic in ${covidRecovery.year} is ${covidRecovery.pct}% ${covidRecovery.direction} pre-COVID 2019 levels.`}
-                  context="The corridor's recovery trajectory is visible in the trend charts on the Texas\u2013Mexico page."
-                  variant={covidRecovery.direction === 'above' ? 'highlight' : 'default'}
-                  icon={TrendingUp}
-                />
-              )}
-              {txNationalShare && (
-                <InsightCallout
-                  finding={`Texas accounts for approximately ${txNationalShare}% of all U.S.\u2013Mexico air passengers, more than any other state.`}
-                  context="Explore Texas's rank against all other states on the U.S.\u2013Mexico page."
-                  variant="default"
-                  icon={MapPin}
-                />
-              )}
-            </div>
-            <Link
-              to="/texas-mexico"
-              className="inline-flex items-center gap-1.5 mt-5 text-base font-semibold text-brand-blue hover:underline"
+                  {MAP_METRIC_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              }
             >
-              Full Texas–Mexico analysis
-              <ArrowRight size={14} />
-            </Link>
-          </section>
-        )}
+              <AirportMap
+                airports={mapAirports}
+                routes={mapRoutes}
+                topN={15}
+                selectedAirport={selectedAirport}
+                onAirportSelect={setSelectedAirport}
+                formatValue={mapMetricConfig.formatter}
+                metricLabel={mapMetricConfig.unit}
+                highlightAirports={BORDER_AIRPORTS}
+                legendItems={[
+                  { color: '#0056a9', label: 'U.S.' },
+                  { color: '#df5c16', label: 'Mexico' },
+                  { color: '#0056a9', borderColor: '#E8B923', label: 'Texas Border' },
+                ]}
+                center={[25.5, -99.5]}
+                zoom={5}
+                height="500px"
+              />
+            </ChartCard>
+          </div>
+        </div>
+      )}
 
-        {/* Explore Pages */}
-        <section className="pb-10">
-          <h3 className="text-xl font-bold text-text-primary mb-5">Explore the Data</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        {/* ── Our Approach ─────────────────────────────────────────────── */}
+        <section className="py-8 pb-8">
+          <div className="flex items-center gap-2.5 mb-4">
+            <Layers size={20} className="text-brand-blue" />
+            <h3 className="text-xl font-bold text-text-primary">Our Approach</h3>
+          </div>
+          <p className="text-base text-text-secondary leading-relaxed mb-4">
+            This dashboard draws on the complete BTS T-100 Air Carrier Statistics dataset — which covers
+            every flight operating in and out of United States airports. From that universe of data, we extracted a focused
+            subset: all air traffic originating from or destined to Texas, as well as all flights connected to Mexico,
+            spanning {minYear && latestYear ? `${minYear} through ${latestYear}` : 'the past decade'}.
+            This targeted dataset is the foundation for every visualization across the dashboard.
+          </p>
+          <p className="text-base text-text-secondary leading-relaxed mb-5">
+            The analysis is organized in layers of increasing depth, narrowing from broad context to the core
+            Texas–Mexico corridor. Use the filter bar on any page to slice the data by year, carrier, direction, or
+            route. <span className="font-semibold text-brand-blue">Click a card below to explore that layer.</span>
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {pages.map((p) => (
               <button
                 key={p.path}
                 onClick={() => navigate(p.path)}
-                className="text-left bg-white rounded-xl border border-border-light shadow-sm p-6
-                           hover:shadow-md hover:border-brand-blue/30 hover:-translate-y-0.5
-                           transition-all duration-200 group cursor-pointer"
+                className={`text-left relative rounded-xl border p-4 flex flex-col
+                           hover:shadow-md hover:-translate-y-0.5
+                           transition-all duration-200 group cursor-pointer ${
+                  p.intensity === 3
+                    ? 'bg-brand-blue/8 border-brand-blue/30 hover:border-brand-blue/50'
+                    : p.intensity === 2
+                      ? 'bg-brand-blue/4 border-brand-blue/20 hover:border-brand-blue/40'
+                      : 'bg-white border-border-light hover:border-brand-blue/30'
+                }`}
               >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center">
-                    <p.Icon size={20} className="text-brand-blue" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-base font-bold text-text-primary">{p.title}</h4>
-                      <ArrowRight size={14} className="text-text-secondary group-hover:text-brand-blue transition-colors" />
-                    </div>
-                    <p className="text-base text-text-secondary mt-1">{p.desc}</p>
-                    <p className="text-base font-semibold text-brand-blue mt-2">
-                      {p.stat} <span className="font-normal text-text-secondary">{p.statLabel}</span>
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <p.Icon size={16} className="text-brand-blue" />
+                  <span className="text-base font-bold text-text-primary">{p.title}</span>
+                  <ArrowRight size={14} className="text-text-secondary group-hover:text-brand-blue transition-colors" />
                 </div>
+                <span className={`inline-block text-[13px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded mb-2 ${
+                  p.intensity === 3
+                    ? 'bg-brand-blue/15 text-brand-blue'
+                    : p.intensity === 2
+                      ? 'bg-brand-blue/10 text-brand-blue/80'
+                      : 'bg-gray-100 text-text-secondary'
+                }`}>
+                  {p.depth}
+                </span>
+                <p className="text-base text-text-secondary leading-relaxed mb-3 flex-1">{p.desc}</p>
+                {p.stats && (
+                  <div className="mt-auto space-y-0.5">
+                    <p className="text-base text-text-secondary font-medium mb-1">In {latestYear}</p>
+                    {metricDefs.map((m) => (
+                      <div key={m.key} className="flex items-center gap-1.5">
+                        <m.Icon size={13} className="text-brand-blue/60 flex-shrink-0" />
+                        <span className="text-base font-semibold text-brand-blue">
+                          {m.fmt(p.stats[m.key])}
+                        </span>
+                        <span className="text-base text-text-secondary">{m.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </button>
             ))}
           </div>
+
+        </section>
+
+        {/* ── Key Findings ──────────────────────────────────────────── */}
+        <section className="pb-10">
+          <div className="flex items-center gap-2.5 mb-5">
+            <TrendingUp size={20} className="text-brand-blue" />
+            <h3 className="text-xl font-bold text-text-primary">Key Findings</h3>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* 1. Domestic — scale + state reach */}
+            {domesticScale && (
+              <InsightCallout
+                finding={`Texas airports handled ${domesticScale.pax} domestic passengers in ${latestYear}, connecting to ${domesticScale.states} U.S. states and territories.`}
+                context={<>Texas is one of the largest domestic aviation markets in the country. <Link to="/texas-domestic" className="font-semibold text-brand-blue hover:underline">Explore Texas Domestic →</Link></>}
+                icon={Plane}
+              />
+            )}
+            {/* 2. International — Mexico's share */}
+            {mexicoIntlShare && (
+              <InsightCallout
+                finding={`Mexico accounts for ${mexicoIntlShare.pct}% of Texas's international passenger traffic — the top destination country by a wide margin.`}
+                context={<>No other country comes close in volume, reflecting deep economic and cultural ties. <Link to="/texas-international" className="font-semibold text-brand-blue hover:underline">Explore Texas International →</Link></>}
+                icon={Globe}
+              />
+            )}
+            {/* 3. International — long-term growth */}
+            {intlGrowth && (
+              <InsightCallout
+                finding={`Texas international passenger traffic has ${intlGrowth.direction} ${intlGrowth.pct}% between ${minYear} and ${latestYear}.`}
+                context={<>Long-term growth in international air service reflects Texas's expanding global connections. <Link to="/texas-international" className="font-semibold text-brand-blue hover:underline">Explore Texas International →</Link></>}
+                variant={intlGrowth.direction === 'grown' ? 'highlight' : 'default'}
+                icon={TrendingUp}
+              />
+            )}
+            {/* 4. US-Mexico — Texas's national share */}
+            {txNationalShare && (
+              <InsightCallout
+                finding={`Texas accounts for approximately ${txNationalShare}% of all U.S.–Mexico air passengers, more than any other state.`}
+                context={<>Texas dominates the national cross-border air corridor. <Link to="/us-mexico" className="font-semibold text-brand-blue hover:underline">Explore U.S.–Mexico →</Link></>}
+                icon={ArrowRightLeft}
+              />
+            )}
+            {/* 5. TX-MX — hub concentration */}
+            {hubConcentration && (
+              <InsightCallout
+                finding={`${hubConcentration.airports[0]} and ${hubConcentration.airports[1]} together handle ${hubConcentration.share}% of all Texas–Mexico passenger traffic (${latestYear}).`}
+                context={<>Two airports dominate Texas's side of the corridor — disruptions at either hub have outsized effects. <Link to="/texas-mexico" className="font-semibold text-brand-blue hover:underline">Explore Texas–Mexico →</Link></>}
+                variant="warning"
+                icon={Building2}
+              />
+            )}
+            {/* 6. TX-MX — COVID recovery */}
+            {covidRecovery && (
+              <InsightCallout
+                finding={`Texas–Mexico passenger traffic in ${covidRecovery.year} is ${covidRecovery.pct}% ${covidRecovery.direction} pre-COVID 2019 levels.`}
+                context="The corridor's recovery trajectory is visible in the trend charts on the Texas–Mexico page."
+                variant={covidRecovery.direction === 'above' ? 'highlight' : 'default'}
+                icon={TrendingUp}
+              />
+            )}
+          </div>
         </section>
       </div>
+
+      {/* ── Data Source (pre-footer) ────────────────────────────────── */}
+      <section className="bg-surface-alt border-t border-border-light mt-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex items-center gap-2.5 mb-4">
+            <Database size={20} className="text-text-secondary" />
+            <h3 className="text-xl font-bold text-text-primary">Data Source</h3>
+          </div>
+          <p className="text-base text-text-secondary leading-relaxed mb-3">
+            All data in this dashboard comes from the{' '}
+            <strong className="text-text-primary">Bureau of Transportation Statistics (BTS) T-100 Air Carrier Statistics</strong> — a
+            federally mandated reporting program that captures traffic data for every certificated air carrier
+            operating to, from, or within the United States. The dataset includes two complementary views:{' '}
+            <strong className="text-text-primary">market data</strong> (each passenger journey counted once) and{' '}
+            <strong className="text-text-primary">segment data</strong> (each flight leg recorded separately with operational details).
+            Both U.S. carriers (T-100) and foreign carriers operating to/from the U.S. (T-100(f)) are included.
+          </p>
+          <Link
+            to="/about-data"
+            className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline"
+          >
+            Data details, methodology & limitations
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      </section>
     </>
   )
 }

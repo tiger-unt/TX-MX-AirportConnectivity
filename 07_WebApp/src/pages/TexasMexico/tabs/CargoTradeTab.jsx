@@ -17,6 +17,7 @@ export default function CargoTradeTab({
   freightImbalance, freightPerDep,
   borderSummaryTable,
   scatterScale, setScatterScale,
+  classGFreightUtilTrend, classGFreightUtilByRoute, classGStats,
 }) {
   const imbalanceInsight = useMemo(() => {
     if (!freightImbalance?.length) return null
@@ -61,7 +62,7 @@ export default function CargoTradeTab({
           </p>
           {imbalanceInsight && (
             <InsightCallout
-              finding={`${imbalanceInsight.airport} is the largest ${imbalanceInsight.type} of air freight on the Texas\u2013Mexico corridor.`}
+              finding={`${imbalanceInsight.airport} is the largest ${imbalanceInsight.type} of air freight on the Texas–Mexico corridor.`}
               context="The diverging bar chart below shows the export/import balance for each Texas airport."
               variant="default"
               icon={Package}
@@ -83,7 +84,7 @@ export default function CargoTradeTab({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <ChartCard
             title="Freight Volume Trends"
-            subtitle="TX\u2192MX exports vs MX\u2192TX imports by year"
+            subtitle="TX→MX exports vs MX→TX imports by year"
             downloadData={{ summary: { data: freightTrend, filename: 'tx-mx-freight-trends' } }}
           >
             <LineChart data={freightTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
@@ -104,14 +105,14 @@ export default function CargoTradeTab({
           title="TX–MX Freight Imbalance by Airport"
           subtitle="Exports vs Imports in freight lbs per Texas airport"
           downloadData={{ summary: { data: freightImbalance.map((d) => ({ label: d.label, Exports: d.exports, Imports: d.imports })), filename: 'tx-mx-freight-imbalance' } }}
+          footnote={<p className="text-base text-text-secondary mt-1 italic">Airports with larger bars on the right ship more freight to Mexico; those extending left receive more. This asymmetry is analogous to "deadheading" in trucking — cargo flights often move loaded in one direction and return empty, which increases per-unit transportation costs and influences the economic viability of air versus surface freight.</p>}
         >
           <DivergingBarChart
             data={freightImbalance}
             leftKey="imports" rightKey="exports"
-            leftLabel="Imports (MX \u2192 TX)" rightLabel="Exports (TX \u2192 MX)"
+            leftLabel="Imports (MX → TX)" rightLabel="Exports (TX → MX)"
             formatValue={fmtLbs}
           />
-          <p className="text-base text-text-secondary mt-3 italic">Airports with larger bars on the right ship more freight to Mexico; those extending left receive more. This asymmetry is analogous to &ldquo;deadheading&rdquo; in trucking &mdash; cargo flights often move loaded in one direction and return empty, which increases per-unit transportation costs and influences the economic viability of air versus surface freight.</p>
         </ChartCard>
       </SectionBlock>
 
@@ -121,11 +122,92 @@ export default function CargoTradeTab({
           title="Freight Intensity by Route"
           subtitle="Average freight per departure (lbs/flight) &mdash; top 10 routes with &ge;10 departures"
           downloadData={{ summary: { data: freightPerDep, filename: 'tx-mx-freight-per-departure' } }}
+          footnote={<p className="text-base text-text-secondary mt-1 italic">Segment-level metric: shows how much cargo each flight actually carries. Routes with irregular, high-intensity spikes may reflect "emergency supply chain" usage — airports serving as last-resort modal options for urgent, high-value shipments when surface transport cannot meet delivery timelines.</p>}
         >
           <BarChart data={freightPerDep} xKey="label" yKey="value" horizontal formatValue={fmtLbs} color={CHART_COLORS[4]} />
-          <p className="text-base text-text-secondary mt-3 italic">Segment-level metric: shows how much cargo each flight actually carries. Routes with irregular, high-intensity spikes may reflect &ldquo;emergency supply chain&rdquo; usage &mdash; airports serving as last-resort modal options for urgent, high-value shipments when surface transport cannot meet delivery timelines.</p>
         </ChartCard>
       </SectionBlock>
+
+      {/* All-Cargo (Class G) Freight Payload Utilization */}
+      {classGFreightUtilTrend?.length > 0 && (
+        <SectionBlock>
+          <div className="mb-4">
+            <h3 className="text-xl font-bold text-text-primary mb-1">All-Cargo Flight Payload Utilization (Class G)</h3>
+            <p className="text-base text-text-secondary">
+              How efficiently dedicated freighter aircraft use their weight-carrying capacity on
+              Texas&ndash;Mexico routes. Unlike mixed passenger-cargo flights, all-cargo (Class G)
+              operations exist solely to transport freight and mail &mdash; making their payload
+              utilization a direct measure of cargo loading efficiency.
+            </p>
+          </div>
+
+          {classGStats && (
+            <div className="mb-5">
+              <InsightCallout
+                finding={`Dedicated all-cargo flights on the Texas–Mexico corridor average ${classGStats.avgUtil}% freight payload utilization across ${fmtCompact(classGStats.totalDeps)} departures operated by ${classGStats.carrierCount} carrier${classGStats.carrierCount !== 1 ? 's' : ''}.`}
+                context="Class G (all-cargo/all-mail) flights carry no passengers. Their payload utilization reflects pure freight loading efficiency — how much of the aircraft's weight capacity is filled with cargo."
+                variant="default"
+                icon={Package}
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <ChartCard
+              title="Freight Payload Utilization Trend"
+              subtitle="(Freight + Mail) ÷ Payload Capacity (%) — Class G flights only"
+              downloadData={{ summary: { data: classGFreightUtilTrend, filename: 'tx-mx-class-g-freight-util-trend' } }}
+            >
+              <LineChart data={classGFreightUtilTrend} xKey="year" yKey="value" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
+            </ChartCard>
+
+            <ChartCard
+              title="Top Routes by Freight Payload Utilization"
+              subtitle="Class G routes with ≥5 departures — (Freight + Mail) ÷ Payload (%)"
+              downloadData={{ summary: { data: classGFreightUtilByRoute, filename: 'tx-mx-class-g-freight-util-by-route' } }}
+            >
+              <BarChart
+                data={classGFreightUtilByRoute}
+                xKey="label"
+                yKey="value"
+                horizontal
+                formatValue={(v) => `${v}%`}
+                labelAccessor={(d) => `${d.value}%  ·  ${d.deps} departures`}
+                color={CHART_COLORS[4]}
+              />
+            </ChartCard>
+          </div>
+
+          {/* Detailed methodology notes — placed outside the grid to avoid LineChart height feedback loop */}
+          <div className="mt-5 space-y-3">
+            <p className="text-base text-text-secondary italic">
+              <strong>What the trend chart shows:</strong> The percentage of total payload capacity filled with
+              freight and mail on dedicated cargo flights (BTS Service Class G &mdash; all-cargo and
+              all-mail operations). This isolates pure cargo loading efficiency without the
+              confounding effect of passenger weight.
+            </p>
+            <p className="text-base text-text-secondary italic">
+              <strong>Formula:</strong> (Freight lbs + Mail lbs) &divide; Payload Capacity lbs &times; 100%.
+              Payload capacity is the aircraft's maximum revenue payload as reported to BTS &mdash; the
+              total weight the aircraft can carry beyond its operating empty weight.
+            </p>
+            <p className="text-base text-text-secondary italic">
+              <strong>Why it matters:</strong> Low utilization (&lt;40%) on cargo flights suggests
+              either repositioning flights (deadhead legs returning empty), imbalanced trade flows
+              (more cargo in one direction), or scheduled service maintaining frequency even when
+              demand is thin. High utilization (&gt;70%) indicates strong, consistent cargo demand
+              filling available capacity.
+            </p>
+            <p className="text-base text-text-secondary italic">
+              <strong>Route rankings:</strong> Routes are ranked by how fully loaded their dedicated cargo flights are. The departure
+              count alongside each bar provides context &mdash; a high utilization rate on a route
+              with hundreds of departures signals sustained, efficient cargo operations, while high
+              utilization on just a handful of flights may reflect one-off charter movements.
+              Only routes with at least 5 all-cargo departures are shown to filter out statistical noise.
+            </p>
+          </div>
+        </SectionBlock>
+      )}
 
       {/* Scatter Plot: Passengers vs Freight */}
       <SectionBlock>

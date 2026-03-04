@@ -29,13 +29,14 @@
  *   @param {number}     [minHeight=320] — Minimum height for the chart area (px)
  *   @param {ReactNode}  [headerRight]   — Extra controls rendered in the header row
  *   @param {object}     [downloadData]  — { summary?: { data, filename }, detail?: { data, filename } }
+ *   @param {ReactNode}  [footnote]      — Annotation text rendered below the chart area but inside the card
  *
  * BOILERPLATE NOTE:
  *   This component is fully data-agnostic. When adapting this boilerplate for a
  *   new project/dataset, you should NOT need to modify this file. Instead, pass
  *   different props from the parent page components.
  */
-import { useRef, useState, useMemo, createContext } from 'react'
+import { useRef, useState, useMemo, useEffect, createContext, Children, isValidElement } from 'react'
 import { createPortal } from 'react-dom'
 import { RotateCcw, Image as ImageIcon, Maximize2 } from 'lucide-react'
 import DownloadButton from '@/components/ui/DownloadButton'
@@ -52,13 +53,35 @@ export default function ChartCard({
   children,
   onReset,
   className = '',
-  minHeight = 320,
+  minHeight = 200,
   headerRight,
   downloadData,
+  footnote,
 }) {
   const chartAreaRef = useRef(null)
   const [zoomRange, setZoomRange] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // DEV WARNING: Detect annotation text placed as children instead of footnote.
+  // Chart containers use h-full, so sibling elements get pushed below the visible
+  // area and clipped by overflow-hidden, appearing as faint "lines" at the bottom.
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      let hasNonChart = false
+      Children.forEach(children, (child) => {
+        if (isValidElement(child) && typeof child.type === 'string' && child.type === 'p') {
+          hasNonChart = true
+        }
+      })
+      if (hasNonChart) {
+        console.warn(
+          `[ChartCard] "${title}": <p> elements found in children. ` +
+          'Move annotation text to the `footnote` prop to prevent clipping. ' +
+          'See CLAUDE.md "ChartCard footnote" section.',
+        )
+      }
+    }
+  }, [children, title])
 
   const handleExportPng = () => {
     exportChartPng(
@@ -99,7 +122,7 @@ export default function ChartCard({
       <div
         className={`bg-white rounded-xl border border-border-light shadow-xs min-w-0
                     hover:shadow-sm transition-shadow duration-300 overflow-hidden
-                    h-full flex flex-col ${className}`}
+                    flex flex-col ${className}`}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 px-3 pt-5 pb-3">
@@ -152,9 +175,17 @@ export default function ChartCard({
             Chart components set their own minHeight based on data/legend needs.
             The flex-1 lets this area grow; the chart's inline minHeight drives expansion.
             When fullscreen is active, hide card children to avoid duplicate Leaflet maps. */}
-        <div ref={chartAreaRef} className="px-3 pb-5 flex-1" style={{ minHeight }}>
+        <div ref={chartAreaRef} className={`px-3 flex-1 ${footnote ? 'pb-2' : 'pb-5'}`} style={{ minHeight }}>
           {!isFullscreen && children}
         </div>
+
+        {/* Footnote — rendered outside the chart area (separate flex child) so it
+            is never clipped by overflow-hidden when chart containers use h-full. */}
+        {footnote && !isFullscreen && (
+          <div className="px-3 pb-5">
+            {footnote}
+          </div>
+        )}
       </div>
 
       {/* Fullscreen overlay (portalled to body) */}

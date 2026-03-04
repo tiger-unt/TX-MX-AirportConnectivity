@@ -120,12 +120,12 @@ src/
 │           ├── OverviewTab.jsx          # Map + 4 trend charts
 │           ├── PassengersRoutesTab.jsx  # Routes, airports, carriers, states, table
 │           ├── OperationsCapacityTab.jsx # Seats, departures, load factor, service class, aircraft
-│           ├── CargoTradeTab.jsx        # Freight/mail trends, imbalance, intensity, scatter
+│           ├── CargoTradeTab.jsx        # Freight/mail trends, imbalance, intensity, Class G payload util, scatter
 │           └── BorderAirportsTab.jsx    # Border intro, donut charts, scatter, heatmap
 ├── components/
 │   ├── layout/         # SiteHeader, MainNav, DashboardLayout, PageWrapper, Footer, UtilityBar
 │   ├── ui/             # StatCard, ChartCard, DataTable, FullscreenChart, DownloadButton, PageHeader, SectionBlock, TabBar, InsightCallout, ErrorBoundary, MapPlaceholder
-│   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot, LollipopChart
+│   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot, LollipopChart, BoxPlotChart
 │   ├── maps/           # AirportMap (Leaflet markers + great-circle route arcs)
 │   ├── filters/        # FilterSidebar, FilterBar, FilterSelect, FilterMultiSelect, ActiveFilterTags
 │   └── ai/             # AskAIDrawer, ChatInput, ChatMessage, SuggestedQuestions
@@ -144,6 +144,47 @@ src/
 ├── contexts/           # FilterContext (React Context for filter state)
 └── styles/             # globals.css (Tailwind + tokens), leaflet-overrides.css
 ```
+
+### Unicode Escapes in JSX — NEVER USE `\uXXXX` (RECURRING BUG)
+**This is a recurring bug that has appeared multiple times during development.** JSX string attributes (`prop="..."`) do NOT interpret `\uXXXX` escape sequences — they render as literal text (e.g., the user sees `\u2013` instead of an en-dash). This is because JSX attribute strings follow the JSX spec, not JavaScript string literal rules.
+
+**Rules:**
+1. **NEVER use `\uXXXX` escape sequences** anywhere in JSX/JS source files (e.g., `\u2013`, `\u2014`, `\u2019`, `\u2026`, `\u2192`). Always use the actual Unicode character instead (–, —, ', …, →).
+2. **For JSX text children**, prefer HTML entities: `&ndash;`, `&mdash;`, `&rsquo;`, `&hellip;`, `&rarr;`.
+3. **For JSX string attributes** (`prop="..."`), use actual Unicode characters directly: `title="Texas–Mexico"` not `title="Texas\u2013Mexico"`.
+4. **For JavaScript strings** inside `{}` expressions, actual characters work fine: `` label={`Texas–Mexico`} ``.
+5. **Exception**: `\uFEFF` (BOM) in `downloadCsv.js` is legitimate — it's a non-display encoding marker inside a JS string literal.
+6. **After any feature addition that includes UI text**, run `/unicode-check` to scan for accidental `\uXXXX` escapes.
+
+### Chart Height Feedback Loop — NEVER USE `containerHeight` IN NORMAL MODE (RECURRING BUG)
+**This is a recurring bug that has appeared multiple times during development.** When a D3 chart component reads its container's height via `useChartResize()` and uses it to set the SVG height, it creates a feedback loop inside CSS grid/flex layouts where ChartCard has `h-full`:
+
+1. ChartCard `h-full` → fills CSS grid cell height
+2. Chart container `h-full` → fills ChartCard flex area
+3. Chart reads `containerHeight` → sets SVG to that height
+4. Taller SVG → taller container → ResizeObserver fires → repeat
+5. Charts grow to 8000+ px, rendering only gridlines with data invisible
+
+**Rules:**
+1. **NEVER use `containerHeight` for SVG height in normal (non-fullscreen) mode.** Always use a computed default height (e.g., `300 + legendSpace`).
+2. **In fullscreen mode**, use `containerHeight` to fill the overlay: `isFullscreen ? Math.max(defaultH, containerHeight) : defaultH`.
+3. **Horizontal BarChart** already uses its own bar-count-based height — do not change this.
+4. **When adding a new chart component**, follow this pattern for height computation:
+   ```js
+   const height = isFullscreen
+     ? Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+     : defaultH
+   ```
+5. **After any chart modification**, visually verify charts inside CSS grid layouts (e.g., Texas-Mexico Operations tab's 3-column grid) to ensure no height explosion.
+
+### ChartCard Footnote — NEVER PUT `<p>` OR TEXT INSIDE ChartCard CHILDREN (RECURRING BUG)
+**This is a recurring bug that has appeared during development.** Chart components (LineChart, BarChart, LollipopChart) use `h-full` on their container divs to fill the ChartCard's chart area. When annotation `<p>` elements are placed as siblings inside ChartCard's `children`, the chart fills 100% of the parent height, pushing the text below the visible area. ChartCard's `overflow-hidden` (needed for rounded corners) clips it, but the tops of text characters peek through as faint "lines" at the bottom of the card.
+
+**Rules:**
+1. **NEVER place `<p>`, `<div>`, or any annotation/footnote text as children of ChartCard** alongside a chart component. ChartCard children should be chart components ONLY.
+2. **Use the `footnote` prop** for annotation text that should appear below the chart but inside the card: `<ChartCard footnote={<p className="...">text</p>}>`.
+3. **ChartCard emits a dev-time console warning** if `<p>` elements are detected in children — fix these immediately.
+4. For methodology notes that are NOT inside a ChartCard, place them below the ChartCard or below the grid container (see Class G Freight Payload Utilization pattern).
 
 ### Design Rules
 - **Minimum font size**: 16px throughout the entire site. No text should be smaller than 16px. **Exceptions** (approved below-16px usage):
@@ -188,12 +229,15 @@ All chart components accept a `formatValue` prop that controls how numeric value
 - **BORDER_AIRPORTS constant**: `aviationHelpers.js` exports `BORDER_AIRPORTS` (Set) and `BORDER_AIRPORT_LIST` (array of `{code, city}`) — the six Texas border airports, defined as airports located within a TxDOT border district: ELP (El Paso), LRD (Laredo), MFE (McAllen), HRL (Harlingen), BRO (Brownsville), DRT (Del Rio). Used on the Overview page (sidebar card + map highlighting), and the Texas-Mexico page (intro section with mini-map, border vs non-border analysis, O-D route matrix). AirportMap accepts a `highlightAirports` prop (Set of IATA codes) to render those markers with a thick white halo stroke.
 - **DivergingBarChart**: Bilateral horizontal bar chart (left/right from center axis). Props: `data`, `labelKey`, `leftKey`, `rightKey`, `leftLabel`, `rightLabel`, `leftColor`, `rightColor`, `formatValue`, `maxBars`, `animate`. Used for freight import/export imbalance.
 - **HeatmapTable**: Color-intensity HTML grid table. Props: `data` (with `rowLabels`, `colLabels`, `cells` 2D array), `formatValue`. Cell background alpha scales with value. Used for border airport O-D route matrices.
-- **LollipopChart**: Horizontal lollipop chart (thin stem + dot) for ranked data with long labels. Props: `data`, `xKey`, `yKey`, `color`, `formatValue`, `maxBars`, `animate`, `dotRadius`. Route labels auto-split on " → " for two-line display (origin / destination). Subtle guide lines and animated entrance. Used for load factor route rankings on the Texas-Mexico Operations & Capacity tab.
+- **LollipopChart**: Horizontal lollipop chart (thin stem + dot) for ranked data with long labels. Props: `data`, `xKey`, `yKey`, `color`, `formatValue`, `maxBars`, `animate`, `dotRadius`. Route labels auto-split on " → " for two-line display (origin / destination). Subtle guide lines and animated entrance.
+- **BoxPlotChart**: Vertical box-and-whisker chart showing statistical distributions per category. Props: `data` (pre-computed five-number summaries), `xKey`, `color`, `formatValue`, `animate`, `annotations`. Data shape: array of `{ [xKey], min, q1, median, q3, max, outliers: [{value, label}], count }`. Visual: filled box (Q1–Q3) with median line, whiskers (min–max), red outlier dots. HTML tooltip showing all statistics. Supports annotation bands (same format as LineChart). Used for route-level passenger load factor distribution by year on US-Mexico and Texas-Mexico pages.
 - **ScatterPlot**: Scatter/bubble chart with two numeric axes. Props: `data`, `xKey`, `yKey`, `labelKey`, `colorKey`, `sizeKey`, `formatX`, `formatY`, `colorMap`, `labelThreshold`, `scaleType` (`'symlog'`/`'linear'`/`'log'`), `animate`. Supports `d3.scaleSymlog()` for data with extreme skew and zero values. Optional bubble sizing via `scaleSqrt`. Permanent labels on top-N points, tooltip on hover for all. Used on Texas-Mexico Cargo & Trade tab for Passengers vs Freight airport activity (uniform dot size — no `sizeKey` — to avoid mixing incompatible units).
 - **Map metric selector**: Each page's AirportMap has a `<select>` dropdown (via ChartCard `headerRight`) letting users switch between Passengers, Freight (lbs), Mail (lbs), and Flights. Configuration is centralized in `MAP_METRIC_OPTIONS` (aviationHelpers.js). Each option specifies the CSV field, data source (market/segment), formatter, and unit label. The map metric is page-local state (`useState`), not global store state, since it only affects map visualization. `aggregateRoutes(data, airportIndex, field)` and `aggregateAirportVolumes(data, field)` accept an optional field parameter (default `'PASSENGERS'`). AirportMap accepts `formatValue` and `metricLabel` props for popup formatting.
 - **AIRCRAFT_GROUP_LABELS constant**: `aviationHelpers.js` exports `AIRCRAFT_GROUP_LABELS` mapping BTS aircraft group codes (0–8) to readable names. Used on the Texas-Mexico page for Aircraft Mix donut chart and trend line. The segment CSV includes `AIRCRAFT_GROUP` as a dimension column (added to `SEGMENT_EXTRA_GROUP_BY` in Extract_BTS_Data.py).
 - **Service class analysis**: Texas-Mexico page includes a Service Class Breakdown section showing flight share by CLASS (F/G/L/P) as a donut chart and multi-series trend line. Uses `CLASS_LABELS` for readable names.
 - **Freight intensity**: Texas-Mexico page includes a "Freight Intensity by Route" bar chart showing average freight per departure (lbs/flight) from segment data. Only routes with ≥10 departures are included to avoid statistical noise.
+- **Payload Weight Utilization**: Texas-Mexico Operations & Capacity tab includes a bidirectional trend chart showing estimated total carried weight ÷ payload capacity (%). Formula: `(PASSENGERS × 200 lbs + FREIGHT + MAIL) ÷ PAYLOAD × 100%`. The 200 lb/passenger figure is the FAA standard average including carry-on baggage. Uses segment data (which has the PAYLOAD field). Displayed with detailed methodology footnotes explaining the assumption and interpretation guidelines.
+- **Class G Freight Payload Utilization**: Texas-Mexico Cargo & Trade tab includes a dedicated section for all-cargo (Class G) flights showing `(FREIGHT + MAIL) ÷ PAYLOAD × 100%`. Includes: InsightCallout with aggregate stats, trend chart, and top-route bar chart (≥5 departures). Methodology notes are placed BELOW the 2-column grid (not inside ChartCards) to avoid a LineChart height feedback loop where `h-full` containers inside CSS grid expand unboundedly when footnotes push content taller.
 - **TabBar component**: Reusable horizontal tab navigation (`components/ui/TabBar.jsx`). Props: `tabs` (array of `{key, label, icon?}`), `activeTab`, `onChange`. Active tab styled with `bg-brand-blue text-white`; mobile-friendly with horizontal scroll via `scrollbar-hide` utility. Uses `role="tablist"` and `aria-selected` for accessibility.
 - **InsightCallout component**: Inline narrative callout for dynamic data-driven findings (`components/ui/InsightCallout.jsx`). Props: `finding` (string, required — main insight sentence), `context` (string, optional — muted explanation), `icon` (Lucide component, default `Lightbulb`), `variant` (`'default'`/`'highlight'`/`'warning'`, default `'default'`), `className`. Visual: 3px left border accent + icon badge + text. Variants: `default` = brand-blue, `highlight` = brand-green (use for positive findings like COVID recovery), `warning` = brand-orange (use for concentration/risk findings). NOT a card — sits inline within SectionBlock content. Computation logic lives in page-level `useMemo`; InsightCallout is purely presentational.
 - **Page storytelling pattern**: Every data page includes (1) a narrative intro paragraph in the first SectionBlock, (2) 1-2 dynamically computed InsightCallouts surfacing key findings, and (3) italic chart annotations (`<p className="text-base text-text-secondary mt-3 italic">`) below key charts explaining what to look for. The Overview page includes a "Key Findings" section with InsightCallouts linking to detail pages.
@@ -204,8 +248,8 @@ All chart components accept a `formatValue` prop that controls how numeric value
 |---|---|---|
 | Overview | `overview` | Route map (metric selector) + 4 bidirectional trend charts (passengers, flights, freight, mail) |
 | Passengers & Routes | `passengers` | Top 10 routes, TX/MX airport rankings, Mexico states, carrier market share, route details table |
-| Operations & Capacity | `operations` | Seat capacity, scheduled vs performed departures, schedule adherence, load factor (trend + top/bottom), service class breakdown, aircraft mix |
-| Cargo & Trade | `cargo` | Freight/mail trends, freight imbalance by airport (diverging bar), freight intensity by route, passengers-vs-freight scatter |
+| Operations & Capacity | `operations` | Seat capacity, scheduled vs performed departures, schedule adherence, load factor (trend + distribution box plot), payload weight utilization (200 lb/pax estimate), service class breakdown, aircraft mix |
+| Cargo & Trade | `cargo` | Freight/mail trends, freight imbalance by airport (diverging bar), freight intensity by route, Class G (all-cargo) freight payload utilization (trend + route rankings), passengers-vs-freight scatter |
 | Border Airports | `border` | Border airport intro (mini-map + buttons), border vs non-border share (donut), O-D route matrix (heatmap) |
 
 ### Running the WebApp
@@ -232,6 +276,9 @@ After code changes that affect the UI, run the `/visual-check` skill to verify t
 - Layout or navigation change → verify affected pages
 
 **Cleanup:** Delete ALL screenshot files and temporary artifacts generated during visual verification once the check is complete. Do not leave them in the repo.
+
+### Unicode Escape Check
+After any feature addition or modification that includes UI text (narrative paragraphs, chart titles, stat labels, insight findings, tooltips, direction labels), run `/unicode-check` to scan for accidental `\uXXXX` escape sequences. See the "Unicode Escapes in JSX" section above for the full rules.
 
 ## GeoJSON Usage
 - GeoJSON files are used to extract only two pieces of information: **airport display names** and **lat/lng coordinates**

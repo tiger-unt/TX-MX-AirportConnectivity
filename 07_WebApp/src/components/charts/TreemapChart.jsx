@@ -18,7 +18,10 @@ export default function TreemapChart({
     if (!data.length || !width) return
 
     const FS = getResponsiveFontSize(width, isFullscreen)
-    const height = Math.max(320, containerHeight > 100 ? containerHeight : 320)
+    // Use fixed height in normal mode to prevent feedback loops in CSS grid layouts.
+    const height = isFullscreen
+      ? Math.max(320, containerHeight > 100 ? containerHeight : 320)
+      : 320
     const safeWidth = Math.max(1, width)
     const safeHeight = Math.max(1, height)
 

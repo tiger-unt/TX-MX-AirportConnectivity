@@ -70,7 +70,10 @@ export default function ScatterPlot({
     const legendSpace = categories.length >= 2 ? 36 : 0
 
     const defaultH = 380 + legendSpace
-    const height = Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+    // Use computed default height in normal mode to prevent feedback loops.
+    const height = isFullscreen
+      ? Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+      : defaultH
     const innerW = Math.max(1, width - margin.left - margin.right)
     const innerH = Math.max(1, height - margin.top - margin.bottom - legendSpace)
 

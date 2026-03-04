@@ -58,7 +58,10 @@ export default function DivergingBarChart({
 
     const margin = { top: 8, right: 56, bottom: 48, left: labelW }
     const defaultH = Math.max(240, displayData.length * 36 + margin.top + margin.bottom)
-    const height = Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+    // Use computed default height in normal mode to prevent feedback loops.
+    const height = isFullscreen
+      ? Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+      : defaultH
     const innerW = Math.max(1, width - margin.left - margin.right)
     const innerH = Math.max(1, height - margin.top - margin.bottom)
 

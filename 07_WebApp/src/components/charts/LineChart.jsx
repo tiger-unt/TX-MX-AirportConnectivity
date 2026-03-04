@@ -132,8 +132,12 @@ export default function LineChart({
     }
     const legendSpace = legendRows > 0 ? 16 + legendRows * 28 : 0
     const defaultH = 300 + legendSpace
-    // Always use at least defaultH so legend doesn't compress the chart area
-    const height = Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+    // In normal mode, use the computed default height to prevent feedback loops
+    // where h-full containers in CSS grids cause unbounded SVG growth.
+    // In fullscreen mode, fill the available container height.
+    const height = isFullscreen
+      ? Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+      : defaultH
     const innerW = Math.max(1, width - margin.left - margin.right)
     const innerH = Math.max(1, height - margin.top - margin.bottom - legendSpace)
 
@@ -689,7 +693,7 @@ export default function LineChart({
   const minH = 300 + (estLegendRows > 0 ? 16 + estLegendRows * 28 : 0)
 
   return (
-    <div ref={containerRef} className="w-full" style={{ minHeight: minH }}>
+    <div ref={containerRef} className="w-full h-full" style={{ minHeight: minH }}>
       <svg ref={svgRef} className="w-full" />
     </div>
   )

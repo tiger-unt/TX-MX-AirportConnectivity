@@ -20,6 +20,7 @@
  *   hideVolume    — When true, popup only shows name + city (no volume/metric line)
  */
 import { useMemo, useCallback, useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { MapContainer, TileLayer, CircleMarker, Polyline, Popup, useMapEvents, useMap } from 'react-leaflet'
 import { greatCircleArc } from '@/lib/airportUtils'
 import 'leaflet/dist/leaflet.css'
@@ -139,6 +140,27 @@ function PopupController({ selectedAirport, markerRefs }) {
   return null
 }
 
+/** Captures map instance ref & repositions portal tooltips on map move/zoom */
+function TooltipSync({ mapRef, tooltip, setTooltip }) {
+  const map = useMap()
+  useEffect(() => { mapRef.current = map }, [map, mapRef])
+  useEffect(() => {
+    if (!tooltip?.latLng) return
+    const update = () => {
+      const pt = map.latLngToContainerPoint(tooltip.latLng)
+      const rect = map.getContainer().getBoundingClientRect()
+      setTooltip((prev) =>
+        prev?.latLng
+          ? { ...prev, x: rect.left + pt.x, y: rect.top + pt.y + (prev.offsetY || 0) }
+          : null,
+      )
+    }
+    map.on('move zoom', update)
+    return () => map.off('move zoom', update)
+  }, [map, tooltip?.latLng, tooltip?.offsetY, setTooltip])
+  return null
+}
+
 function ResetZoomButton({ center, zoom, onReset }) {
   const map = useMap()
   const handleClick = useCallback((e) => {
@@ -237,6 +259,8 @@ export default function AirportMap({
   }, [onAirportSelect])
 
   const markerRefs = useRef({})
+  const mapInstanceRef = useRef(null)
+  const [tooltip, setTooltip] = useState(null)
 
   const [mapActive, setMapActive] = useState(false)
   const [showHint, setShowHint] = useState(false)
@@ -253,6 +277,7 @@ export default function AirportMap({
   useEffect(() => () => clearTimeout(hintTimer.current), [])
 
   return (
+    <>
     <div
       style={{ minHeight: height, width: '100%' }}
       className="airport-map-container h-full flex flex-col rounded-lg overflow-hidden border border-border-light isolate"
@@ -300,6 +325,7 @@ export default function AirportMap({
           {!locked && <ResetZoomButton center={center} zoom={zoom} onReset={handleReset} />}
           <MapResizeHandler />
           <PopupController selectedAirport={selectedAirport} markerRefs={markerRefs} />
+          <TooltipSync mapRef={mapInstanceRef} tooltip={tooltip} setTooltip={setTooltip} />
           {fitToAirports && airports.length > 1 && (
             <FitBoundsToAirports airports={airports} />
           )}
@@ -314,6 +340,20 @@ export default function AirportMap({
                 weight: 2,
                 opacity: 0.5,
                 dashArray: selectedAirport ? undefined : '6 4',
+              }}
+              eventHandlers={{
+                mouseover: (e) => {
+                  setTooltip({
+                    content: (<><strong>{arc.label}</strong><br />{formatValue(arc.value)} {metricLabel}</>),
+                    x: e.originalEvent.clientX + 12,
+                    y: e.originalEvent.clientY - 12,
+                    sticky: true,
+                  })
+                },
+                mousemove: (e) => {
+                  setTooltip((prev) => prev ? { ...prev, x: e.originalEvent.clientX + 12, y: e.originalEvent.clientY - 12 } : null)
+                },
+                mouseout: () => setTooltip(null),
               }}
             >
               <Popup>
@@ -350,6 +390,20 @@ export default function AirportMap({
                   }}
                   eventHandlers={{
                     click: () => handleAirportClick(a.iata),
+                    mouseover: () => {
+                      const map = mapInstanceRef.current
+                      if (!map) return
+                      const pt = map.latLngToContainerPoint([a.lat, a.lng])
+                      const rect = map.getContainer().getBoundingClientRect()
+                      setTooltip({
+                        content: (<><strong>{a.iata}</strong> — {a.name}{!hideVolume && (<><br />{formatValue(a.volume)} {metricLabel}</>)}</>),
+                        x: rect.left + pt.x,
+                        y: rect.top + pt.y - r - 8,
+                        latLng: [a.lat, a.lng],
+                        offsetY: -r - 8,
+                      })
+                    },
+                    mouseout: () => setTooltip(null),
                   }}
                 >
                   <Popup>
@@ -442,5 +496,31 @@ export default function AirportMap({
         {hintText && <span className="ml-auto text-base">{hintText}</span>}
       </div>
     </div>
+    {tooltip &&
+      createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: tooltip.sticky ? 'none' : 'translate(-50%, -100%)',
+            zIndex: 10000,
+            pointerEvents: 'none',
+            background: 'white',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            padding: '6px 10px',
+            fontSize: 13,
+            lineHeight: 1.4,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+            whiteSpace: 'nowrap',
+            fontFamily: 'var(--font-sans), system-ui, sans-serif',
+          }}
+        >
+          {tooltip.content}
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }

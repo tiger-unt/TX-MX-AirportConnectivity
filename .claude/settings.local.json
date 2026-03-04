@@ -112,7 +112,31 @@
       "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js --route /texas-mexico --tab overview --tab cargo --tab border --screenshots --out-dir screenshots-temp)",
       "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js --route /texas-mexico --tab cargo --tab border --screenshots --out-dir screenshots-temp)",
       "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js --route /texas-mexico --tab border --screenshots --out-dir screenshots-temp)",
-      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5174 --screenshots --route /about-data --out-dir ./screenshots-about)"
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5174 --screenshots --route /about-data --out-dir ./screenshots-about)",
+      "Bash(tasklist)",
+      "Bash(findstr /i \"node vite\")",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --route /texas-mexico --tab overview --screenshots --out-dir ./screenshots-tooltip-check)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js --route /texas-mexico --tab operations --screenshots --out-dir ./screenshots-adherence-check)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js --route /texas-mexico --tab operations --screenshots --out-dir ./screenshots-color-check)",
+      "Skill(unicode-check)",
+      "Skill(unicode-check:*)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --route /us-mexico --screenshots --wait 5000)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --route /texas-mexico --tab operations --screenshots --wait 5000)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route \"/texas-mexico\" --tab \"operations\" --out-dir ./screenshots-ops)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route \"/texas-mexico\" --tab \"cargo\" --out-dir ./screenshots-cargo)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-mexico --tab operations --out-dir scripts/screenshots)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-mexico --tab operations --out-dir scripts/screenshots-ops-debug --wait 4000)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route \"/texas-mexico\" --tab \"passengers\" --out-dir ./screenshots)",
+      "Bash(npx lsof -i :5173)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-mexico --tab overview)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-mexico --tab cargo)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-domestic)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-international)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /us-mexico)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route / --out-dir ./screenshots-overview)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route / --out-dir screenshots-overview-check)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /about-data --out-dir ./screenshots-aboutdata)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5176 --route /texas-domestic --screenshots --out-dir ./screenshots-check)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",
@@ -122,7 +146,8 @@
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\02_Data_Staging\\BTS_Air_Carrier_Statistics\\Script\\_Archive\\Andrew_Sample_Code",
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\07_WebApp\\screenshots",
       "C:\\Users\\UNT\\.claude\\skills\\visual-check",
-      "C:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\02_Data_Staging\\BTS_Air_Carrier_Statistics\\Script\\_temp"
+      "C:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\02_Data_Staging\\BTS_Air_Carrier_Statistics\\Script\\_temp",
+      "C:\\Users\\UNT\\.claude\\skills"
     ]
   }
 }

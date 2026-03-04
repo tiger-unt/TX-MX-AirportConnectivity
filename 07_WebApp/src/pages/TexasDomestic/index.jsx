@@ -181,6 +181,43 @@ export default function TexasDomesticPage() {
     return data
   }, [baseSegment, filters])
 
+  /* ── year-agnostic filtered data (for trend charts) ──────────────── */
+  const filteredNoYear = useMemo(() => {
+    let data = baseMarket
+    if (filters.direction === 'TX_TO_US') data = data.filter(isTxToUs)
+    if (filters.direction === 'US_TO_TX') data = data.filter(isUsToTx)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
+    }
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
+    }
+    if (filters.originState.length) data = data.filter((d) => filters.originState.includes(d.ORIGIN_STATE_NM))
+    if (filters.destState.length) data = data.filter((d) => filters.destState.includes(d.DEST_STATE_NM))
+    return data
+  }, [baseMarket, filters])
+
+  const filteredSegmentNoYear = useMemo(() => {
+    let data = baseSegment
+    if (filters.direction === 'TX_TO_US') data = data.filter(isTxToUs)
+    if (filters.direction === 'US_TO_TX') data = data.filter(isUsToTx)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
+    }
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
+    }
+    if (filters.originState.length) data = data.filter((d) => filters.originState.includes(d.ORIGIN_STATE_NM))
+    if (filters.destState.length) data = data.filter((d) => filters.destState.includes(d.DEST_STATE_NM))
+    return data
+  }, [baseSegment, filters])
+
   /* ── active filter count & tags ────────────────────────────────────── */
   const activeCount =
     filters.year.length + (filters.direction ? 1 : 0) +
@@ -196,7 +233,7 @@ export default function TexasDomesticPage() {
     push('year', 'Year')
     if (filters.direction) tags.push({
       group: 'Direction',
-      label: filters.direction === 'TX_TO_US' ? 'Texas \u2192 Other States' : 'Other States \u2192 Texas',
+      label: filters.direction === 'TX_TO_US' ? 'Texas → Other States' : 'Other States → Texas',
       onRemove: () => setFilter('direction', ''),
     })
     push('serviceClass', 'Service Class', (v) => CLASS_LABELS[v] || v)
@@ -249,38 +286,38 @@ export default function TexasDomesticPage() {
     return { pax, paxChange, flights, destStates, topState, latestYear, prevYear }
   }, [filtered, filteredSegment, latestYear])
 
-  /* ── trend data ────────────────────────────────────────────────────── */
+  /* ── trend data (year-agnostic — not affected by year filter) ──────── */
   const paxTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.PASSENGERS)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   const flightTrend = useMemo(() => {
     const byYear = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.DEPARTURES_PERFORMED)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   const freightTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.FREIGHT)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   const mailTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.MAIL)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   /* ── top connected states ──────────────────────────────────────────── */
   const topStates = useMemo(() => {
@@ -308,7 +345,17 @@ export default function TexasDomesticPage() {
       .slice(0, 10)
   }, [filtered])
 
-  const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
+  /* ── Schedule Adherence: local year selector ───────────────────────── */
+  const [adherenceYear, setAdherenceYear] = useState('')
+  const adherenceYears = useMemo(() =>
+    [...new Set(filteredSegment.map((d) => d.YEAR))].sort((a, b) => a - b),
+  [filteredSegment])
+  const adherenceData = useMemo(() => {
+    const data = adherenceYear
+      ? filteredSegment.filter((d) => d.YEAR === Number(adherenceYear))
+      : filteredSegment
+    return computeAdherenceData(data)
+  }, [filteredSegment, adherenceYear])
 
   /* ── storytelling insights ───────────────────────────────────────── */
   const hubInsight = useMemo(() => {
@@ -389,8 +436,8 @@ export default function TexasDomesticPage() {
         label="Direction"
         value={filters.direction}
         options={[
-          { value: 'TX_TO_US', label: 'Texas \u2192 Other States' },
-          { value: 'US_TO_TX', label: 'Other States \u2192 Texas' },
+          { value: 'TX_TO_US', label: 'Texas → Other States' },
+          { value: 'US_TO_TX', label: 'Other States → Texas' },
         ]}
         onChange={(v) => setFilter('direction', v)}
       />
@@ -420,7 +467,7 @@ export default function TexasDomesticPage() {
         </h2>
         <p className="text-white/70 mt-2 text-base">
           Air connections between Texas and other U.S. states using BTS T-100
-          data (2015&ndash;{latestYear || '\u2026'}).
+          data (2015&ndash;{latestYear || '…'}).
         </p>
       </div>
     </div>
@@ -442,7 +489,7 @@ export default function TexasDomesticPage() {
             linking Texans to destinations across all 52 U.S. states and territories. But domestic connectivity
             isn&rsquo;t evenly distributed &mdash; a handful of hub airports carry the vast majority
             of traffic. This page examines passenger volumes, flight operations, cargo flows,
-            and schedule reliability from 2015 to {latestYear || '\u2026'}.
+            and schedule reliability from 2015 to {latestYear || '…'}.
           </p>
           {hubInsight && (
             <InsightCallout
@@ -466,25 +513,25 @@ export default function TexasDomesticPage() {
       <SectionBlock alt>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
           <StatCard
-            label={`Texas Domestic Passengers (${latestYear || '\u2014'})`}
-            value={stats ? fmtCompact(stats.pax) : '\u2014'}
+            label={`Texas Domestic Passengers (${latestYear || '—'})`}
+            value={stats ? fmtCompact(stats.pax) : '—'}
             trend={stats?.paxChange > 0 ? 'up' : stats?.paxChange < 0 ? 'down' : undefined}
             trendLabel={stats ? `${(stats.paxChange * 100).toFixed(1)}% vs ${stats.prevYear}` : ''}
             highlight variant="primary" icon={Users} delay={0}
           />
           <StatCard
-            label={`Texas Domestic Flights (${latestYear || '\u2014'})`}
-            value={stats ? fmtCompact(stats.flights) : '\u2014'}
+            label={`Texas Domestic Flights (${latestYear || '—'})`}
+            value={stats ? fmtCompact(stats.flights) : '—'}
             highlight icon={Plane} delay={100}
           />
           <StatCard
-            label={`U.S. States & Territories (${latestYear || '\u2014'})`}
-            value={stats ? String(stats.destStates) : '\u2014'}
+            label={`U.S. States & Territories (${latestYear || '—'})`}
+            value={stats ? String(stats.destStates) : '—'}
             highlight icon={MapPin} delay={200}
           />
           <StatCard
-            label={`Top Connected State (${latestYear || '\u2014'})`}
-            value={stats?.topState || '\u2014'}
+            label={`Top Connected State (${latestYear || '—'})`}
+            value={stats?.topState || '—'}
             highlight icon={Award} delay={300}
           />
         </div>
@@ -532,9 +579,9 @@ export default function TexasDomesticPage() {
             title="Passenger Trends"
             subtitle="Total passengers by year"
             downloadData={{ summary: { data: paxTrend, filename: 'tx-domestic-passenger-trends' } }}
+            footnote={<p className="text-base text-text-secondary mt-1 italic">The COVID-19 pandemic caused a sharp drop in 2020. Texas domestic traffic has since recovered, with most major corridors exceeding pre-pandemic levels.</p>}
           >
             <LineChart data={paxTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
-            <p className="text-base text-text-secondary mt-3 italic">The COVID-19 pandemic caused a sharp drop in 2020. Texas domestic traffic has since recovered, with most major corridors exceeding pre-pandemic levels.</p>
           </ChartCard>
           <ChartCard
             title="Flight Trends"
@@ -596,11 +643,29 @@ export default function TexasDomesticPage() {
         </div>
         <ChartCard
           title="Schedule Adherence"
-          subtitle="Departure-weighted: performed vs scheduled (Class F, scheduled service)"
+          subtitle={`Class F scheduled service, U.S. carriers only — departure-weighted${adherenceYear ? ` (${adherenceYear})` : ''}`}
           downloadData={{ summary: { data: adherenceData, filename: 'tx-domestic-schedule-adherence' } }}
+          headerRight={
+            <select
+              value={adherenceYear}
+              onChange={(e) => setAdherenceYear(e.target.value)}
+              className="text-base border border-gray-300 rounded px-2 py-1 bg-white text-text-primary"
+            >
+              <option value="">All Years</option>
+              {adherenceYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          }
         >
-          <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
-          <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
+          <BarChart data={adherenceData} xKey="label" yKey="value" horizontal colorAccessor={(d) => d.color} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={15} animate />
+          <p className="text-base text-text-secondary mt-3 italic">
+            Each bar shows the share of annual carrier-route records by how many flights were performed
+            vs. scheduled. For example, &ldquo;11+ fewer flights&rdquo; means the carrier operated 11+
+            fewer flights than scheduled on that route for the year &mdash; missing flights were cancelled,
+            consolidated, or simply never operated. Weighted by scheduled departures.
+            U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.
+          </p>
         </ChartCard>
       </SectionBlock>
     </DashboardLayout>

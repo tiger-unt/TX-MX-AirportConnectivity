@@ -99,7 +99,7 @@ export default function BorderAirportsTab({
         {borderInsight && (
           <div className="space-y-3 mb-5">
             <InsightCallout
-              finding={`Border airports handle ${borderInsight.paxPct}% of Texas\u2013Mexico passengers but ${borderInsight.cargoPct}% of cargo.`}
+              finding={`Border airports handle ${borderInsight.paxPct}% of Texas–Mexico passengers but ${borderInsight.cargoPct}% of cargo.`}
               context="The gap between passenger and cargo share highlights the outsized role border airports play in cross-border freight."
               variant="default"
               icon={ArrowRightLeft}

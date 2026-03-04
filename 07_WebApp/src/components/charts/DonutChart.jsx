@@ -44,6 +44,11 @@
  *   The `nameKey` value of the currently selected slice. Non-selected
  *   slices render at reduced opacity. Pass `null`/`undefined` to clear.
  *
+ * @param {number} [maxSize]
+ *   Optional maximum diameter (px) for the donut ring. When provided, the
+ *   donut will not grow larger than this value regardless of container size.
+ *   Also lowers the container's minimum height to match.
+ *
  * @param {boolean} [animate=true]
  *   Whether slices fade in on first render. Animation only runs once
  *   (tracked by `hasAnimated` ref) to avoid replaying on selection changes.
@@ -69,6 +74,7 @@ export default function DonutChart({
   formatValue = formatCompact,
   onSliceClick,
   selectedSlice,
+  maxSize: maxSizeProp,
   animate = true,
 }) {
   const containerRef = useRef(null)
@@ -77,10 +83,11 @@ export default function DonutChart({
   const { width, height: containerHeight, isFullscreen } = useChartResize(containerRef)
 
   // Legend visibility: right-side SVG legend when labels fit, bottom HTML legend otherwise
+  const legendMaxW = isFullscreen ? 350 : 260
   const estLegendPx = data.length > 0
-    ? Math.max(...data.map(d => `${d[nameKey]} (${formatValue(d[valueKey])})`.length)) * 9 + 50
+    ? Math.min(Math.max(...data.map(d => `${d[nameKey]} (${formatValue(d[valueKey])})`.length)) * 9 + 50, legendMaxW)
     : 0
-  const showLegendRight = width > 500 && data.length <= 10 && data.length > 0 && (width - estLegendPx) >= 220
+  const showLegendRight = width > 400 && data.length <= 10 && data.length > 0 && (width - estLegendPx) >= 160
   const showBottomLegend = width > 0 && !showLegendRight && data.length > 0 && data.length <= 15
 
   // Click-outside handler: deselect when clicking anywhere outside the chart container
@@ -102,14 +109,18 @@ export default function DonutChart({
     const FS = getResponsiveFontSize(width, isFullscreen)
     const charW = FS * 0.6
 
-    // Give legend enough space based on longest label, ensuring donut gets at least 220px
+    // Give legend enough space based on longest label, ensuring donut gets at least 160px
     const maxLabelLen = d3.max(data, (d) => `${d[nameKey]} (${formatValue(d[valueKey])})`.length) || 20
     const legendW = isFullscreen
-      ? Math.min(width - 220, Math.max(320, maxLabelLen * charW + 50))
-      : Math.min(width - 220, Math.max(280, maxLabelLen * charW + 50))
-    const legendWidth = showLegendRight ? legendW : 0
+      ? Math.min(legendMaxW, Math.max(280, maxLabelLen * charW + 50))
+      : Math.min(legendMaxW, Math.max(220, maxLabelLen * charW + 50))
+    const legendWidth = showLegendRight ? Math.min(legendW, width - 160) : 0
     const chartArea = width - legendWidth
-    const maxSize = containerHeight > 100 ? containerHeight : 300
+    // Use fixed size in normal mode to prevent feedback loops in CSS grid layouts.
+    const defaultMaxSize = isFullscreen
+      ? (containerHeight > 100 ? containerHeight : 300)
+      : 300
+    const maxSize = maxSizeProp ? Math.min(maxSizeProp, defaultMaxSize) : defaultMaxSize
     const size = Math.min(chartArea, maxSize)
     const explodeOffset = 6
     const radius = size / 2 - explodeOffset
@@ -127,7 +138,8 @@ export default function DonutChart({
       svg.on('click', null)
     }
 
-    const g = svg.append('g').attr('transform', `translate(${chartArea / 2},${size / 2})`)
+    const wrapper = svg.append('g')
+    const g = wrapper.append('g').attr('transform', `translate(${size / 2},${size / 2})`)
 
     const colorScale = d3.scaleOrdinal().range(CHART_COLORS)
     const pie = d3.pie().value((d) => d[valueKey]).sort(null).padAngle(0.02)
@@ -212,20 +224,51 @@ export default function DonutChart({
       hasAnimated.current = true
     }
 
-    // Legend
+    // Legend (with text wrapping for long labels)
     if (showLegendRight) {
       const dotR = isFullscreen ? 8 : 6
-      const rowH = isFullscreen ? Math.round(FS * 1.8) : 26
-      const legendX = chartArea + 16
-      const legendY = Math.max(8, size / 2 - (data.length * rowH) / 2)
+      const lineH = Math.round(FS * 1.35)
+      const itemGap = isFullscreen ? 10 : 8
+      const legendTextX = dotR * 2 + 10
+      // Position legend right after the left-aligned donut
+      const donutRight = size
+      const legendTextW = (width - donutRight - 16) - legendTextX - 8
+      const legendX = donutRight + 16
 
-      const legendG = svg.append('g')
-        .attr('transform', `translate(${legendX}, ${legendY})`)
+      // Wrap SVG text into tspan elements, returns line count
+      const wrapText = (textNode, maxW) => {
+        const sel = d3.select(textNode)
+        const fullText = sel.text()
+        const words = fullText.split(/\s+/)
+        if (!words.length) return 1
+        sel.text(null)
+        const x = sel.attr('x')
+        let tspan = sel.append('tspan').attr('x', x)
+        let line = []
+        let lines = 1
+        words.forEach(word => {
+          line.push(word)
+          tspan.text(line.join(' '))
+          if (tspan.node().getComputedTextLength() > maxW && line.length > 1) {
+            line.pop()
+            tspan.text(line.join(' '))
+            line = [word]
+            lines++
+            tspan = sel.append('tspan').attr('x', x).attr('dy', `${lineH}px`).text(word)
+          }
+        })
+        return lines
+      }
 
-      data.forEach((d, i) => {
+      const legendG = wrapper.append('g')
+      let currentY = 0
+
+      data.forEach((d) => {
         const isDimmed = selectedSlice && d[nameKey] !== selectedSlice
+        const label = `${d[nameKey]} (${formatValue(d[valueKey])})`
+
         const item = legendG.append('g')
-          .attr('transform', `translate(0, ${i * rowH})`)
+          .attr('transform', `translate(${legendX}, ${currentY})`)
           .attr('opacity', isDimmed ? 0.4 : 1)
           .attr('cursor', onSliceClick ? 'pointer' : 'default')
           .on('click', (e) => {
@@ -233,23 +276,34 @@ export default function DonutChart({
             onSliceClick?.(d)
           })
         item.append('circle')
-          .attr('cx', dotR).attr('cy', 5).attr('r', dotR)
+          .attr('cx', dotR).attr('cy', dotR + 2).attr('r', dotR)
           .attr('fill', colorScale(d[nameKey]))
 
-        const label = `${d[nameKey]} (${formatValue(d[valueKey])})`
-
-        item.append('text')
-          .attr('x', dotR * 2 + 8).attr('y', 10)
+        const textEl = item.append('text')
+          .attr('x', legendTextX).attr('y', FS * 0.85)
           .attr('font-size', `${FS}px`)
           .attr('fill', 'var(--color-text-primary)')
           .text(label)
+
+        const numLines = wrapText(textEl.node(), legendTextW)
+        currentY += numLines * lineH + itemGap
       })
+
+      // Center legend vertically within the donut height
+      const totalH = currentY - itemGap
+      const offsetY = Math.max(8, size / 2 - totalH / 2)
+      legendG.attr('transform', `translate(0, ${offsetY})`)
     }
 
-  }, [data, width, containerHeight, isFullscreen, nameKey, valueKey, selectedSlice, animate, showLegendRight])
+    // Center the donut + legend group horizontally within the SVG
+    const bbox = wrapper.node().getBBox()
+    const centerOffset = (width - bbox.width) / 2 - bbox.x
+    if (centerOffset > 0) wrapper.attr('transform', `translate(${centerOffset}, 0)`)
+
+  }, [data, width, containerHeight, isFullscreen, nameKey, valueKey, selectedSlice, animate, showLegendRight, maxSizeProp])
 
   return (
-    <div ref={containerRef} className="w-full" style={{ minHeight: 300 }}>
+    <div ref={containerRef} className="w-full" style={{ minHeight: maxSizeProp || 300 }}>
       <svg ref={svgRef} className="w-full" />
       {showBottomLegend && (
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-2 px-2">

@@ -1,7 +1,16 @@
 import {
   Database, Filter, ClipboardCheck, FileOutput, Info, BookOpen,
-  AlertTriangle, ExternalLink, FileText, Layers, MapPin
+  AlertTriangle, ExternalLink, FileText, Layers, MapPin, ChevronRight
 } from 'lucide-react'
+
+const SECTIONS = [
+  { id: 'source', label: 'Data Source' },
+  { id: 'market-segment', label: 'Market vs. Segment' },
+  { id: 'limitations', label: 'Limitations' },
+  { id: 'pipeline', label: 'Pipeline' },
+  { id: 'terms', label: 'Key Terms' },
+  { id: 'quality', label: 'Data Quality' },
+]
 
 export default function AboutDataPage() {
   return (
@@ -19,10 +28,29 @@ export default function AboutDataPage() {
         </div>
       </div>
 
+      {/* Quick-jump nav */}
+      <nav className="border-b border-border-light bg-white sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-6 flex items-center gap-1 overflow-x-auto scrollbar-hide py-2">
+          {SECTIONS.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' })}
+              className="flex items-center gap-1 whitespace-nowrap px-3 py-1.5 rounded-full text-base font-medium text-text-secondary hover:text-brand-blue hover:bg-brand-blue/5 transition-colors cursor-pointer"
+            >
+              {s.label}
+              {i < SECTIONS.length - 1 && (
+                <ChevronRight size={14} className="text-text-secondary/40 ml-1" />
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       <div className="max-w-5xl mx-auto px-6">
 
         {/* ── Data Source ────────────────────────────────────────────────── */}
-        <section className="py-10">
+        <section id="source" className="py-10 scroll-mt-16">
           <h3 className="text-xl font-bold text-text-primary mb-2">Data Source</h3>
           <p className="text-base text-text-secondary mb-5">
             All data in this dashboard comes from the Bureau of Transportation Statistics (BTS),
@@ -37,8 +65,9 @@ export default function AboutDataPage() {
             <p className="text-base text-text-secondary leading-relaxed mb-4">
               The BTS T-100 program collects traffic and capacity information from airlines operating
               flights to, from, or within the United States. Both U.S. and foreign carriers are
-              required to report. Data has been available since 1990 and is
-              reported monthly, with the most recent data from November 2025.
+              required to report. While the BTS publishes data monthly (with filings
+              typically available through late 2025), this dashboard uses complete,
+              finalized annual data for the period <strong>2015–2024</strong>.
             </p>
             <p className="text-base text-text-secondary leading-relaxed mb-5">
               For this study, we use <strong>four BTS T-100 tables</strong> from the TranStats portal, covering the
@@ -83,7 +112,7 @@ export default function AboutDataPage() {
         </section>
 
         {/* ── Market vs Segment Data ─────────────────────────────────────── */}
-        <section className="pb-10">
+        <section id="market-segment" className="pb-10 scroll-mt-16">
           <h3 className="text-xl font-bold text-text-primary mb-2">Market vs. Segment Data</h3>
           <p className="text-base text-text-secondary mb-5">
             BTS T-100 produces two complementary datasets. Understanding the difference
@@ -121,25 +150,71 @@ export default function AboutDataPage() {
           <div className="bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-5">
             <div className="flex gap-3">
               <Info size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
-              <div className="text-base text-text-secondary leading-relaxed">
+              <p className="text-base text-text-secondary leading-relaxed">
                 <strong className="text-text-primary">Example:</strong> 250 people board a flight from
-                JFK (A) to BWI (B). At BWI, 200 deplane; the remaining 50 plus 70 new passengers
-                continue to MIA (C).
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-                  <div>
-                    <p className="font-semibold text-text-primary mb-1">Market counts:</p>
-                    <ul className="space-y-0.5 text-base">
-                      <li>A &rarr; B: <strong>200</strong> (deplaned at B)</li>
-                      <li>A &rarr; C: <strong>50</strong> (continued to C)</li>
-                      <li>B &rarr; C: <strong>70</strong> (boarded at B)</li>
-                    </ul>
+                JFK&nbsp;(A) to BWI&nbsp;(B). At BWI, 200 deplane; the remaining 50 plus 70 new passengers
+                continue to MIA&nbsp;(C).
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              {/* Market column */}
+              <div className="bg-white rounded-lg border border-brand-blue/15 overflow-hidden">
+                <div className="px-4 py-2 bg-brand-blue/10">
+                  <p className="text-base font-bold text-brand-blue">Market Counts</p>
+                  <p className="text-base text-text-secondary">Passengers counted once per journey</p>
+                </div>
+                <div className="divide-y divide-border-light">
+                  {[
+                    ['JFK', 'BWI', '200', 'deplaned at B'],
+                    ['JFK', 'MIA', '50', 'continued to C'],
+                    ['BWI', 'MIA', '70', 'boarded at B'],
+                  ].map(([from, to, count, note]) => (
+                    <div key={from + to} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-base text-text-secondary">
+                        <strong className="text-text-primary">{from}</strong>
+                        {' '}&rarr;{' '}
+                        <strong className="text-text-primary">{to}</strong>
+                      </span>
+                      <span className="text-base">
+                        <strong className="text-brand-blue">{count}</strong>
+                        <span className="text-text-secondary ml-1.5">({note})</span>
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-surface-alt">
+                    <span className="text-base font-semibold text-text-primary">Total</span>
+                    <strong className="text-base text-brand-blue">320</strong>
                   </div>
-                  <div>
-                    <p className="font-semibold text-text-primary mb-1">Segment counts:</p>
-                    <ul className="space-y-0.5 text-base">
-                      <li>A &rarr; B: <strong>250</strong> (all on board)</li>
-                      <li>B &rarr; C: <strong>120</strong> (50 continuing + 70 new)</li>
-                    </ul>
+                </div>
+              </div>
+
+              {/* Segment column */}
+              <div className="bg-white rounded-lg border border-brand-yellow/25 overflow-hidden">
+                <div className="px-4 py-2 bg-brand-yellow/10">
+                  <p className="text-base font-bold text-brand-yellow-dark">Segment Counts</p>
+                  <p className="text-base text-text-secondary">Passengers counted on every flight leg</p>
+                </div>
+                <div className="divide-y divide-border-light">
+                  {[
+                    ['JFK', 'BWI', '250', 'all on board'],
+                    ['BWI', 'MIA', '120', '50 continuing + 70 new'],
+                  ].map(([from, to, count, note]) => (
+                    <div key={from + to} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-base text-text-secondary">
+                        <strong className="text-text-primary">{from}</strong>
+                        {' '}&rarr;{' '}
+                        <strong className="text-text-primary">{to}</strong>
+                      </span>
+                      <span className="text-base">
+                        <strong className="text-brand-yellow-dark">{count}</strong>
+                        <span className="text-text-secondary ml-1.5">({note})</span>
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-surface-alt">
+                    <span className="text-base font-semibold text-text-primary">Total</span>
+                    <strong className="text-base text-brand-yellow-dark">370</strong>
                   </div>
                 </div>
               </div>
@@ -190,7 +265,7 @@ export default function AboutDataPage() {
         </section>
 
         {/* ── Data Limitations ──────────────────────────────────────────── */}
-        <section className="pb-10">
+        <section id="limitations" className="pb-10 scroll-mt-16">
           <h3 className="text-xl font-bold text-text-primary mb-2">Data Limitations</h3>
           <p className="text-base text-text-secondary mb-5">
             U.S. and foreign airlines have different federal reporting requirements, which creates
@@ -232,10 +307,17 @@ export default function AboutDataPage() {
               </div>
             </div>
           </div>
+
+          <p className="text-base text-text-secondary mt-5 italic">
+            As a result, <strong className="not-italic">Passengers</strong> and{' '}
+            <strong className="not-italic">Freight</strong> are the most reliable metrics for
+            comparing U.S. and foreign carriers directly, since both carrier types are required
+            to report these figures.
+          </p>
         </section>
 
         {/* ── Data Pipeline ──────────────────────────────────────────────── */}
-        <section className="py-10">
+        <section id="pipeline" className="py-10 scroll-mt-16">
           <h3 className="text-xl font-bold text-text-primary mb-2">Data Pipeline</h3>
           <p className="text-base text-text-secondary mb-5">
             From raw federal filings to the visualizations on this dashboard, the data passes through
@@ -280,7 +362,7 @@ export default function AboutDataPage() {
         </section>
 
         {/* ── Key Terms ─────────────────────────────────────────────────── */}
-        <section className="pb-10">
+        <section id="terms" className="pb-10 scroll-mt-16">
           <h3 className="text-xl font-bold text-text-primary mb-2">Key Terms</h3>
           <p className="text-base text-text-secondary mb-5">
             A few terms appear throughout the dashboard that are helpful to understand.
@@ -336,7 +418,7 @@ export default function AboutDataPage() {
         </section>
 
         {/* ── Data Quality ──────────────────────────────────────────────── */}
-        <section className="pb-10">
+        <section id="quality" className="pb-10 scroll-mt-16">
           <h3 className="text-xl font-bold text-text-primary mb-2">Data Quality</h3>
           <p className="text-base text-text-secondary mb-5">
             The Texas–Mexico dataset covers <strong>2015–2024</strong> with data from{' '}

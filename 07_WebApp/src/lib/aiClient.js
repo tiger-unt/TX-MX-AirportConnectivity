@@ -372,7 +372,7 @@ function answerCapacity(segmentData, ctx) {
   return `Capacity${filterDesc}:\n\n` +
     `• Total seats: ${fmtCompact(seats)}\n` +
     `• Total passengers: ${fmtCompact(pax)}\n` +
-    `• Load factor: ${loadFactor}%`
+    `• Passenger load factor: ${loadFactor}%`
 }
 
 function answerTrend(data) {

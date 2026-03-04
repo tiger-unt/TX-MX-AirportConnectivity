@@ -15,6 +15,7 @@ import LineChart from '@/components/charts/LineChart'
 import DonutChart from '@/components/charts/DonutChart'
 import BarChart from '@/components/charts/BarChart'
 import AirportMap from '@/components/maps/AirportMap'
+import BoxPlotChart from '@/components/charts/BoxPlotChart'
 import InsightCallout from '@/components/ui/InsightCallout'
 
 const isUsMx = (d) => isUsToMx(d) || isMxToUs(d)
@@ -188,22 +189,69 @@ export default function USMexicoPage() {
     return data
   }, [baseSegment, filters])
 
-  const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
+  /* ── year-agnostic filtered data (for trend charts) ──────────────── */
+  const filteredNoYear = useMemo(() => {
+    let data = baseMarket
+    if (filters.direction === 'US_TO_MX') data = data.filter(isUsToMx)
+    if (filters.direction === 'MX_TO_US') data = data.filter(isMxToUs)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
+    }
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
+    }
+    if (filters.originState.length) data = data.filter((d) => filters.originState.includes(d.ORIGIN_STATE_NM))
+    if (filters.destState.length) data = data.filter((d) => filters.destState.includes(d.DEST_STATE_NM))
+    return data
+  }, [baseMarket, filters])
 
-  /* ── seat capacity & load factor ───────────────────────────────────── */
+  const filteredSegmentNoYear = useMemo(() => {
+    let data = baseSegment
+    if (filters.direction === 'US_TO_MX') data = data.filter(isUsToMx)
+    if (filters.direction === 'MX_TO_US') data = data.filter(isMxToUs)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
+    }
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
+    }
+    if (filters.originState.length) data = data.filter((d) => filters.originState.includes(d.ORIGIN_STATE_NM))
+    if (filters.destState.length) data = data.filter((d) => filters.destState.includes(d.DEST_STATE_NM))
+    return data
+  }, [baseSegment, filters])
+
+  /* ── Schedule Adherence: local year selector ───────────────────────── */
+  const [adherenceYear, setAdherenceYear] = useState('')
+  const adherenceYears = useMemo(() =>
+    [...new Set(filteredSegment.map((d) => d.YEAR))].sort((a, b) => a - b),
+  [filteredSegment])
+  const adherenceData = useMemo(() => {
+    const data = adherenceYear
+      ? filteredSegment.filter((d) => d.YEAR === Number(adherenceYear))
+      : filteredSegment
+    return computeAdherenceData(data)
+  }, [filteredSegment, adherenceYear])
+
+  /* ── seat capacity & load factor (year-agnostic — trends) ──────────── */
   const seatTrend = useMemo(() => {
     const byYear = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.SEATS)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   const loadFactorTrend = useMemo(() => {
     const byYD = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       if (d.SEATS <= 0) return
-      const dir = isUsToMx(d) ? 'U.S. \u2192 Mexico' : 'Mexico \u2192 U.S.'
+      const dir = isUsToMx(d) ? 'U.S. → Mexico' : 'Mexico → U.S.'
       const key = `${d.YEAR}|${dir}`
       if (!byYD.has(key)) byYD.set(key, { year: d.YEAR, pax: 0, seats: 0, Direction: dir })
       const row = byYD.get(key)
@@ -213,25 +261,54 @@ export default function USMexicoPage() {
     return Array.from(byYD.values())
       .map((d) => ({ year: d.year, value: d.seats ? +(d.pax / d.seats * 100).toFixed(1) : 0, Direction: d.Direction }))
       .sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
-  const loadFactorByRoute = useMemo(() => {
-    const byRoute = new Map()
-    filteredSegment.forEach((d) => {
+  const loadFactorDistribution = useMemo(() => {
+    // Group by year + route, sum passengers and seats
+    const byYearRoute = new Map()
+    filteredSegmentNoYear.forEach((d) => {
       if (d.SEATS <= 0) return
-      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} \u2192 ${d.DEST_FULL_LABEL || d.DEST}`
-      if (!byRoute.has(label)) byRoute.set(label, { label, pax: 0, seats: 0 })
-      const row = byRoute.get(label)
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} → ${d.DEST_FULL_LABEL || d.DEST}`
+      const key = `${d.YEAR}|${label}`
+      if (!byYearRoute.has(key)) byYearRoute.set(key, { year: d.YEAR, label, pax: 0, seats: 0 })
+      const row = byYearRoute.get(key)
       row.pax += d.PASSENGERS
       row.seats += d.SEATS
     })
-    const all = Array.from(byRoute.values())
-      .map((d) => ({ label: d.label, value: d.seats ? +(d.pax / d.seats * 100).toFixed(1) : 0, seats: d.seats }))
-      .filter((d) => d.value > 0)
-    const top = [...all].sort((a, b) => b.value - a.value).slice(0, 10)
-    const bottom = [...all].filter((d) => d.seats >= 100).sort((a, b) => a.value - b.value).slice(0, 10)
-    return { top, bottom }
-  }, [filteredSegment])
+    // Compute load factor per route per year, filter to min 100 seats
+    const byYear = new Map()
+    byYearRoute.forEach((r) => {
+      if (r.seats < 100) return
+      const lf = +(r.pax / r.seats * 100).toFixed(1)
+      if (lf <= 0) return
+      if (!byYear.has(r.year)) byYear.set(r.year, [])
+      byYear.get(r.year).push({ value: lf, label: r.label })
+    })
+    // Five-number summary + outliers per year
+    const quantile = (sorted, p) => {
+      const idx = p * (sorted.length - 1)
+      const lo = Math.floor(idx)
+      const hi = Math.ceil(idx)
+      if (lo === hi) return sorted[lo]
+      return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
+    }
+    return Array.from(byYear.entries())
+      .map(([year, routes]) => {
+        const values = routes.map((r) => r.value).sort((a, b) => a - b)
+        const q1 = quantile(values, 0.25)
+        const median = quantile(values, 0.5)
+        const q3 = quantile(values, 0.75)
+        const iqr = q3 - q1
+        const lowerFence = q1 - 1.5 * iqr
+        const upperFence = q3 + 1.5 * iqr
+        const nonOutliers = values.filter((v) => v >= lowerFence && v <= upperFence)
+        const min = nonOutliers.length ? nonOutliers[0] : q1
+        const max = nonOutliers.length ? nonOutliers[nonOutliers.length - 1] : q3
+        const outliers = routes.filter((r) => r.value < lowerFence || r.value > upperFence)
+        return { year, min, q1, median, q3, max, outliers, count: values.length }
+      })
+      .sort((a, b) => a.year - b.year)
+  }, [filteredSegmentNoYear])
 
   /* ── active filter count & tags ────────────────────────────────────── */
   const activeCount =
@@ -248,7 +325,7 @@ export default function USMexicoPage() {
     push('year', 'Year')
     if (filters.direction) tags.push({
       group: 'Direction',
-      label: filters.direction === 'US_TO_MX' ? 'U.S. \u2192 Mexico' : 'Mexico \u2192 U.S.',
+      label: filters.direction === 'US_TO_MX' ? 'U.S. → Mexico' : 'Mexico → U.S.',
       onRemove: () => setFilter('direction', ''),
     })
     push('serviceClass', 'Service Class', (v) => CLASS_LABELS[v] || v)
@@ -284,7 +361,7 @@ export default function USMexicoPage() {
     const usToMxLatest = latest.filter(isUsToMx)
     const txPax = usToMxLatest.filter((d) => d.ORIGIN_STATE_NM === 'Texas').reduce((s, d) => s + d.PASSENGERS, 0)
     const totalUsToMx = usToMxLatest.reduce((s, d) => s + d.PASSENGERS, 0)
-    const txShare = totalUsToMx ? (txPax / totalUsToMx * 100).toFixed(1) + '%' : '\u2014'
+    const txShare = totalUsToMx ? (txPax / totalUsToMx * 100).toFixed(1) + '%' : '—'
 
     // US states serving Mexico
     const stateSet = new Set(usToMxLatest.map((d) => d.ORIGIN_STATE_NM).filter(Boolean))
@@ -308,38 +385,38 @@ export default function USMexicoPage() {
     return { pax, paxChange, txShare, usStates: stateSet.size, topRoute, topRouteFull, latestYear, prevYear }
   }, [filtered, latestYear])
 
-  /* ── trends ────────────────────────────────────────────────────────── */
+  /* ── trends (year-agnostic — not affected by year filter) ──────────── */
   const paxTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.PASSENGERS)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   const flightTrend = useMemo(() => {
     const byYear = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.DEPARTURES_PERFORMED)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   const freightTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.FREIGHT)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   const mailTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.MAIL)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   /* ── TX share donut ────────────────────────────────────────────────── */
   const txShareData = useMemo(() => {
@@ -459,7 +536,7 @@ export default function USMexicoPage() {
     const byRoute = new Map()
     filtered.forEach((d) => {
       const airports = [d.ORIGIN, d.DEST].sort()
-      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} \u2192 ${d.DEST_FULL_LABEL || d.DEST}`
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} → ${d.DEST_FULL_LABEL || d.DEST}`
       byRoute.set(label, (byRoute.get(label) || 0) + d.PASSENGERS)
     })
     return Array.from(byRoute, ([label, value]) => ({ label, value }))
@@ -518,8 +595,8 @@ export default function USMexicoPage() {
         label="Direction"
         value={filters.direction}
         options={[
-          { value: 'US_TO_MX', label: 'U.S. \u2192 Mexico' },
-          { value: 'MX_TO_US', label: 'Mexico \u2192 U.S.' },
+          { value: 'US_TO_MX', label: 'U.S. → Mexico' },
+          { value: 'MX_TO_US', label: 'Mexico → U.S.' },
         ]}
         onChange={(v) => setFilter('direction', v)}
       />
@@ -549,7 +626,7 @@ export default function USMexicoPage() {
         </h2>
         <p className="text-white/70 mt-2 text-base">
           National perspective on cross-border air traffic, with Texas&rsquo;s role
-          as a gateway (2015&ndash;{latestYear || '\u2026'}).
+          as a gateway (2015&ndash;{latestYear || '…'}).
         </p>
       </div>
     </div>
@@ -571,7 +648,7 @@ export default function USMexicoPage() {
             busiest bilateral corridors. Texas serves as the primary gateway &mdash; more
             U.S.-Mexico passengers depart from Texas airports than from any other state.
             This page provides a national perspective on the cross-border market and
-            Texas&rsquo;s outsized role in it, from 2015 to {latestYear || '\u2026'}.
+            Texas&rsquo;s outsized role in it, from 2015 to {latestYear || '…'}.
           </p>
           <p className="text-base text-text-secondary/70 leading-relaxed italic">
             Scope: all U.S.&ndash;Mexico air traffic nationwide, both directions. For Texas-specific
@@ -586,8 +663,8 @@ export default function USMexicoPage() {
           )}
           {loadFactorInsight && (
             <InsightCallout
-              finding={`Average load factor on U.S.\u2013Mexico routes was ${loadFactorInsight.avg}% in ${latestYear}.`}
-              context="Load factors above 80% typically signal high demand relative to available capacity."
+              finding={`Average passenger load factor on U.S.–Mexico routes was ${loadFactorInsight.avg}% in ${latestYear}.`}
+              context="Passenger load factor = Passengers ÷ Seats. Values above 80% typically signal high demand relative to available capacity."
               variant="default"
               icon={Users}
             />
@@ -599,26 +676,26 @@ export default function USMexicoPage() {
       <SectionBlock alt>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
           <StatCard
-            label={`U.S.–Mexico Passengers (${latestYear || '\u2014'})`}
-            value={stats ? fmtCompact(stats.pax) : '\u2014'}
+            label={`U.S.–Mexico Passengers (${latestYear || '—'})`}
+            value={stats ? fmtCompact(stats.pax) : '—'}
             trend={stats?.paxChange > 0 ? 'up' : stats?.paxChange < 0 ? 'down' : undefined}
             trendLabel={stats ? `${(stats.paxChange * 100).toFixed(1)}% vs ${stats.prevYear}` : ''}
             highlight variant="primary" icon={Users} delay={0}
           />
           <StatCard
-            label={`Texas Share (${latestYear || '\u2014'})`}
-            value={stats?.txShare || '\u2014'}
+            label={`Texas Share (${latestYear || '—'})`}
+            value={stats?.txShare || '—'}
             highlight icon={PieChart} delay={100}
           />
           <StatCard
-            label={`U.S. States Serving Mexico (${latestYear || '\u2014'})`}
-            value={stats ? String(stats.usStates) : '\u2014'}
+            label={`U.S. States Serving Mexico (${latestYear || '—'})`}
+            value={stats ? String(stats.usStates) : '—'}
             highlight icon={MapPin} delay={200}
           />
           <StatCard
-            label={`Top U.S.–Mexico Route (${latestYear || '\u2014'})`}
-            value={stats?.topRoute || '\u2014'}
-            title={stats?.topRouteFull ? `${stats.topRouteFull} was the top U.S.\u2013Mexico route in ${stats.latestYear}` : undefined}
+            label={`Top U.S.–Mexico Route (${latestYear || '—'})`}
+            value={stats?.topRoute || '—'}
+            title={stats?.topRouteFull ? `${stats.topRouteFull} was the top U.S.–Mexico route in ${stats.latestYear}` : undefined}
             highlight icon={Route} delay={300}
           />
         </div>
@@ -701,25 +778,22 @@ export default function USMexicoPage() {
           </p>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div>
-            <ChartCard
-              title="Texas Share of U.S.–Mexico Air Traffic"
-              subtitle="Passengers from U.S. to Mexico (all filtered years)"
-              downloadData={{ summary: { data: txShareData, filename: 'tx-share-us-mx' } }}
-            >
-              <DonutChart data={txShareData} formatValue={fmtCompact} />
-              <p className="text-base text-text-secondary mt-3 italic">Texas&rsquo;s dominant share reflects both geographic proximity to Mexico and the state&rsquo;s concentration of major hub airports.</p>
-            </ChartCard>
-          </div>
-          <div className="lg:col-span-2">
-            <ChartCard
-              title="Top U.S. States Serving Mexico"
-              subtitle={`Total passengers, U.S. \u2192 Mexico (all filtered years)`}
-              downloadData={{ summary: { data: topStates, filename: 'top-us-states-to-mexico' } }}
-            >
-              <BarChart data={topStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-            </ChartCard>
-          </div>
+          <ChartCard
+            title="Texas Share of U.S.–Mexico Air Traffic"
+            subtitle="Passengers from U.S. to Mexico (all filtered years)"
+            downloadData={{ summary: { data: txShareData, filename: 'tx-share-us-mx' } }}
+            footnote={<p className="text-base text-text-secondary mt-1 italic">Texas's dominant share reflects both geographic proximity to Mexico and the state's concentration of major hub airports.</p>}
+          >
+            <DonutChart data={txShareData} formatValue={fmtCompact} maxSize={250} />
+          </ChartCard>
+          <ChartCard
+            className="lg:col-span-2"
+            title="Top U.S. States Serving Mexico"
+            subtitle={`Total passengers, U.S. → Mexico (all filtered years)`}
+            downloadData={{ summary: { data: topStates, filename: 'top-us-states-to-mexico' } }}
+          >
+            <BarChart data={topStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
+          </ChartCard>
         </div>
       </SectionBlock>
 
@@ -727,12 +801,12 @@ export default function USMexicoPage() {
       <SectionBlock alt>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-5">
           <StatCard
-            label={`TX Passenger Rank (${latestYear || '\u2014'})`}
+            label={`TX Passenger Rank (${latestYear || '—'})`}
             value={`#${txRankStats.paxRank} (${txRankStats.paxPct}%)`}
             highlight variant="primary" icon={Users}
           />
           <StatCard
-            label={`TX Cargo Rank (${latestYear || '\u2014'})`}
+            label={`TX Cargo Rank (${latestYear || '—'})`}
             value={`#${txRankStats.cargoRank} (${txRankStats.cargoPct}%)`}
             highlight icon={Package}
           />
@@ -780,11 +854,29 @@ export default function USMexicoPage() {
       <SectionBlock alt>
         <ChartCard
           title="Schedule Adherence"
-          subtitle="Departure-weighted: performed vs scheduled (Class F, scheduled service)"
+          subtitle={`Class F scheduled service, U.S. carriers only — departure-weighted${adherenceYear ? ` (${adherenceYear})` : ''}`}
           downloadData={{ summary: { data: adherenceData, filename: 'us-mx-schedule-adherence' } }}
+          headerRight={
+            <select
+              value={adherenceYear}
+              onChange={(e) => setAdherenceYear(e.target.value)}
+              className="text-base border border-gray-300 rounded px-2 py-1 bg-white text-text-primary"
+            >
+              <option value="">All Years</option>
+              {adherenceYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          }
         >
-          <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
-          <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
+          <BarChart data={adherenceData} xKey="label" yKey="value" horizontal colorAccessor={(d) => d.color} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={15} animate />
+          <p className="text-base text-text-secondary mt-3 italic">
+            Each bar shows the share of annual carrier-route records by how many flights were performed
+            vs. scheduled. For example, &ldquo;11+ fewer flights&rdquo; means the carrier operated 11+
+            fewer flights than scheduled on that route for the year &mdash; missing flights were cancelled,
+            consolidated, or simply never operated. Weighted by scheduled departures.
+            U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.
+          </p>
         </ChartCard>
       </SectionBlock>
 
@@ -792,7 +884,7 @@ export default function USMexicoPage() {
       <SectionBlock>
         <div className="mb-4">
           <p className="text-base text-text-secondary">
-            Seat capacity and load factors reveal whether airline supply is keeping pace with passenger demand.
+            Seat capacity and passenger load factors reveal whether airline supply is keeping pace with passenger demand.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -804,26 +896,26 @@ export default function USMexicoPage() {
             <LineChart data={seatTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
-            title="Load Factor Trends"
+            title="Passenger Load Factor Trends"
             subtitle="Passengers &divide; Seats (%) by year and direction"
             downloadData={{ summary: { data: loadFactorTrend, filename: 'us-mx-load-factor-trend' } }}
           >
             <LineChart data={loadFactorTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
           </ChartCard>
-          <ChartCard
-            title="Highest Load Factor Routes"
-            subtitle="Top 10 routes by passenger/seat ratio"
-            downloadData={{ summary: { data: loadFactorByRoute.top, filename: 'us-mx-top-load-factor' } }}
-          >
-            <BarChart data={loadFactorByRoute.top} xKey="label" yKey="value" horizontal formatValue={(v) => `${v}%`} color={CHART_COLORS[0]} />
-          </ChartCard>
-          <ChartCard
-            title="Lowest Load Factor Routes"
-            subtitle="Bottom 10 routes (min 100 seats)"
-            downloadData={{ summary: { data: loadFactorByRoute.bottom, filename: 'us-mx-low-load-factor' } }}
-          >
-            <BarChart data={loadFactorByRoute.bottom} xKey="label" yKey="value" horizontal formatValue={(v) => `${v}%`} color={CHART_COLORS[8]} />
-          </ChartCard>
+          <div className="md:col-span-2">
+            <ChartCard
+              title="Route-Level Passenger Load Factor Distribution by Year"
+              subtitle="Distribution of annual route load factors (routes with 100+ seats)"
+              downloadData={{ summary: { data: loadFactorDistribution, filename: 'us-mx-load-factor-distribution' } }}
+            >
+              <BoxPlotChart data={loadFactorDistribution} xKey="year" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} animate />
+              <p className="text-base text-text-secondary mt-3 italic">
+                Each box shows the middle 50% of route-level load factors for that year. The line inside each box marks the median.
+                Whiskers extend to the most extreme non-outlier routes; red dots show statistical outliers (beyond 1.5&times;IQR from Q1/Q3).
+                Only routes with 100+ annual seats are included.
+              </p>
+            </ChartCard>
+          </div>
         </div>
       </SectionBlock>
     </DashboardLayout>

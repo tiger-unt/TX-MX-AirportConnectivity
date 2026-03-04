@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { Users, Plane, Package, Route, BarChart3, Settings2, MapPin } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
-import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, computeAdherenceData, CLASS_LABELS, AIRCRAFT_GROUP_LABELS, CARRIER_TYPE_LABELS, getCarrierType, BORDER_AIRPORTS, BORDER_AIRPORT_LIST, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, CLASS_LABELS, AIRCRAFT_GROUP_LABELS, CARRIER_TYPE_LABELS, getCarrierType, BORDER_AIRPORTS, BORDER_AIRPORT_LIST, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
 import { formatNumber } from '@/lib/chartColors'
@@ -210,6 +210,53 @@ export default function TexasMexicoPage() {
     return data
   }, [baseSegment, filters])
 
+  /* ── year-agnostic filtered data (for trend charts) ──────────────── */
+  const filteredNoYear = useMemo(() => {
+    let data = baseMarket
+    if (filters.direction === 'TX_TO_MX') data = data.filter(isTxToMx)
+    if (filters.direction === 'MX_TO_TX') data = data.filter(isMxToTx)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
+    }
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
+    }
+    if (filters.destState.length) {
+      data = data.filter((d) => {
+        if (isTxToMx(d)) return filters.destState.includes(d.DEST_STATE_NM)
+        if (isMxToTx(d)) return filters.destState.includes(d.ORIGIN_STATE_NM)
+        return false
+      })
+    }
+    return data
+  }, [baseMarket, filters])
+
+  const filteredSegmentNoYear = useMemo(() => {
+    let data = baseSegment
+    if (filters.direction === 'TX_TO_MX') data = data.filter(isTxToMx)
+    if (filters.direction === 'MX_TO_TX') data = data.filter(isMxToTx)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
+    }
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
+    }
+    if (filters.destState.length) {
+      data = data.filter((d) => {
+        if (isTxToMx(d)) return filters.destState.includes(d.DEST_STATE_NM)
+        if (isMxToTx(d)) return filters.destState.includes(d.ORIGIN_STATE_NM)
+        return false
+      })
+    }
+    return data
+  }, [baseSegment, filters])
+
   /* ── active filter count & tags ────────────────────────────────────── */
   const activeCount =
     filters.year.length + (filters.direction ? 1 : 0) +
@@ -225,7 +272,7 @@ export default function TexasMexicoPage() {
     push('year', 'Year')
     if (filters.direction) tags.push({
       group: 'Direction',
-      label: filters.direction === 'TX_TO_MX' ? 'Texas \u2192 Mexico' : 'Mexico \u2192 Texas',
+      label: filters.direction === 'TX_TO_MX' ? 'Texas → Mexico' : 'Mexico → Texas',
       onRemove: () => setFilter('direction', ''),
     })
     push('serviceClass', 'Service Class', (v) => CLASS_LABELS[v] || v)
@@ -267,45 +314,45 @@ export default function TexasMexicoPage() {
     return { pax, paxChange, flights, freight, mail, activeRoutes: routeSet.size, latestYear, prevYear }
   }, [filtered, filteredSegment, latestYear])
 
-  /* ── trends (bidirectional) ────────────────────────────────────────── */
+  /* ── trends (year-agnostic — not affected by year filter) ──────────── */
   const paxTrend = useMemo(() => {
     const byYD = new Map()
-    filtered.forEach((d) => {
-      const dir = isTxToMx(d) ? 'Texas \u2192 Mexico' : 'Mexico \u2192 Texas'
+    filteredNoYear.forEach((d) => {
+      const dir = isTxToMx(d) ? 'Texas → Mexico' : 'Mexico → Texas'
       const key = `${d.YEAR}|${dir}`
       if (!byYD.has(key)) byYD.set(key, { year: d.YEAR, value: 0, Direction: dir })
       byYD.get(key).value += d.PASSENGERS
     })
     return Array.from(byYD.values()).sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
-  }, [filtered])
+  }, [filteredNoYear])
 
   const flightTrend = useMemo(() => {
     const byYD = new Map()
-    filteredSegment.forEach((d) => {
-      const dir = isTxToMx(d) ? 'Texas \u2192 Mexico' : 'Mexico \u2192 Texas'
+    filteredSegmentNoYear.forEach((d) => {
+      const dir = isTxToMx(d) ? 'Texas → Mexico' : 'Mexico → Texas'
       const key = `${d.YEAR}|${dir}`
       if (!byYD.has(key)) byYD.set(key, { year: d.YEAR, value: 0, Direction: dir })
       byYD.get(key).value += d.DEPARTURES_PERFORMED
     })
     return Array.from(byYD.values()).sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   const mailTrend = useMemo(() => {
     const byYD = new Map()
-    filtered.forEach((d) => {
-      const dir = isTxToMx(d) ? 'Texas \u2192 Mexico' : 'Mexico \u2192 Texas'
+    filteredNoYear.forEach((d) => {
+      const dir = isTxToMx(d) ? 'Texas → Mexico' : 'Mexico → Texas'
       const key = `${d.YEAR}|${dir}`
       if (!byYD.has(key)) byYD.set(key, { year: d.YEAR, value: 0, Direction: dir })
       byYD.get(key).value += d.MAIL
     })
     return Array.from(byYD.values()).sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
-  }, [filtered])
+  }, [filteredNoYear])
 
   /* ── routes & airports ─────────────────────────────────────────────── */
   const topRoutes = useMemo(() => {
     const byRoute = new Map()
     filtered.forEach((d) => {
-      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} \u2192 ${d.DEST_FULL_LABEL || d.DEST}`
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} → ${d.DEST_FULL_LABEL || d.DEST}`
       byRoute.set(label, (byRoute.get(label) || 0) + d.PASSENGERS)
     })
     return Array.from(byRoute, ([label, value]) => ({ label, value }))
@@ -337,19 +384,6 @@ export default function TexasMexicoPage() {
 
   /* ── airlines ──────────────────────────────────────────────────────── */
   const carrierMarketShare = useMemo(() => {
-    const yearToUse = filters.year.length === 1 ? Number(filters.year[0]) : latestYear
-    const subset = filtered.filter((d) => d.YEAR === yearToUse)
-    const byCarrier = new Map()
-    subset.forEach((d) => {
-      if (!d.CARRIER_NAME) return
-      byCarrier.set(d.CARRIER_NAME, (byCarrier.get(d.CARRIER_NAME) || 0) + d.PASSENGERS)
-    })
-    return Array.from(byCarrier, ([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8)
-  }, [filtered, filters.year, latestYear])
-
-  const topCarriers = useMemo(() => {
     const byCarrier = new Map()
     filtered.forEach((d) => {
       if (!d.CARRIER_NAME) return
@@ -357,21 +391,21 @@ export default function TexasMexicoPage() {
     })
     return Array.from(byCarrier, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 10)
+      .slice(0, 8)
   }, [filtered])
 
-  /* ── operations (segment) ──────────────────────────────────────────── */
+  /* ── operations (segment, year-agnostic trends) ──────────────────── */
   const seatTrend = useMemo(() => {
     const byYear = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.SEATS)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   const depTrend = useMemo(() => {
     const byYK = new Map()
-    filteredSegment
+    filteredSegmentNoYear
       .filter((d) => d.SCHED_REPORTED === 1 && d.CLASS === 'F')
       .forEach((d) => {
         for (const [metric, field] of [['Scheduled', 'DEPARTURES_SCHEDULED'], ['Performed', 'DEPARTURES_PERFORMED']]) {
@@ -381,16 +415,14 @@ export default function TexasMexicoPage() {
         }
       })
     return Array.from(byYK.values()).sort((a, b) => a.year - b.year || a.Metric.localeCompare(b.Metric))
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
-  const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
-
-  /* ── load factor analysis ─────────────────────────────────────────── */
+  /* ── load factor analysis (year-agnostic trends) ──────────────────── */
   const loadFactorTrend = useMemo(() => {
     const byYD = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       if (d.SEATS <= 0) return
-      const dir = isTxToMx(d) ? 'Texas \u2192 Mexico' : 'Mexico \u2192 Texas'
+      const dir = isTxToMx(d) ? 'Texas → Mexico' : 'Mexico → Texas'
       const key = `${d.YEAR}|${dir}`
       if (!byYD.has(key)) byYD.set(key, { year: d.YEAR, pax: 0, seats: 0, Direction: dir })
       const row = byYD.get(key)
@@ -400,37 +432,136 @@ export default function TexasMexicoPage() {
     return Array.from(byYD.values())
       .map((d) => ({ year: d.year, value: d.seats ? +(d.pax / d.seats * 100).toFixed(1) : 0, Direction: d.Direction }))
       .sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
-  const loadFactorByRoute = useMemo(() => {
-    const byRoute = new Map()
-    filteredSegment.forEach((d) => {
+  const loadFactorDistribution = useMemo(() => {
+    // Group by year + route, sum passengers and seats
+    const byYearRoute = new Map()
+    filteredSegmentNoYear.forEach((d) => {
       if (d.SEATS <= 0) return
-      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} \u2192 ${d.DEST_FULL_LABEL || d.DEST}`
-      if (!byRoute.has(label)) byRoute.set(label, { label, pax: 0, seats: 0 })
-      const row = byRoute.get(label)
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} → ${d.DEST_FULL_LABEL || d.DEST}`
+      const key = `${d.YEAR}|${label}`
+      if (!byYearRoute.has(key)) byYearRoute.set(key, { year: d.YEAR, label, pax: 0, seats: 0 })
+      const row = byYearRoute.get(key)
       row.pax += d.PASSENGERS
       row.seats += d.SEATS
     })
-    const all = Array.from(byRoute.values())
-      .map((d) => ({ label: d.label, value: d.seats ? +(d.pax / d.seats * 100).toFixed(1) : 0, seats: d.seats }))
-      .filter((d) => d.value > 0)
-    const top = [...all].sort((a, b) => b.value - a.value).slice(0, 10)
-    const bottom = [...all].filter((d) => d.seats >= 100).sort((a, b) => a.value - b.value).slice(0, 10)
-    return { top, bottom }
-  }, [filteredSegment])
+    // Compute load factor per route per year, filter to min 100 seats
+    const byYear = new Map()
+    byYearRoute.forEach((r) => {
+      if (r.seats < 100) return
+      const lf = +(r.pax / r.seats * 100).toFixed(1)
+      if (lf <= 0) return
+      if (!byYear.has(r.year)) byYear.set(r.year, [])
+      byYear.get(r.year).push({ value: lf, label: r.label })
+    })
+    // Five-number summary + outliers per year
+    const quantile = (sorted, p) => {
+      const idx = p * (sorted.length - 1)
+      const lo = Math.floor(idx)
+      const hi = Math.ceil(idx)
+      if (lo === hi) return sorted[lo]
+      return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
+    }
+    return Array.from(byYear.entries())
+      .map(([year, routes]) => {
+        const values = routes.map((r) => r.value).sort((a, b) => a - b)
+        const q1 = quantile(values, 0.25)
+        const median = quantile(values, 0.5)
+        const q3 = quantile(values, 0.75)
+        const iqr = q3 - q1
+        const lowerFence = q1 - 1.5 * iqr
+        const upperFence = q3 + 1.5 * iqr
+        const nonOutliers = values.filter((v) => v >= lowerFence && v <= upperFence)
+        const min = nonOutliers.length ? nonOutliers[0] : q1
+        const max = nonOutliers.length ? nonOutliers[nonOutliers.length - 1] : q3
+        const outliers = routes.filter((r) => r.value < lowerFence || r.value > upperFence)
+        return { year, min, q1, median, q3, max, outliers, count: values.length }
+      })
+      .sort((a, b) => a.year - b.year)
+  }, [filteredSegmentNoYear])
 
-  /* ── freight trends (bidirectional) ──────────────────────────────── */
+  /* ── payload weight utilization (all services, year-agnostic trend) ── */
+  const AVG_PAX_WEIGHT_LBS = 200 // FAA standard: ~200 lbs per passenger including carry-on baggage
+
+  const payloadUtilTrend = useMemo(() => {
+    const byYD = new Map()
+    filteredSegmentNoYear.forEach((d) => {
+      if (d.PAYLOAD <= 0) return
+      const dir = isTxToMx(d) ? 'Texas → Mexico' : 'Mexico → Texas'
+      const key = `${d.YEAR}|${dir}`
+      if (!byYD.has(key)) byYD.set(key, { year: d.YEAR, estWeight: 0, payload: 0, Direction: dir })
+      const row = byYD.get(key)
+      row.estWeight += (d.PASSENGERS * AVG_PAX_WEIGHT_LBS) + d.FREIGHT + d.MAIL
+      row.payload += d.PAYLOAD
+    })
+    return Array.from(byYD.values())
+      .map((d) => ({ year: d.year, value: d.payload ? +(d.estWeight / d.payload * 100).toFixed(1) : 0, Direction: d.Direction }))
+      .sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
+  }, [filteredSegmentNoYear])
+
+  /* ── Class G (all-cargo) freight payload utilization ─────────────── */
+  const classGSegment = useMemo(() => filteredSegment.filter((d) => d.CLASS === 'G'), [filteredSegment])
+  const classGSegmentNoYear = useMemo(() => filteredSegmentNoYear.filter((d) => d.CLASS === 'G'), [filteredSegmentNoYear])
+
+  const classGFreightUtilTrend = useMemo(() => {
+    const byYear = new Map()
+    classGSegmentNoYear.forEach((d) => {
+      if (d.PAYLOAD <= 0) return
+      if (!byYear.has(d.YEAR)) byYear.set(d.YEAR, { year: d.YEAR, cargoWeight: 0, payload: 0 })
+      const row = byYear.get(d.YEAR)
+      row.cargoWeight += d.FREIGHT + d.MAIL
+      row.payload += d.PAYLOAD
+    })
+    return Array.from(byYear.values())
+      .map((d) => ({ year: d.year, value: d.payload ? +(d.cargoWeight / d.payload * 100).toFixed(1) : 0 }))
+      .sort((a, b) => a.year - b.year)
+  }, [classGSegmentNoYear])
+
+  const classGFreightUtilByRoute = useMemo(() => {
+    const byRoute = new Map()
+    classGSegment.forEach((d) => {
+      if (d.PAYLOAD <= 0 || d.DEPARTURES_PERFORMED <= 0) return
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} → ${d.DEST_FULL_LABEL || d.DEST}`
+      if (!byRoute.has(label)) byRoute.set(label, { label, cargoWeight: 0, payload: 0, deps: 0 })
+      const row = byRoute.get(label)
+      row.cargoWeight += d.FREIGHT + d.MAIL
+      row.payload += d.PAYLOAD
+      row.deps += d.DEPARTURES_PERFORMED
+    })
+    return Array.from(byRoute.values())
+      .filter((d) => d.deps >= 5) // minimum 5 departures to avoid noise
+      .map((d) => ({ label: d.label, value: d.payload ? +(d.cargoWeight / d.payload * 100).toFixed(1) : 0, deps: d.deps }))
+      .filter((d) => d.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
+  }, [classGSegment])
+
+  const classGStats = useMemo(() => {
+    if (!classGSegment.length) return null
+    const totalDeps = classGSegment.reduce((s, d) => s + d.DEPARTURES_PERFORMED, 0)
+    const totalFreight = classGSegment.reduce((s, d) => s + d.FREIGHT, 0)
+    const totalPayload = classGSegment.reduce((s, d) => s + d.PAYLOAD, 0)
+    const carriers = new Set(classGSegment.map((d) => d.CARRIER_NAME).filter(Boolean))
+    return {
+      totalDeps,
+      totalFreight,
+      avgUtil: totalPayload > 0 ? +(totalFreight / totalPayload * 100).toFixed(1) : 0,
+      carrierCount: carriers.size,
+    }
+  }, [classGSegment])
+
+  /* ── freight trends (bidirectional, year-agnostic) ──────────────── */
   const freightTrend = useMemo(() => {
     const byYD = new Map()
-    filtered.forEach((d) => {
-      const dir = isTxToMx(d) ? 'TX \u2192 MX (Exports)' : 'MX \u2192 TX (Imports)'
+    filteredNoYear.forEach((d) => {
+      const dir = isTxToMx(d) ? 'TX → MX (Exports)' : 'MX → TX (Imports)'
       const key = `${d.YEAR}|${dir}`
       if (!byYD.has(key)) byYD.set(key, { year: d.YEAR, value: 0, Direction: dir })
       byYD.get(key).value += d.FREIGHT
     })
     return Array.from(byYD.values()).sort((a, b) => a.year - b.year || a.Direction.localeCompare(b.Direction))
-  }, [filtered])
+  }, [filteredNoYear])
 
   /* ── freight imbalance by TX airport ─────────────────────────────── */
   const freightImbalance = useMemo(() => {
@@ -613,14 +744,14 @@ export default function TexasMexicoPage() {
 
   const serviceClassTrend = useMemo(() => {
     const byYC = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       const cls = CLASS_LABELS[d.CLASS] || d.CLASS || 'Unknown'
       const key = `${d.YEAR}|${cls}`
       if (!byYC.has(key)) byYC.set(key, { year: d.YEAR, value: 0, Class: cls })
       byYC.get(key).value += d.DEPARTURES_PERFORMED
     })
     return Array.from(byYC.values()).sort((a, b) => a.year - b.year || a.Class.localeCompare(b.Class))
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   // Wide-format pivot for StackedBarChart: { year, 'Class F – ...': val, 'Class G – ...': val, ... }
   const serviceClassTrendWide = useMemo(() => {
@@ -665,7 +796,7 @@ export default function TexasMexicoPage() {
   const aircraftFreightByYear = useMemo(() => {
     const byYG = new Map()
     const groups = new Set()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       const grp = d.AIRCRAFT_GROUP
       if (grp == null) return
       const label = AIRCRAFT_GROUP_LABELS[grp] || `Group ${grp}`
@@ -687,7 +818,7 @@ export default function TexasMexicoPage() {
       })
       .sort((a, b) => a.year - b.year)
     return { data, keys: sortedGroups }
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   const aircraftFreightIntensity = useMemo(() => {
     const byGroup = new Map()
@@ -731,7 +862,7 @@ export default function TexasMexicoPage() {
 
   const nonNbDepTrend = useMemo(() => {
     const byYG = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       if (d.AIRCRAFT_GROUP == null || d.AIRCRAFT_GROUP === NB_GROUP) return
       const label = AIRCRAFT_GROUP_LABELS[d.AIRCRAFT_GROUP] || `Group ${d.AIRCRAFT_GROUP}`
       const key = `${d.YEAR}|${label}`
@@ -739,14 +870,14 @@ export default function TexasMexicoPage() {
       byYG.get(key).value += d.DEPARTURES_PERFORMED
     })
     return Array.from(byYG.values()).sort((a, b) => a.year - b.year || a.Aircraft.localeCompare(b.Aircraft))
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   /* ── freight per departure (segment-level intensity) ───────────────── */
   const freightPerDep = useMemo(() => {
     const byRoute = new Map()
     filteredSegment.forEach((d) => {
       if (d.DEPARTURES_PERFORMED <= 0) return
-      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} \u2192 ${d.DEST_FULL_LABEL || d.DEST}`
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} → ${d.DEST_FULL_LABEL || d.DEST}`
       if (!byRoute.has(label)) byRoute.set(label, { label, freight: 0, deps: 0 })
       const row = byRoute.get(label)
       row.freight += d.FREIGHT
@@ -832,8 +963,8 @@ export default function TexasMexicoPage() {
         label="Direction"
         value={filters.direction}
         options={[
-          { value: 'TX_TO_MX', label: 'Texas \u2192 Mexico' },
-          { value: 'MX_TO_TX', label: 'Mexico \u2192 Texas' },
+          { value: 'TX_TO_MX', label: 'Texas → Mexico' },
+          { value: 'MX_TO_TX', label: 'Mexico → Texas' },
         ]}
         onChange={(v) => setFilter('direction', v)}
       />
@@ -862,7 +993,7 @@ export default function TexasMexicoPage() {
         </h2>
         <p className="text-white/70 mt-2 text-base">
           Comprehensive analysis using market and segment data for air travel
-          between Texas and Mexico (2015&ndash;{latestYear || '\u2026'}).
+          between Texas and Mexico (2015&ndash;{latestYear || '…'}).
         </p>
       </div>
     </div>
@@ -880,30 +1011,30 @@ export default function TexasMexicoPage() {
       <SectionBlock>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
           <StatCard
-            label={`Texas\u2013Mexico Passengers (${latestYear || '\u2014'})`}
-            value={stats ? fmtCompact(stats.pax) : '\u2014'}
+            label={`Texas–Mexico Passengers (${latestYear || '—'})`}
+            value={stats ? fmtCompact(stats.pax) : '—'}
             trend={stats?.paxChange > 0 ? 'up' : stats?.paxChange < 0 ? 'down' : undefined}
             trendLabel={stats ? `${(stats.paxChange * 100).toFixed(1)}% vs ${stats.prevYear}` : ''}
             highlight variant="primary" icon={Users} delay={0}
           />
           <StatCard
-            label={`Texas\u2013Mexico Flights (${latestYear || '\u2014'})`}
-            value={stats ? fmtCompact(stats.flights) : '\u2014'}
+            label={`Texas–Mexico Flights (${latestYear || '—'})`}
+            value={stats ? fmtCompact(stats.flights) : '—'}
             highlight icon={Plane} delay={100}
           />
           <StatCard
-            label={`Texas\u2013Mexico Freight (${latestYear || '\u2014'})`}
-            value={stats ? fmtLbs(stats.freight) : '\u2014'}
+            label={`Texas–Mexico Freight (${latestYear || '—'})`}
+            value={stats ? fmtLbs(stats.freight) : '—'}
             highlight icon={Package} delay={200}
           />
           <StatCard
-            label={`Texas\u2013Mexico Mail (${latestYear || '\u2014'})`}
-            value={stats ? fmtLbs(stats.mail) : '\u2014'}
+            label={`Texas–Mexico Mail (${latestYear || '—'})`}
+            value={stats ? fmtLbs(stats.mail) : '—'}
             highlight icon={Package} delay={300}
           />
           <StatCard
-            label={`Active Texas\u2013Mexico Routes (${latestYear || '\u2014'})`}
-            value={stats ? String(stats.activeRoutes) : '\u2014'}
+            label={`Active Texas–Mexico Routes (${latestYear || '—'})`}
+            value={stats ? String(stats.activeRoutes) : '—'}
             highlight icon={Route} delay={400}
           />
         </div>
@@ -942,7 +1073,6 @@ export default function TexasMexicoPage() {
           topMxAirports={topMxAirports}
           topMxStates={topMxStates}
           carrierMarketShare={carrierMarketShare}
-          topCarriers={topCarriers}
           tableData={tableData}
           tableColumns={tableColumns}
           filters={filters}
@@ -953,9 +1083,10 @@ export default function TexasMexicoPage() {
         <OperationsCapacityTab
           seatTrend={seatTrend}
           depTrend={depTrend}
-          adherenceData={adherenceData}
+          filteredSegment={filteredSegment}
           loadFactorTrend={loadFactorTrend}
-          loadFactorByRoute={loadFactorByRoute}
+          loadFactorDistribution={loadFactorDistribution}
+          payloadUtilTrend={payloadUtilTrend}
           serviceClassShare={serviceClassShare}
           serviceClassTrend={serviceClassTrend}
           serviceClassTrendWide={serviceClassTrendWide}
@@ -975,6 +1106,9 @@ export default function TexasMexicoPage() {
           borderSummaryTable={borderSummaryTable}
           scatterScale={scatterScale}
           setScatterScale={setScatterScale}
+          classGFreightUtilTrend={classGFreightUtilTrend}
+          classGFreightUtilByRoute={classGFreightUtilByRoute}
+          classGStats={classGStats}
         />
       )}
       {activeTab === 'border' && (

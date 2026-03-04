@@ -183,6 +183,43 @@ export default function TexasInternationalPage() {
     return data
   }, [baseSegment, filters])
 
+  /* ── year-agnostic filtered data (for trend charts) ──────────────── */
+  const filteredNoYear = useMemo(() => {
+    let data = baseMarket
+    if (filters.direction === 'TX_TO_INTL') data = data.filter(isTxToIntl)
+    if (filters.direction === 'INTL_TO_TX') data = data.filter(isIntlToTx)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
+    }
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
+    }
+    if (filters.originCountry.length) data = data.filter((d) => filters.originCountry.includes(d.ORIGIN_COUNTRY_NAME))
+    if (filters.destCountry.length) data = data.filter((d) => filters.destCountry.includes(d.DEST_COUNTRY_NAME))
+    return data
+  }, [baseMarket, filters])
+
+  const filteredSegmentNoYear = useMemo(() => {
+    let data = baseSegment
+    if (filters.direction === 'TX_TO_INTL') data = data.filter(isTxToIntl)
+    if (filters.direction === 'INTL_TO_TX') data = data.filter(isIntlToTx)
+    if (filters.serviceClass.length) data = data.filter((d) => filters.serviceClass.includes(d.CLASS))
+    if (filters.carrierType) data = data.filter((d) => getCarrierType(d) === filters.carrierType)
+    if (filters.carrier.length) data = data.filter((d) => filters.carrier.includes(d.CARRIER_NAME))
+    if (filters.originAirport.length) {
+      data = data.filter((d) => filters.originAirport.includes(d.ORIGIN_FULL_LABEL || d.ORIGIN))
+    }
+    if (filters.destAirport.length) {
+      data = data.filter((d) => filters.destAirport.includes(d.DEST_FULL_LABEL || d.DEST))
+    }
+    if (filters.originCountry.length) data = data.filter((d) => filters.originCountry.includes(d.ORIGIN_COUNTRY_NAME))
+    if (filters.destCountry.length) data = data.filter((d) => filters.destCountry.includes(d.DEST_COUNTRY_NAME))
+    return data
+  }, [baseSegment, filters])
+
   /* ── active filter count & tags ────────────────────────────────────── */
   const activeCount =
     filters.year.length + (filters.direction ? 1 : 0) +
@@ -198,7 +235,7 @@ export default function TexasInternationalPage() {
     push('year', 'Year')
     if (filters.direction) tags.push({
       group: 'Direction',
-      label: filters.direction === 'TX_TO_INTL' ? 'Texas \u2192 International' : 'International \u2192 Texas',
+      label: filters.direction === 'TX_TO_INTL' ? 'Texas → International' : 'International → Texas',
       onRemove: () => setFilter('direction', ''),
     })
     push('serviceClass', 'Service Class', (v) => CLASS_LABELS[v] || v)
@@ -250,43 +287,43 @@ export default function TexasInternationalPage() {
     })
     const topCountry = byCountry.size
       ? [...byCountry.entries()].sort((a, b) => b[1] - a[1])[0][0]
-      : '\u2014'
+      : '—'
 
     return { pax, paxChange, flights, countries, topCountry, latestYear, prevYear }
   }, [filtered, filteredSegment, latestYear])
 
-  /* ── trends ────────────────────────────────────────────────────────── */
+  /* ── trends (year-agnostic — not affected by year filter) ──────────── */
   const paxTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.PASSENGERS)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   const flightTrend = useMemo(() => {
     const byYear = new Map()
-    filteredSegment.forEach((d) => {
+    filteredSegmentNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.DEPARTURES_PERFORMED)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filteredSegment])
+  }, [filteredSegmentNoYear])
 
   const freightTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.FREIGHT)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   const mailTrend = useMemo(() => {
     const byYear = new Map()
-    filtered.forEach((d) => {
+    filteredNoYear.forEach((d) => {
       byYear.set(d.YEAR, (byYear.get(d.YEAR) || 0) + d.MAIL)
     })
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
-  }, [filtered])
+  }, [filteredNoYear])
 
   /* ── top countries (donut) ─────────────────────────────────────────── */
   const topCountries = useMemo(() => {
@@ -307,7 +344,7 @@ export default function TexasInternationalPage() {
   const topRoutes = useMemo(() => {
     const byRoute = new Map()
     filtered.forEach((d) => {
-      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} \u2192 ${d.DEST_FULL_LABEL || d.DEST}`
+      const label = `${d.ORIGIN_FULL_LABEL || d.ORIGIN} → ${d.DEST_FULL_LABEL || d.DEST}`
       byRoute.set(label, (byRoute.get(label) || 0) + d.PASSENGERS)
     })
     return Array.from(byRoute, ([label, value]) => ({ label, value }))
@@ -315,7 +352,17 @@ export default function TexasInternationalPage() {
       .slice(0, 10)
   }, [filtered])
 
-  const adherenceData = useMemo(() => computeAdherenceData(filteredSegment), [filteredSegment])
+  /* ── Schedule Adherence: local year selector ───────────────────────── */
+  const [adherenceYear, setAdherenceYear] = useState('')
+  const adherenceYears = useMemo(() =>
+    [...new Set(filteredSegment.map((d) => d.YEAR))].sort((a, b) => a - b),
+  [filteredSegment])
+  const adherenceData = useMemo(() => {
+    const data = adherenceYear
+      ? filteredSegment.filter((d) => d.YEAR === Number(adherenceYear))
+      : filteredSegment
+    return computeAdherenceData(data)
+  }, [filteredSegment, adherenceYear])
 
   /* ── storytelling insights ───────────────────────────────────────── */
   const mexicoShareInsight = useMemo(() => {
@@ -387,8 +434,8 @@ export default function TexasInternationalPage() {
         label="Direction"
         value={filters.direction}
         options={[
-          { value: 'TX_TO_INTL', label: 'Texas \u2192 International' },
-          { value: 'INTL_TO_TX', label: 'International \u2192 Texas' },
+          { value: 'TX_TO_INTL', label: 'Texas → International' },
+          { value: 'INTL_TO_TX', label: 'International → Texas' },
         ]}
         onChange={(v) => setFilter('direction', v)}
       />
@@ -418,7 +465,7 @@ export default function TexasInternationalPage() {
         </h2>
         <p className="text-white/70 mt-2 text-base">
           Texas&rsquo;s air connections to the world using BTS T-100 data
-          (2015&ndash;{latestYear || '\u2026'}).
+          (2015&ndash;{latestYear || '…'}).
         </p>
       </div>
     </div>
@@ -440,7 +487,7 @@ export default function TexasInternationalPage() {
             and Austin &mdash; operate extensive international networks reaching Latin America,
             Europe, and Asia. Yet one country dominates: Mexico accounts for the largest share
             of Texas&rsquo;s international air traffic by a wide margin. This page surveys
-            Texas&rsquo;s global air connections from 2015 to {latestYear || '\u2026'}.
+            Texas&rsquo;s global air connections from 2015 to {latestYear || '…'}.
           </p>
           <p className="text-base text-text-secondary/70 leading-relaxed italic">
             Scope: all non-U.S. destinations, including Mexico. For a dedicated deep-dive into
@@ -468,25 +515,25 @@ export default function TexasInternationalPage() {
       <SectionBlock alt>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
           <StatCard
-            label={`Texas Intl Passengers (${latestYear || '\u2014'})`}
-            value={stats ? fmtCompact(stats.pax) : '\u2014'}
+            label={`Texas Intl Passengers (${latestYear || '—'})`}
+            value={stats ? fmtCompact(stats.pax) : '—'}
             trend={stats?.paxChange > 0 ? 'up' : stats?.paxChange < 0 ? 'down' : undefined}
             trendLabel={stats ? `${(stats.paxChange * 100).toFixed(1)}% vs ${stats.prevYear}` : ''}
             highlight variant="primary" icon={Users} delay={0}
           />
           <StatCard
-            label={`Texas Intl Flights (${latestYear || '\u2014'})`}
-            value={stats ? fmtCompact(stats.flights) : '\u2014'}
+            label={`Texas Intl Flights (${latestYear || '—'})`}
+            value={stats ? fmtCompact(stats.flights) : '—'}
             highlight icon={Plane} delay={100}
           />
           <StatCard
-            label={`Countries Served (${latestYear || '\u2014'})`}
-            value={stats ? String(stats.countries) : '\u2014'}
+            label={`Countries Served (${latestYear || '—'})`}
+            value={stats ? String(stats.countries) : '—'}
             highlight icon={Globe} delay={200}
           />
           <StatCard
-            label={`Top International Dest (${latestYear || '\u2014'})`}
-            value={stats?.topCountry || '\u2014'}
+            label={`Top International Dest (${latestYear || '—'})`}
+            value={stats?.topCountry || '—'}
             highlight icon={Award} delay={300}
           />
         </div>
@@ -569,6 +616,7 @@ export default function TexasInternationalPage() {
           subtitle="From Texas (all filtered years)"
           downloadData={{ summary: { data: topCountries, filename: 'tx-top-intl-destinations' } }}
           className="max-w-3xl mx-auto"
+          footnote={<p className="text-base text-text-secondary mt-1 italic">Mexico accounts for the single largest share of Texas international passengers &mdash; more than the next several countries combined.</p>}
         >
           <DonutChart
             data={topCountries}
@@ -579,7 +627,6 @@ export default function TexasInternationalPage() {
             }}
             selectedSlice={selectedCountry}
           />
-          <p className="text-base text-text-secondary mt-3 italic">Mexico accounts for the single largest share of Texas international passengers &mdash; more than the next several countries combined.</p>
         </ChartCard>
       </SectionBlock>
 
@@ -598,11 +645,29 @@ export default function TexasInternationalPage() {
       <SectionBlock>
         <ChartCard
           title="Schedule Adherence"
-          subtitle="Departure-weighted: performed vs scheduled (Class F, scheduled service)"
+          subtitle={`Class F scheduled service, U.S. carriers only — departure-weighted${adherenceYear ? ` (${adherenceYear})` : ''}`}
           downloadData={{ summary: { data: adherenceData, filename: 'tx-intl-schedule-adherence' } }}
+          headerRight={
+            <select
+              value={adherenceYear}
+              onChange={(e) => setAdherenceYear(e.target.value)}
+              className="text-base border border-gray-300 rounded px-2 py-1 bg-white text-text-primary"
+            >
+              <option value="">All Years</option>
+              {adherenceYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          }
         >
-          <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
-          <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
+          <BarChart data={adherenceData} xKey="label" yKey="value" horizontal colorAccessor={(d) => d.color} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={15} animate />
+          <p className="text-base text-text-secondary mt-3 italic">
+            Each bar shows the share of annual carrier-route records by how many flights were performed
+            vs. scheduled. For example, &ldquo;11+ fewer flights&rdquo; means the carrier operated 11+
+            fewer flights than scheduled on that route for the year &mdash; missing flights were cancelled,
+            consolidated, or simply never operated. Weighted by scheduled departures.
+            U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.
+          </p>
         </ChartCard>
       </SectionBlock>
     </DashboardLayout>

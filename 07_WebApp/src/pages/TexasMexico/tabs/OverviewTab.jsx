@@ -36,7 +36,7 @@ export default function OverviewTab({
             and tourism drive passenger volumes through major hubs like DFW, IAH, and SAT.
             This overview captures the scale and trajectory of that connectivity &mdash; from
             passenger volumes and flight operations to freight and mail flows &mdash; spanning
-            2015 to {latestYear || '\u2026'}.
+            2015 to {latestYear || '…'}.
           </p>
           <p className="text-base text-text-secondary/70 leading-relaxed italic">
             Scope: Texas&ndash;Mexico only, bidirectional. This corridor is also included in the
@@ -44,7 +44,7 @@ export default function OverviewTab({
           </p>
           {covidRecovery && (
             <InsightCallout
-              finding={`Texas\u2013Mexico passenger traffic in ${latestYear} is ${covidRecovery.pct}% ${covidRecovery.direction} pre-COVID 2019 levels.`}
+              finding={`Texas–Mexico passenger traffic in ${latestYear} is ${covidRecovery.pct}% ${covidRecovery.direction} pre-COVID 2019 levels.`}
               variant={covidRecovery.direction === 'above' ? 'highlight' : 'default'}
               icon={TrendingUp}
             />
@@ -55,7 +55,7 @@ export default function OverviewTab({
       {/* Route Map */}
       <SectionBlock alt>
         <ChartCard
-          title="Texas\u2013Mexico Route Map"
+          title="Texas–Mexico Route Map"
           subtitle="Texas and Mexico airports with route arcs"
           headerRight={
             <select
@@ -93,29 +93,29 @@ export default function OverviewTab({
       <SectionBlock>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <ChartCard
-            title="Texas\u2013Mexico Passenger Trends"
+            title="Texas–Mexico Passenger Trends"
             subtitle="Bidirectional passenger flows by year"
             downloadData={{ summary: { data: paxTrend, filename: 'tx-mx-passenger-trends' } }}
+            footnote={<p className="text-base text-text-secondary mt-1 italic">Both directions show a sharp 2020 decline. Texas-to-Mexico volumes have consistently exceeded the reverse direction.</p>}
           >
             <LineChart data={paxTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
-            <p className="text-base text-text-secondary mt-3 italic">Both directions show a sharp 2020 decline. Texas-to-Mexico volumes have consistently exceeded the reverse direction.</p>
           </ChartCard>
           <ChartCard
-            title="Texas\u2013Mexico Flight Trends"
+            title="Texas–Mexico Flight Trends"
             subtitle="Flights operated by year (segment data)"
             downloadData={{ summary: { data: flightTrend, filename: 'tx-mx-flight-trends' } }}
           >
             <LineChart data={flightTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
-            title="Texas\u2013Mexico Freight Trends"
+            title="Texas–Mexico Freight Trends"
             subtitle="Bidirectional freight volume by year"
             downloadData={{ summary: { data: freightTrend, filename: 'tx-mx-freight-trends' } }}
           >
             <LineChart data={freightTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
           </ChartCard>
           <ChartCard
-            title="Texas\u2013Mexico Mail Trends"
+            title="Texas–Mexico Mail Trends"
             subtitle="Bidirectional mail volume by year"
             downloadData={{ summary: { data: mailTrend, filename: 'tx-mx-mail-trends' } }}
           >

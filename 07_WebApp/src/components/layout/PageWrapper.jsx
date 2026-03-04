@@ -1,15 +1,19 @@
+import { useLocation } from 'react-router-dom'
 import SiteHeader from './SiteHeader'
 import MainNav from './MainNav'
 import Footer from './Footer'
 import AskAIDrawer from '@/components/ai/AskAIDrawer'
 
 export default function PageWrapper({ children }) {
+  const { pathname } = useLocation()
+  const hideFooter = pathname === '/'
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
       <MainNav />
       <main className="flex-1">{children}</main>
-      <Footer />
+      {!hideFooter && <Footer />}
       <AskAIDrawer />
     </div>
   )

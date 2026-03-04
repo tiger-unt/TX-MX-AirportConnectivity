@@ -143,8 +143,29 @@ export const isTxDomestic = (d) => isTxToUs(d) || isUsToTx(d)
  * US scheduled-service rows with missing-as-zero schedule data (~14% of DU/F).
  * Buckets by (DEPARTURES_PERFORMED − DEPARTURES_SCHEDULED), weighted by
  * DEPARTURES_SCHEDULED (departure-weighted, not row-weighted).
- * Returns an array sorted by descending percentage, ready for BarChart.
+ * Returns an array in fixed display order (extra → exact → fewer) with
+ * a `color` property per item, ready for BarChart with colorAccessor.
  */
+
+const ADHERENCE_GREEN = '#196533'   // exact match
+const ADHERENCE_AMBER = '#d97706'   // fewer flights (cancelled/not operated)
+const ADHERENCE_BLUE  = '#3b82f6'   // extra flights (over-operated)
+
+/** Fixed display order: extra (top) → exact match → fewer (bottom) */
+const ADHERENCE_BUCKETS = [
+  { label: '6+ extra flights',       color: ADHERENCE_BLUE },
+  { label: '3–5 extra flights',      color: ADHERENCE_BLUE },
+  { label: '1–2 extra flights',      color: ADHERENCE_BLUE },
+  { label: 'Exact match',            color: ADHERENCE_GREEN },
+  { label: '1–2 fewer flights',      color: ADHERENCE_AMBER },
+  { label: '3–5 fewer flights',      color: ADHERENCE_AMBER },
+  { label: '6–10 fewer flights',     color: ADHERENCE_AMBER },
+  { label: '11–20 fewer flights',    color: ADHERENCE_AMBER },
+  { label: '21–50 fewer flights',    color: ADHERENCE_AMBER },
+  { label: '51–100 fewer flights',   color: ADHERENCE_AMBER },
+  { label: '100+ fewer flights',     color: ADHERENCE_AMBER },
+]
+
 export function computeAdherenceData(segmentData) {
   if (!segmentData?.length) return []
 
@@ -156,32 +177,26 @@ export function computeAdherenceData(segmentData) {
   const totalDeps = scheduled.reduce((s, d) => s + d.DEPARTURES_SCHEDULED, 0)
   if (!totalDeps) return []
 
-  const buckets = {
-    'Exact match': 0,
-    '1\u20132 fewer': 0,
-    '3\u20135 fewer': 0,
-    '6\u201310 fewer': 0,
-    '11+ fewer': 0,
-    '1\u20132 extra': 0,
-    '3\u20135 extra': 0,
-    '6+ extra': 0,
-  }
+  const counts = {}
+  for (const b of ADHERENCE_BUCKETS) counts[b.label] = 0
 
   for (const d of scheduled) {
     const diff = d.DEPARTURES_PERFORMED - d.DEPARTURES_SCHEDULED
     const weight = d.DEPARTURES_SCHEDULED
-    if (diff === 0) buckets['Exact match'] += weight
-    else if (diff >= -2 && diff <= -1) buckets['1\u20132 fewer'] += weight
-    else if (diff >= -5 && diff <= -3) buckets['3\u20135 fewer'] += weight
-    else if (diff >= -10 && diff <= -6) buckets['6\u201310 fewer'] += weight
-    else if (diff < -10) buckets['11+ fewer'] += weight
-    else if (diff >= 1 && diff <= 2) buckets['1\u20132 extra'] += weight
-    else if (diff >= 3 && diff <= 5) buckets['3\u20135 extra'] += weight
-    else if (diff >= 6) buckets['6+ extra'] += weight
+    if (diff === 0) counts['Exact match'] += weight
+    else if (diff >= -2 && diff <= -1) counts['1–2 fewer flights'] += weight
+    else if (diff >= -5 && diff <= -3) counts['3–5 fewer flights'] += weight
+    else if (diff >= -10 && diff <= -6) counts['6–10 fewer flights'] += weight
+    else if (diff >= -20 && diff <= -11) counts['11–20 fewer flights'] += weight
+    else if (diff >= -50 && diff <= -21) counts['21–50 fewer flights'] += weight
+    else if (diff >= -100 && diff <= -51) counts['51–100 fewer flights'] += weight
+    else if (diff < -100) counts['100+ fewer flights'] += weight
+    else if (diff >= 1 && diff <= 2) counts['1–2 extra flights'] += weight
+    else if (diff >= 3 && diff <= 5) counts['3–5 extra flights'] += weight
+    else if (diff >= 6) counts['6+ extra flights'] += weight
   }
 
-  return Object.entries(buckets)
-    .map(([label, count]) => ({ label, value: +((count / totalDeps) * 100).toFixed(1) }))
+  return ADHERENCE_BUCKETS
+    .map((b) => ({ label: b.label, value: +((counts[b.label] / totalDeps) * 100).toFixed(1), color: b.color }))
     .filter((d) => d.value > 0)
-    .sort((a, b) => b.value - a.value)
 }

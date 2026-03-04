@@ -1,25 +1,41 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Users, Plane } from 'lucide-react'
 import SectionBlock from '@/components/ui/SectionBlock'
 import ChartCard from '@/components/ui/ChartCard'
 import InsightCallout from '@/components/ui/InsightCallout'
 import LineChart from '@/components/charts/LineChart'
 import BarChart from '@/components/charts/BarChart'
-import LollipopChart from '@/components/charts/LollipopChart'
+import BoxPlotChart from '@/components/charts/BoxPlotChart'
 
 import StackedBarChart from '@/components/charts/StackedBarChart'
-import { fmtCompact, fmtLbs } from '@/lib/aviationHelpers'
+import { fmtCompact, fmtLbs, computeAdherenceData } from '@/lib/aviationHelpers'
 import { CHART_COLORS } from '@/lib/chartColors'
 
 const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
 export default function OperationsCapacityTab({
-  seatTrend, depTrend, adherenceData,
-  loadFactorTrend, loadFactorByRoute,
+  seatTrend, depTrend, filteredSegment,
+  loadFactorTrend, loadFactorDistribution,
+  payloadUtilTrend,
   serviceClassShare, serviceClassTrend, serviceClassTrendWide,
   aircraftMixInsight, aircraftFreightByYear, aircraftFreightIntensity,
   nonNbCargoCarriers, nonNbDepTrend,
 }) {
+  /* ── Schedule Adherence: local year selector ───────────────────────── */
+  const [adherenceYear, setAdherenceYear] = useState('')   // '' = all years
+
+  const adherenceYears = useMemo(() => {
+    const years = [...new Set(filteredSegment.map((d) => d.YEAR))].sort((a, b) => a - b)
+    return years
+  }, [filteredSegment])
+
+  const adherenceData = useMemo(() => {
+    const data = adherenceYear
+      ? filteredSegment.filter((d) => d.YEAR === Number(adherenceYear))
+      : filteredSegment
+    return computeAdherenceData(data)
+  }, [filteredSegment, adherenceYear])
+
   const loadFactorInsight = useMemo(() => {
     if (!loadFactorTrend.length) return null
     const latestYear = Math.max(...loadFactorTrend.map((d) => d.year))
@@ -36,14 +52,14 @@ export default function OperationsCapacityTab({
         <div className="space-y-4">
           <p className="text-base text-text-secondary leading-relaxed">
             Beyond passenger counts, operational metrics reveal how efficiently airlines serve
-            the Texas&ndash;Mexico corridor. Seat capacity, schedule adherence, and load factors
+            the Texas&ndash;Mexico corridor. Seat capacity, schedule adherence, and passenger load factors
             indicate whether supply matches demand &mdash; while service class and aircraft mix
             show the types of operations and fleet deployed on these routes.
           </p>
           {loadFactorInsight && (
             <InsightCallout
-              finding={`Average load factor on Texas\u2013Mexico routes was ${loadFactorInsight.avg}% in ${loadFactorInsight.year}.`}
-              context="Load factors above 80% typically signal that airlines are operating near capacity."
+              finding={`Average passenger load factor on Texas–Mexico routes was ${loadFactorInsight.avg}% in ${loadFactorInsight.year}.`}
+              context="Passenger load factor = Passengers ÷ Seats. Values above 80% typically signal that airlines are operating near capacity."
               variant="default"
               icon={Users}
             />
@@ -51,9 +67,9 @@ export default function OperationsCapacityTab({
         </div>
       </SectionBlock>
 
-      {/* Seat Capacity, Departures, Adherence (3-column) */}
+      {/* Seat Capacity & Departures (2-column) */}
       <SectionBlock alt>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <ChartCard
             title="Seat Capacity Trends"
             subtitle="Total seats by year (segment data)"
@@ -65,17 +81,39 @@ export default function OperationsCapacityTab({
             title="Departures: Scheduled vs Performed"
             subtitle="Scheduled service by year (Class F, sched > 0)"
             downloadData={{ summary: { data: depTrend, filename: 'tx-mx-dep-trends' } }}
+            footnote={<p className="text-base text-text-secondary mt-1 italic">Note: U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.</p>}
           >
             <LineChart data={depTrend} xKey="year" yKey="value" seriesKey="Metric" formatValue={fmtCompact} />
-            <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.</p>
           </ChartCard>
+        </div>
+        <div className="mt-5">
           <ChartCard
             title="Schedule Adherence"
-            subtitle="Departure-weighted: performed vs scheduled (Class F, scheduled service)"
+            subtitle={`Class F scheduled service, U.S. carriers only — departure-weighted${adherenceYear ? ` (${adherenceYear})` : ''}`}
             downloadData={{ summary: { data: adherenceData, filename: 'tx-mx-schedule-adherence' } }}
+            headerRight={
+              <select
+                value={adherenceYear}
+                onChange={(e) => setAdherenceYear(e.target.value)}
+                className="text-base border border-gray-300 rounded px-2 py-1 bg-white text-text-primary"
+              >
+                <option value="">All Years</option>
+                {adherenceYears.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            }
+            footnote={
+              <p className="text-base text-text-secondary mt-1 italic">
+                Each bar shows the share of annual carrier-route records by how many flights were performed
+                vs. scheduled. For example, &ldquo;11+ fewer flights&rdquo; means the carrier operated 11+
+                fewer flights than scheduled on that route for the year &mdash; missing flights were cancelled,
+                consolidated, or simply never operated. Weighted by scheduled departures.
+                U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.
+              </p>
+            }
           >
-            <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
-            <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only &mdash; foreign carriers are not required to report schedule data to BTS.</p>
+            <BarChart data={adherenceData} xKey="label" yKey="value" horizontal colorAccessor={(d) => d.color} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={15} animate />
           </ChartCard>
         </div>
       </SectionBlock>
@@ -83,32 +121,63 @@ export default function OperationsCapacityTab({
       {/* Load Factor Analysis */}
       <SectionBlock>
         <ChartCard
-          title="Load Factor Trends"
+          title="Passenger Load Factor Trends"
           subtitle="Passengers &divide; Seats (%) by year and direction"
           downloadData={{ summary: { data: loadFactorTrend, filename: 'tx-mx-load-factor-trend' } }}
         >
           <LineChart data={loadFactorTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
         </ChartCard>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+        <div className="mt-5">
           <ChartCard
-            title="Highest Load Factor Routes"
-            subtitle="Top 10 routes by passenger/seat ratio"
-            downloadData={{ summary: { data: loadFactorByRoute.top, filename: 'tx-mx-top-load-factor' } }}
+            title="Route-Level Passenger Load Factor Distribution by Year"
+            subtitle="Distribution of annual route load factors (routes with 100+ seats)"
+            downloadData={{ summary: { data: loadFactorDistribution, filename: 'tx-mx-load-factor-distribution' } }}
           >
-            <LollipopChart data={loadFactorByRoute.top} xKey="label" yKey="value" formatValue={(v) => `${v}%`} color={CHART_COLORS[0]} />
-          </ChartCard>
-          <ChartCard
-            title="Lowest Load Factor Routes"
-            subtitle="Bottom 10 routes (min 100 seats)"
-            downloadData={{ summary: { data: loadFactorByRoute.bottom, filename: 'tx-mx-low-load-factor' } }}
-          >
-            <LollipopChart data={loadFactorByRoute.bottom} xKey="label" yKey="value" formatValue={(v) => `${v}%`} color={CHART_COLORS[8]} />
+            <BoxPlotChart data={loadFactorDistribution} xKey="year" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} animate />
+            <p className="text-base text-text-secondary mt-3 italic">
+              Each box shows the middle 50% of route-level load factors for that year. The line inside each box marks the median.
+              Whiskers extend to the most extreme non-outlier routes; red dots show statistical outliers (beyond 1.5&times;IQR from Q1/Q3).
+              Only routes with 100+ annual seats are included.
+            </p>
           </ChartCard>
         </div>
       </SectionBlock>
 
-      {/* Service Class Breakdown */}
+      {/* Payload Weight Utilization */}
       <SectionBlock alt>
+        <ChartCard
+          title="Payload Weight Utilization"
+          subtitle="Estimated total carried weight ÷ aircraft payload capacity (%) by year and direction"
+          downloadData={{ summary: { data: payloadUtilTrend, filename: 'tx-mx-payload-weight-utilization' } }}
+        >
+          <LineChart data={payloadUtilTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
+          <div className="mt-4 space-y-2">
+            <p className="text-base text-text-secondary italic">
+              Payload Weight Utilization estimates how much of each aircraft's total weight-carrying
+              capacity is actually used on a given flight. Unlike passenger load factor (which only
+              measures seat occupancy), this metric accounts for all revenue-generating weight:
+              passengers, air freight, and mail.
+            </p>
+            <p className="text-base text-text-secondary italic">
+              <strong>Formula:</strong> (Passengers &times; 200 lbs + Freight + Mail) &divide; Payload Capacity &times; 100%.
+              The 200 lb figure is the FAA standard average passenger weight including carry-on
+              baggage. Payload capacity is the maximum weight the aircraft can carry beyond its own
+              operating empty weight, as reported by carriers to BTS.
+            </p>
+            <p className="text-base text-text-secondary italic">
+              <strong>Interpretation:</strong> A utilization rate of 60&ndash;70% is typical for mixed passenger-cargo
+              operations &mdash; the remaining capacity is consumed by checked baggage weight (not
+              individually reported in BTS data) and structural margins airlines maintain for
+              operational safety. Values well below 50% may indicate underutilized capacity, while
+              values approaching or exceeding 90% suggest aircraft are operating near their maximum
+              weight limits.
+            </p>
+          </div>
+        </ChartCard>
+      </SectionBlock>
+
+      {/* Service Class Breakdown */}
+      <SectionBlock>
         <div className="mb-4">
           <h3 className="text-xl font-bold text-text-primary mb-1">Service Class Breakdown</h3>
           <p className="text-base text-text-secondary">Charter, cargo-only, and scheduled service operations on Texas&ndash;Mexico routes.</p>
@@ -141,7 +210,7 @@ export default function OperationsCapacityTab({
       </SectionBlock>
 
       {/* Aircraft Mix */}
-      <SectionBlock>
+      <SectionBlock alt>
         <div className="mb-4">
           <h3 className="text-xl font-bold text-text-primary mb-1">Aircraft Mix</h3>
           <p className="text-base text-text-secondary">
@@ -153,7 +222,7 @@ export default function OperationsCapacityTab({
         {aircraftMixInsight && (
           <div className="mb-5">
             <InsightCallout
-              finding={`Narrow-Body jets account for ${aircraftMixInsight.nbDepPct}% of departures but carry only ${aircraftMixInsight.nbFreightPct}% of freight \u2014 wide-body and specialty aircraft handle ${aircraftMixInsight.nonNbFreightPct}% of all cargo despite just ${aircraftMixInsight.nonNbDepPct}% of flights.`}
+              finding={`Narrow-Body jets account for ${aircraftMixInsight.nbDepPct}% of departures but carry only ${aircraftMixInsight.nbFreightPct}% of freight — wide-body and specialty aircraft handle ${aircraftMixInsight.nonNbFreightPct}% of all cargo despite just ${aircraftMixInsight.nonNbDepPct}% of flights.`}
               context="Non-narrow-body aircraft serve specialized cargo operations with significantly higher freight loads per departure."
               variant="warning"
               icon={Plane}
