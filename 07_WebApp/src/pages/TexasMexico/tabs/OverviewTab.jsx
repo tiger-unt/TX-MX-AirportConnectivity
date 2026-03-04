@@ -35,6 +35,10 @@ export default function OverviewTab({
             2015 to {latestYear || '\u2026'}. Use the filters to focus on specific years,
             directions, or carriers.
           </p>
+          <p className="text-base text-text-secondary/70 leading-relaxed italic">
+            Scope: Texas&ndash;Mexico only, bidirectional. This corridor is also included in the
+            broader <a href="#/texas-international" className="text-brand-blue underline hover:text-brand-blue-dark">Texas International</a> totals.
+          </p>
           {covidRecovery && (
             <InsightCallout
               finding={`Texas\u2013Mexico passenger traffic in ${latestYear} is ${covidRecovery.pct}% ${covidRecovery.direction} pre-COVID 2019 levels.`}

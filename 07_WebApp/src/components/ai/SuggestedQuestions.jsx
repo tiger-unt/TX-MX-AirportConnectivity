@@ -1,15 +1,51 @@
 import { Sparkles } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 
-const SUGGESTIONS = [
-  'How many passengers flew Texas–Mexico routes?',
-  'What are the top routes by passengers?',
-  'Which airports are the busiest?',
-  'How has passenger traffic changed over time?',
-  'Which airlines carry the most passengers?',
-  'How do border airports compare to non-border?',
-]
+const SUGGESTIONS_BY_ROUTE = {
+  '/': [
+    'What are the key takeaways from this dashboard?',
+    'How has Texas air connectivity changed over time?',
+    'Which corridor is the busiest?',
+    'What data sources does this dashboard use?',
+  ],
+  '/texas-domestic': [
+    'Which U.S. states have the most flights to Texas?',
+    'How has Texas domestic passenger traffic changed?',
+    'What are the top domestic routes from Texas?',
+    'Which Texas airports handle the most domestic traffic?',
+  ],
+  '/texas-international': [
+    'Which countries are Texas\u2019s top international destinations?',
+    'How much of Texas international traffic goes to Mexico?',
+    'How has Texas international passenger traffic grown?',
+    'Which Texas airports have the most international routes?',
+  ],
+  '/us-mexico': [
+    'How does Texas rank among U.S. states for Mexico flights?',
+    'What is the U.S.-Mexico load factor trend?',
+    'Which U.S. airports carry the most Mexico-bound passengers?',
+    'How has U.S.-Mexico air traffic recovered since COVID?',
+  ],
+  '/texas-mexico': [
+    'How many passengers flew Texas–Mexico routes?',
+    'What are the top routes by passengers?',
+    'How do border airports compare to non-border?',
+    'Which airlines carry the most passengers?',
+  ],
+  '/about-data': [
+    'What is the difference between market and segment data?',
+    'What years does this dataset cover?',
+    'How is the data cleaned and validated?',
+    'What is an aircraft group in BTS data?',
+  ],
+}
+
+const DEFAULT_SUGGESTIONS = SUGGESTIONS_BY_ROUTE['/texas-mexico']
 
 export default function SuggestedQuestions({ onSelect }) {
+  const { pathname } = useLocation()
+  const suggestions = SUGGESTIONS_BY_ROUTE[pathname] || DEFAULT_SUGGESTIONS
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10">
       <div className="w-12 h-12 rounded-full bg-brand-blue/10 flex items-center justify-center mb-4">
@@ -20,7 +56,7 @@ export default function SuggestedQuestions({ onSelect }) {
         Ask questions about airport connectivity data. Try one of these:
       </p>
       <div className="flex flex-wrap gap-2 justify-center max-w-sm">
-        {SUGGESTIONS.map((q) => (
+        {suggestions.map((q) => (
           <button
             key={q}
             onClick={() => onSelect(q)}

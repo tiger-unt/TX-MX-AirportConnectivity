@@ -34,10 +34,10 @@ export default function SiteHeader() {
           />
           <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-semibold text-brand-blue leading-tight truncate">
-              Texas–Mexico Air Connectivity
+              Airport Connectivity Dashboard
             </h1>
             <p className="text-base text-text-secondary mt-0.5 truncate">
-              TxDOT Airport Connectivity Study
+              TxDOT IAC 2025–26 · UNT System
             </p>
           </div>
         </div>

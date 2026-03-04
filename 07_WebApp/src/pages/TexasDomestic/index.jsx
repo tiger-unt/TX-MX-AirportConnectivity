@@ -478,7 +478,7 @@ export default function TexasDomesticPage() {
             highlight icon={Plane} delay={100}
           />
           <StatCard
-            label={`Connected U.S. States (${latestYear || '\u2014'})`}
+            label={`U.S. States & Territories (${latestYear || '\u2014'})`}
             value={stats ? String(stats.destStates) : '\u2014'}
             highlight icon={MapPin} delay={200}
           />

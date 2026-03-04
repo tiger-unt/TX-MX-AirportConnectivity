@@ -228,7 +228,7 @@ export default function OverviewPage() {
       <div className="gradient-blue text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14">
           <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
-            Texas–Mexico Air Connectivity Dashboard
+            Airport Connectivity Dashboard
           </h1>
           <p className="text-white/70 mt-3 text-base md:text-lg">
             TxDOT IAC 2025–26 research project, UNT System. Comprehensive analysis

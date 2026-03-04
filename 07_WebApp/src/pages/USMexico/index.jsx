@@ -390,17 +390,26 @@ export default function USMexicoPage() {
       .slice(0, 15)
   }, [filtered])
 
+  /* Full national totals (all states, not truncated to top-15) for accurate share % */
+  const nationalTotals = useMemo(() => {
+    let totalPax = 0, totalCargo = 0
+    filtered.filter(isUsToMx).forEach((d) => {
+      if (!d.ORIGIN_STATE_NM) return
+      totalPax += d.PASSENGERS
+      totalCargo += d.FREIGHT
+    })
+    return { totalPax, totalCargo }
+  }, [filtered])
+
   const txRankStats = useMemo(() => {
     const paxRank = stateRankingPax.findIndex((d) => d.label === 'Texas') + 1
     const cargoRank = stateRankingCargo.findIndex((d) => d.label === 'Texas') + 1
-    const totalPax = stateRankingPax.reduce((s, d) => s + d.value, 0)
     const txPax = stateRankingPax.find((d) => d.label === 'Texas')?.value || 0
-    const paxPct = totalPax ? (txPax / totalPax * 100).toFixed(1) : '0'
-    const totalCargo = stateRankingCargo.reduce((s, d) => s + d.value, 0)
+    const paxPct = nationalTotals.totalPax ? (txPax / nationalTotals.totalPax * 100).toFixed(1) : '0'
     const txCargo = stateRankingCargo.find((d) => d.label === 'Texas')?.value || 0
-    const cargoPct = totalCargo ? (txCargo / totalCargo * 100).toFixed(1) : '0'
+    const cargoPct = nationalTotals.totalCargo ? (txCargo / nationalTotals.totalCargo * 100).toFixed(1) : '0'
     return { paxRank: paxRank || '-', paxPct, cargoRank: cargoRank || '-', cargoPct }
-  }, [stateRankingPax, stateRankingCargo])
+  }, [stateRankingPax, stateRankingCargo, nationalTotals])
 
   /* ── storytelling insights ───────────────────────────────────────── */
   const loadFactorInsight = useMemo(() => {

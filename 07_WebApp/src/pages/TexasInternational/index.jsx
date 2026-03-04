@@ -442,6 +442,10 @@ export default function TexasInternationalPage() {
             of Texas&rsquo;s international air traffic by a wide margin. This page surveys
             Texas&rsquo;s global air connections from 2015 to {latestYear || '\u2026'}.
           </p>
+          <p className="text-base text-text-secondary/70 leading-relaxed italic">
+            Scope: all non-U.S. destinations, including Mexico. For a dedicated deep-dive into
+            the Texas&ndash;Mexico corridor, see the <a href="#/texas-mexico" className="text-brand-blue underline hover:text-brand-blue-dark">Texas&ndash;Mexico</a> page.
+          </p>
           {mexicoShareInsight && (
             <InsightCallout
               finding={`Mexico accounts for roughly ${mexicoShareInsight.pct}% of Texas international passenger traffic.`}
