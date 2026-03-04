@@ -317,6 +317,7 @@ Whenever you make changes to code, scripts, data pipeline logic, components, or 
 - **`CLAUDE.md`** (this file) — update whenever project structure, conventions, component lists, data pipeline steps, cleaning rules, or webapp architecture change
 - **`02_Data_Staging/BTS_Air_Carrier_Statistics/Script/Data Pipeline README.md`** — comprehensive data pipeline documentation; update whenever extraction, cleaning, or verification scripts change (new columns, new flags, new steps, changed behavior), or when data quality rules change
 - **`02_Data_Staging/BTS_Air_Carrier_Statistics/Database/data-cleaning/data-cleaning.md`** — update whenever `data-cleaning.csv` rules change (new corrections, new filters, changed thresholds, new anomaly documentation)
+- **`07_WebApp/Dashboard_Design_Playbook.md`** — comprehensive dashboard design reference; update whenever UI components, chart features, layout patterns, filter behavior, animation, download/export, or visual design decisions change
 
 **Rules:**
 1. After modifying a Python script in `Script/`, check if `Data Pipeline README.md` describes the changed behavior and update it if needed
@@ -324,6 +325,7 @@ Whenever you make changes to code, scripts, data pipeline logic, components, or 
 3. After adding/modifying cleaning rules in `data-cleaning.csv`, update both `data-cleaning.md` and the detailed cleaning section in `Data Pipeline README.md`
 4. After changing webapp routes, stores, or lib utilities, update the relevant sections in this file
 5. After changing the data pipeline (new columns, changed aggregation, new filters), update both `CLAUDE.md` and `Data Pipeline README.md`
+6. After modifying UI components, chart features, layout patterns, filter behavior, animation, or design decisions, update `Dashboard_Design_Playbook.md`
 
 ## Git
 - `.gitignore` excludes all numbered data folders (01–08) — only config and root files are tracked

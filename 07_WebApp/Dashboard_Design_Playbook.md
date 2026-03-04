@@ -45,7 +45,9 @@ This document captures every design decision at the component level: what each e
 33. [Responsive Design Strategy](#33-responsive-design-strategy)
 34. [Animation & Motion Design](#34-animation--motion-design)
 35. [Accessibility](#35-accessibility)
-36. [Anti-Patterns & Pitfalls](#36-anti-patterns--pitfalls)
+36. [View Toggle Pattern](#36-view-toggle-pattern)
+37. [Route Network Evolution Animation](#37-route-network-evolution-animation)
+38. [Anti-Patterns & Pitfalls](#38-anti-patterns--pitfalls)
 
 ---
 
@@ -1778,12 +1780,22 @@ When a user clicks the fullscreen button on any ChartCard:
 |---|---|
 | **Trigger** | Click download icon in ChartCard header, or "Download CSV" button in fullscreen |
 | **Options** | When both summary (aggregated) and detail (row-level) data are available, a dropdown offers both. When only one is available, clicking downloads immediately. |
-| **Column mapping** | Optional `columns` object maps internal field names to human-readable CSV headers. Only mapped fields are exported. |
+| **Column mapping** | Optional `columns` object maps internal field names to human-readable CSV headers. Only mapped keys present in the data are exported; unmapped keys are excluded. When `columns` is omitted, all keys from the first row export as-is (backward compatible). |
 | **Encoding** | UTF-8 BOM prepended (`\uFEFF`) so Excel opens with correct encoding |
 | **Value escaping** | Values with commas, quotes, or newlines are wrapped in double quotes with quote escaping (`""`) |
 | **Zoom filtering** | When a chart is zoomed, the exported CSV only includes rows within the visible range (via ZoomRangeContext) |
 | **File format** | `.csv` extension, no timestamp in filename |
 | **Download mechanism** | Blob → object URL → dynamic `<a>` element → click → revoke URL |
+
+### Centralized Column Maps (`downloadColumns.js`)
+
+All chart-level and page-level CSV downloads use reusable column-rename maps defined in `downloadColumns.js`. This ensures consistent, human-readable CSV headers and excludes internal-only fields (e.g., `color`).
+
+| Export | Contents |
+|---|---|
+| **`DL`** | ~30 named chart-level maps organized by category: single-series trends (`paxTrend`, `flightTrend`, `freightTrend`, `mailTrend`, `seatTrend`, `classTrend`), multi-series trends (`paxTrendDir`, `flightTrendDir`, etc.), rankings/bars (`statesPax`, `routesPax`, `airportsPax`, `carrierPax`, etc.), schedule adherence (`adherence` — drops `color`), box plot (`boxPlotPct`), cargo-specific (`freightImbalance`, `classGUtilTrend`, etc.), scatter/table (`airportScatter`, `routeDetails`) |
+| **`PAGE_MARKET_COLS`** | 18-column map for page-level market CSV: Year, Origin Code, Origin Airport, Origin City, Origin State, Origin Country, Dest Code, Dest Airport, Dest City, Dest State, Dest Country, Carrier, Service Class, Data Source, Passengers, Freight, Mail, Distance |
+| **`PAGE_SEGMENT_COLS`** | 23-column map for page-level segment CSV: all market columns + Departures Scheduled, Departures Performed, Seats, Payload Capacity, Aircraft Group, Schedule Reported |
 
 ### PNG Export
 
@@ -1800,11 +1812,17 @@ When a user clicks the fullscreen button on any ChartCard:
 
 ### Page-Level Download
 
-The filter sidebar includes a "Download Page Data" section with two CSV buttons:
-- **Market Data** — full filtered market dataset for the current page
-- **Segment Data** — full filtered segment dataset for the current page
+Every data page passes a `pageDownload` prop through `DashboardLayout` → `FilterSidebar`. The sidebar renders a "Download Page Data" button at the bottom (below the "Back to top" button) with a dropdown offering two options:
 
-Both use centralized column mapping to produce clean, consistently named CSV files.
+- **Market Data (CSV)** — full filtered market dataset for the current page
+- **Segment Data (CSV)** — full filtered segment dataset for the current page
+
+| Feature | Specification |
+|---|---|
+| **Prop shape** | `{ market: { data, filename, columns }, segment: { data, filename, columns } }` |
+| **Column maps** | Uses `PAGE_MARKET_COLS` and `PAGE_SEGMENT_COLS` for clean headers |
+| **Dropdown** | Absolute-positioned above trigger button, right-aligned, shadow-lg, closes on outside `pointerdown` |
+| **Trigger style** | Full-width button with Download icon, brand-blue accent, rounded-lg |
 
 ### Dropdown Behavior
 
@@ -1835,7 +1853,7 @@ Both use centralized column mapping to produce clean, consistently named CSV fil
 | **Container** | 1280px max, centered, 16px vertical padding |
 | **Text** | 16px, secondary gray, centered |
 | **Content** | Static data source attribution |
-| **Conditional** | Hidden on the Overview (home) page to avoid redundancy with the page's own data source section |
+| **Conditional** | Hidden on the Overview (home) page and About Data page to avoid redundancy with their own content |
 | **Element** | `<footer>` semantic HTML |
 
 ---
@@ -2003,7 +2021,88 @@ White and gray backgrounds alternate between sections, creating a visual rhythm 
 
 ---
 
-## 36. Anti-Patterns & Pitfalls
+## 36. View Toggle Pattern
+
+Some visualizations offer multiple representations of the same data, toggled via a header button.
+
+### Design
+
+```
+┌──────────────────────────────────────────────────┐
+│ Load Factor (%)    [Line Chart ▼] [⬇][📷][⛶]   │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│   (LineChart or BoxPlotChart, depending on mode) │
+│                                                  │
+└──────────────────────────────────────────────────┘
+```
+
+### Implementation
+
+| Feature | Specification |
+|---|---|
+| **State** | Local `useState` (e.g., `lfView` with values `'line'` / `'box'`) |
+| **Toggle button** | Rendered in ChartCard's `headerRight` slot. Pill-style button showing the alternate view name (e.g., "Box Chart" when currently showing line view). |
+| **Chart switch** | Conditional rendering based on state — `lfView === 'line' ? <LineChart ... /> : <BoxPlotChart ... />` |
+| **Download data** | Switches to match the current view — each view has its own `downloadData` with appropriate column maps |
+| **Empty state** | Each view has its own empty state message via the `emptyState` prop |
+
+### Usage
+
+Used on US-Mexico and Texas-Mexico Operations & Capacity tabs for Load Factor visualization — toggling between a time-series trend line and a route-level statistical distribution box plot.
+
+---
+
+## 37. Route Network Evolution Animation
+
+A synchronized multi-visualization animation showing how route networks evolve over a time period, driven by shared playback controls.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Year: 2024        ◄◄   ▶   ►►     [========○  ] 2015-2024 │
+│                              Metric: [Passengers ▼]        │
+├──────────────────────────┬──────────────────────────────────┤
+│                          │                                  │
+│   AirportMap             │   BarChartRace                   │
+│   (route arcs per year)  │   (top routes ranked per year)   │
+│                          │                                  │
+├──────────────────────────┴──────────────────────────────────┤
+│  ● ELP (blue)  ● LRD (green)  ● MFE (orange)  ...         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Playback Controls
+
+| Control | Specification |
+|---|---|
+| **Play/Pause** | Toggles auto-advance at 2-second intervals. Uses `useRef` for interval timer. |
+| **Skip buttons** | Skip forward/backward by one year, wrapping at boundaries. |
+| **Year slider** | HTML range input spanning all available years. Pauses playback when manually adjusted. |
+| **Year display** | Large bold text showing current year, centered above slider. |
+| **Metric selector** | Dropdown switching between passengers and freight, shared with heatmap. |
+
+### Data Flow
+
+1. Parent (`TexasMexico/index.jsx`) computes `routeEvolutionData` in a `useMemo`:
+   - Uses `filteredNoYear` data (respects all filters except year)
+   - Produces per-year map frames (airport markers + route arcs) and bar chart race frames
+   - Computes `globalMax` across all years for stable axis scaling
+2. `BorderAirportsTab` receives pre-computed data and manages playback state locally
+3. Both visualizations read the same `currentYear` from the shared playback state
+
+### Color Coding
+
+Each border airport is assigned a persistent color from `CHART_COLORS` via an `ORIGIN_COLORS` constant map (6 airports → 6 colors). This color is used for both map route arcs (`arc.color`) and bar chart race bars (`originColors`).
+
+### Shared Color Legend
+
+A flex-wrap row below the visualizations shows all border airports with their assigned color dots, providing a unified legend for both the map and bar chart.
+
+---
+
+## 38. Anti-Patterns & Pitfalls
 
 ### Chart Height Feedback Loop (Critical)
 
@@ -2117,7 +2216,7 @@ height = isFullscreen ? max(defaultH, containerHeight) : defaultH
 
 | Feature | Line | Bar | Stacked | Donut | Treemap | Diverging | Lollipop | BoxPlot | Scatter | Heatmap | Race |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Tooltip | ✓ (fixed) | ✓ (label) | ✓ (fixed) | Center text | ✓ (fixed) | — | ✓ (label) | ✓ (fixed) | ✓ (fixed) | ✓ (float) | ✓ (label) |
+| Tooltip | ✓ (fixed) | ✓ (label) | ✓ (fixed) | Center text | ✓ (fixed) | — | ✓ (label) | ✓ (fixed) | ✓ (fixed) | ✓ (float) | ✓ (hover) |
 | Zoom/Pan | ✓ | — | — | — | — | — | — | — | — | — | — |
 | Multi-series | ✓ | — | ✓ | — | — | — | — | — | Color groups | — | — |
 | Legend | ✓ | — | ✓ | ✓ (right/bottom) | — | ✓ | — | — | ✓ | — | — |

@@ -128,6 +128,15 @@ export default function OperationsCapacityTab({
       {/* Load Factor Analysis */}
       <SectionBlock>
         <ChartCard
+          title="Seat Capacity Trends"
+          subtitle="Total seats by year (segment data)"
+          downloadData={{ summary: { data: seatTrend, filename: 'tx-mx-seat-capacity-trend', columns: DL.seatTrend } }}
+          emptyState={isEmptyOrAllZero(seatTrend) ? 'No seat capacity data for the current filter selection. Cargo (Class G) flights do not report seat counts.' : null}
+        >
+          <LineChart data={seatTrend} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+        </ChartCard>
+        <div className="mt-5" />
+        <ChartCard
           title={lfView === 'line' ? 'Passenger Load Factor Trends' : 'Route-Level Passenger Load Factor Distribution by Year'}
           subtitle={lfView === 'line' ? 'Passengers ÷ Seats (%) by year and direction' : 'Distribution of annual route load factors (routes with 100+ seats)'}
           downloadData={lfView === 'line'
@@ -257,12 +266,14 @@ export default function OperationsCapacityTab({
           title="Freight Volume by Aircraft Group"
           subtitle="Annual freight (lbs) carried by each aircraft type"
           downloadData={{ summary: { data: aircraftFreightByYear.data, filename: 'tx-mx-aircraft-freight-by-year' } }}
+          footnote={
+            <p className="text-base text-text-secondary mt-3 italic">
+              Unlike departure counts (dominated by narrow-body), freight reveals a more balanced
+              picture &mdash; wide-body jets carry disproportionately large cargo loads per flight.
+            </p>
+          }
         >
           <StackedBarChart data={aircraftFreightByYear.data} xKey="year" stackKeys={aircraftFreightByYear.keys} formatValue={fmtLbs} />
-          <p className="text-base text-text-secondary mt-3 italic">
-            Unlike departure counts (dominated by narrow-body), freight reveals a more balanced
-            picture &mdash; wide-body jets carry disproportionately large cargo loads per flight.
-          </p>
         </ChartCard>
 
         <div className="mt-5">
@@ -270,6 +281,12 @@ export default function OperationsCapacityTab({
             title="Freight per Departure by Aircraft Type"
             subtitle="Average freight load (lbs/flight) by aircraft group — label shows each type's share of total departures"
             downloadData={{ summary: { data: aircraftFreightIntensity, filename: 'tx-mx-aircraft-freight-intensity', columns: DL.aircraftIntensity } }}
+            footnote={
+              <p className="text-base text-text-secondary mt-3 italic">
+                Wide-body freighters carry over 100&times; more freight per departure than narrow-body jets,
+                yet narrow-body jets dominate total flight counts. The departure share shows how rare each aircraft type is on this corridor.
+              </p>
+            }
           >
             <BarChart
               data={aircraftFreightIntensity}
@@ -280,10 +297,6 @@ export default function OperationsCapacityTab({
               labelAccessor={(d) => `${fmtLbs(d.value)}  ·  ${d.depPct}% of flights`}
               color={CHART_COLORS[2]}
             />
-            <p className="text-base text-text-secondary mt-3 italic">
-              Wide-body freighters carry over 100&times; more freight per departure than narrow-body jets,
-              yet narrow-body jets dominate total flight counts. The departure share shows how rare each aircraft type is on this corridor.
-            </p>
           </ChartCard>
         </div>
         <div className="mt-5">
@@ -301,12 +314,14 @@ export default function OperationsCapacityTab({
             title="Non-Narrow-Body Departure Trends"
             subtitle="Departures by aircraft type over time (narrow-body excluded)"
             downloadData={{ summary: { data: nonNbDepTrend, filename: 'tx-mx-non-nb-departure-trends', columns: DL.depTrendAircraft } }}
+            footnote={
+              <p className="text-base text-text-secondary mt-3 italic">
+                Narrow-body departures (~85K/year) are excluded to reveal the dynamics of the specialized cargo and
+                regional fleet &mdash; including turboprop and wide-body freight operations.
+              </p>
+            }
           >
             <LineChart data={nonNbDepTrend} xKey="year" yKey="value" seriesKey="Aircraft" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
-            <p className="text-base text-text-secondary mt-3 italic">
-              Narrow-body departures (~85K/year) are excluded to reveal the dynamics of the specialized cargo and
-              regional fleet &mdash; including turboprop and wide-body freight operations.
-            </p>
           </ChartCard>
         </div>
       </SectionBlock>
