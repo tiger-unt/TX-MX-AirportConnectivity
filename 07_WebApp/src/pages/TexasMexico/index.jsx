@@ -1,27 +1,30 @@
-import { useMemo, useState } from 'react'
-import { Users, Plane, Package, Route, ArrowRightLeft, MapPin } from 'lucide-react'
+import { useMemo, useState, useRef, useEffect } from 'react'
+import { Users, Plane, Package, Route, BarChart3, Settings2, MapPin } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, computeAdherenceData, CLASS_LABELS, AIRCRAFT_GROUP_LABELS, CARRIER_TYPE_LABELS, getCarrierType, BORDER_AIRPORTS, BORDER_AIRPORT_LIST, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
-import { formatNumber, CHART_COLORS } from '@/lib/chartColors'
+import { formatNumber } from '@/lib/chartColors'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import FilterSelect from '@/components/filters/FilterSelect'
 import FilterMultiSelect from '@/components/filters/FilterMultiSelect'
 import StatCard from '@/components/ui/StatCard'
-import ChartCard from '@/components/ui/ChartCard'
 import SectionBlock from '@/components/ui/SectionBlock'
-import LineChart from '@/components/charts/LineChart'
-import DonutChart from '@/components/charts/DonutChart'
-import BarChart from '@/components/charts/BarChart'
-import DataTable from '@/components/ui/DataTable'
-import DivergingBarChart from '@/components/charts/DivergingBarChart'
-import HeatmapTable from '@/components/charts/HeatmapTable'
-import ScatterPlot from '@/components/charts/ScatterPlot'
-import AirportMap from '@/components/maps/AirportMap'
+import TabBar from '@/components/ui/TabBar'
+import OverviewTab from './tabs/OverviewTab'
+import PassengersRoutesTab from './tabs/PassengersRoutesTab'
+import OperationsCapacityTab from './tabs/OperationsCapacityTab'
+import CargoTradeTab from './tabs/CargoTradeTab'
+import BorderAirportsTab from './tabs/BorderAirportsTab'
 
-/* ── COVID annotation for trend charts ─────────────────────────────── */
-const COVID_ANNOTATION = [{ x: 2020, x2: 2021, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
+/* ── tab configuration ─────────────────────────────────────────────── */
+const TAB_CONFIG = [
+  { key: 'overview',    label: 'Overview',              icon: BarChart3 },
+  { key: 'passengers',  label: 'Passengers & Routes',   icon: Users },
+  { key: 'operations',  label: 'Operations & Capacity', icon: Settings2 },
+  { key: 'cargo',       label: 'Cargo & Trade',         icon: Package },
+  { key: 'border',      label: 'Border Airports',       icon: MapPin },
+]
 
 /* ── cascading-filter config (stable refs, defined once) ───────────── */
 const buildApplicators = (f) => ({
@@ -61,6 +64,17 @@ export default function TexasMexicoPage() {
   const [selectedAirport, setSelectedAirport] = useState(null)
   const [mapMetric, setMapMetric] = useState('PASSENGERS')
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
+
+  /* ── tab state ───────────────────────────────────────────────────── */
+  const [activeTab, setActiveTab] = useState('overview')
+  const tabBarRef = useRef(null)
+
+  // Reset stale direction filter carried from other pages
+  useEffect(() => {
+    if (filters.direction && filters.direction !== 'TX_TO_MX' && filters.direction !== 'MX_TO_TX') {
+      setFilter('direction', '')
+    }
+  }, [filters.direction, setFilter])
 
   /* ── base datasets ─────────────────────────────────────────────────── */
   const baseMarket = useMemo(() => {
@@ -502,7 +516,6 @@ export default function TexasMexicoPage() {
         ...r,
         PctPax: totalPax ? ((r.Passengers / totalPax) * 100).toFixed(1) + '%' : '0%',
         PctFreight: totalFreight ? ((r.Freight / totalFreight) * 100).toFixed(1) + '%' : '0%',
-        TotalActivity: r.Passengers + r.Freight,
       }))
       .sort((a, b) => b.Passengers - a.Passengers)
   }, [filtered])
@@ -768,463 +781,119 @@ export default function TexasMexicoPage() {
       activeCount={activeCount}
       activeTags={activeTags}
     >
-      {/* KPI Cards */}
+      {/* KPI Cards — always visible above tabs */}
       <SectionBlock>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto">
           <StatCard
-            label={`Texas–Mexico Passengers (${latestYear || '\u2014'})`}
+            label={`Texas\u2013Mexico Passengers (${latestYear || '\u2014'})`}
             value={stats ? fmtCompact(stats.pax) : '\u2014'}
             trend={stats?.paxChange > 0 ? 'up' : stats?.paxChange < 0 ? 'down' : undefined}
             trendLabel={stats ? `${(stats.paxChange * 100).toFixed(1)}% vs ${stats.prevYear}` : ''}
             highlight variant="primary" icon={Users} delay={0}
           />
           <StatCard
-            label={`Texas–Mexico Flights (${latestYear || '\u2014'})`}
+            label={`Texas\u2013Mexico Flights (${latestYear || '\u2014'})`}
             value={stats ? fmtCompact(stats.flights) : '\u2014'}
             highlight icon={Plane} delay={100}
           />
           <StatCard
-            label="Texas–Mexico Freight"
+            label={`Texas\u2013Mexico Freight (${latestYear || '\u2014'})`}
             value={stats ? fmtLbs(stats.freight) : '\u2014'}
             highlight icon={Package} delay={200}
           />
           <StatCard
-            label="Texas–Mexico Mail"
+            label={`Texas\u2013Mexico Mail (${latestYear || '\u2014'})`}
             value={stats ? fmtLbs(stats.mail) : '\u2014'}
             highlight icon={Package} delay={300}
           />
           <StatCard
-            label="Active Texas–Mexico Routes"
+            label={`Active Texas\u2013Mexico Routes (${latestYear || '\u2014'})`}
             value={stats ? String(stats.activeRoutes) : '\u2014'}
             highlight icon={Route} delay={400}
           />
         </div>
       </SectionBlock>
 
-      {/* Map */}
-      <SectionBlock alt>
-        <ChartCard
-          title="Texas–Mexico Route Map"
-          subtitle="Texas and Mexico airports with route arcs"
-          headerRight={
-            <select
-              value={mapMetric}
-              onChange={(e) => setMapMetric(e.target.value)}
-              className="text-base border border-border rounded-md px-2 py-1 bg-surface-primary"
-            >
-              {MAP_METRIC_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          }
-        >
-          <AirportMap
-            airports={mapAirports}
-            routes={mapRoutes}
-            topN={15}
-            selectedAirport={selectedAirport}
-            onAirportSelect={setSelectedAirport}
-            formatValue={mapMetricConfig.formatter}
-            metricLabel={mapMetricConfig.unit}
-            highlightAirports={BORDER_AIRPORTS}
-            legendItems={[
-              { color: '#0056a9', label: 'Texas' },
-              { color: '#df5c16', label: 'Mexico' },
-              { color: '#0056a9', borderColor: '#E8B923', label: 'Texas Border' },
-            ]}
-            center={[25.5, -99.5]}
-            zoom={5}
+      {/* Tab Bar — sticky on scroll so users can switch tabs without scrolling back up */}
+      <div ref={tabBarRef} className="sticky top-0 z-40 bg-surface-alt border-b border-border-light shadow-sm">
+        <div className="container-main py-3">
+          <TabBar
+            tabs={TAB_CONFIG}
+            activeTab={activeTab}
+            onChange={setActiveTab}
           />
-        </ChartCard>
-      </SectionBlock>
-
-      {/* Trends (2x2 grid) */}
-      <SectionBlock>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <ChartCard
-            title="Texas–Mexico Passenger Trends"
-            subtitle="Bidirectional passenger flows by year"
-            downloadData={{ summary: { data: paxTrend, filename: 'tx-mx-passenger-trends' } }}
-          >
-            <LineChart data={paxTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
-          </ChartCard>
-          <ChartCard
-            title="Texas–Mexico Flight Trends"
-            subtitle="Flights operated by year (segment data)"
-            downloadData={{ summary: { data: flightTrend, filename: 'tx-mx-flight-trends' } }}
-          >
-            <LineChart data={flightTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
-          </ChartCard>
-          <ChartCard
-            title="Texas–Mexico Freight Trends"
-            subtitle="Bidirectional freight volume by year"
-            downloadData={{ summary: { data: freightTrend, filename: 'tx-mx-freight-trends' } }}
-          >
-            <LineChart data={freightTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
-          </ChartCard>
-          <ChartCard
-            title="Texas–Mexico Mail Trends"
-            subtitle="Bidirectional mail volume by year"
-            downloadData={{ summary: { data: mailTrend, filename: 'tx-mx-mail-trends' } }}
-          >
-            <LineChart data={mailTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={fmtLbs} annotations={COVID_ANNOTATION} />
-          </ChartCard>
         </div>
-      </SectionBlock>
+      </div>
 
-      {/* Routes & Airports */}
-      <SectionBlock alt>
-        <ChartCard
-          title="Top 10 Texas–Mexico Routes"
-          subtitle="By total passengers (all filtered years)"
-          downloadData={{ summary: { data: topRoutes, filename: 'tx-mx-top-routes' } }}
-        >
-          <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-        </ChartCard>
-      </SectionBlock>
-
-      <SectionBlock>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ChartCard
-            title="Top Texas Airports for Mexico Traffic"
-            subtitle="By total passengers"
-            downloadData={{ summary: { data: topTxAirports, filename: 'tx-mx-top-tx-airports' } }}
-          >
-            <BarChart data={topTxAirports} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-          </ChartCard>
-          <ChartCard
-            title="Top Mexico Airports for Texas Traffic"
-            subtitle="By total passengers"
-            downloadData={{ summary: { data: topMxAirports, filename: 'tx-mx-top-mx-airports' } }}
-          >
-            <BarChart data={topMxAirports} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-          </ChartCard>
-        </div>
-      </SectionBlock>
-
-      {/* Airlines */}
-      <SectionBlock alt>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div>
-            <ChartCard
-              title="Carrier Market Share"
-              subtitle={`${filters.year.length === 1 ? filters.year[0] : latestYear || '\u2014'} passengers`}
-              downloadData={{ summary: { data: carrierMarketShare, filename: 'tx-mx-carrier-share' } }}
-            >
-              <DonutChart data={carrierMarketShare} formatValue={fmtCompact} />
-            </ChartCard>
-          </div>
-          <div className="lg:col-span-2">
-            <ChartCard
-              title="Top Carriers by Passengers"
-              subtitle="All filtered data"
-              downloadData={{ summary: { data: topCarriers, filename: 'tx-mx-top-carriers' } }}
-            >
-              <BarChart data={topCarriers} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-            </ChartCard>
-          </div>
-        </div>
-      </SectionBlock>
-
-      {/* Operations (segment) */}
-      <SectionBlock>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <ChartCard
-            title="Seat Capacity Trends"
-            subtitle="Total seats by year (segment data)"
-            downloadData={{ summary: { data: seatTrend, filename: 'tx-mx-seat-trends' } }}
-          >
-            <LineChart data={seatTrend} xKey="year" yKey="value" formatValue={fmtCompact} />
-          </ChartCard>
-          <ChartCard
-            title="Departures: Scheduled vs Performed"
-            subtitle="Scheduled service by year (Class F, sched > 0)"
-            downloadData={{ summary: { data: depTrend, filename: 'tx-mx-dep-trends' } }}
-          >
-            <LineChart data={depTrend} xKey="year" yKey="value" seriesKey="Metric" formatValue={fmtCompact} />
-            <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
-          </ChartCard>
-          <ChartCard
-            title="Schedule Adherence"
-            subtitle="Performed vs scheduled departures (Class F, scheduled service)"
-            downloadData={{ summary: { data: adherenceData, filename: 'tx-mx-schedule-adherence' } }}
-          >
-            <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />
-            <p className="text-base text-text-secondary mt-3 italic">Note: U.S. carriers only — foreign carriers are not required to report schedule data to BTS.</p>
-          </ChartCard>
-        </div>
-      </SectionBlock>
-
-      {/* Load Factor Analysis */}
-      <SectionBlock alt>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <ChartCard
-            title="Load Factor Trends"
-            subtitle="Passengers &divide; Seats (%) by year and direction"
-            downloadData={{ summary: { data: loadFactorTrend, filename: 'tx-mx-load-factor-trend' } }}
-          >
-            <LineChart data={loadFactorTrend} xKey="year" yKey="value" seriesKey="Direction" formatValue={(v) => `${v}%`} annotations={COVID_ANNOTATION} />
-          </ChartCard>
-          <ChartCard
-            title="Highest Load Factor Routes"
-            subtitle="Top 10 routes by passenger/seat ratio"
-            downloadData={{ summary: { data: loadFactorByRoute.top, filename: 'tx-mx-top-load-factor' } }}
-          >
-            <BarChart data={loadFactorByRoute.top} xKey="label" yKey="value" horizontal formatValue={(v) => `${v}%`} color={CHART_COLORS[0]} />
-          </ChartCard>
-          <ChartCard
-            title="Lowest Load Factor Routes"
-            subtitle="Bottom 10 routes (min 100 seats)"
-            downloadData={{ summary: { data: loadFactorByRoute.bottom, filename: 'tx-mx-low-load-factor' } }}
-          >
-            <BarChart data={loadFactorByRoute.bottom} xKey="label" yKey="value" horizontal formatValue={(v) => `${v}%`} color={CHART_COLORS[8]} />
-          </ChartCard>
-        </div>
-      </SectionBlock>
-
-      {/* Cargo Imbalance */}
-      <SectionBlock>
-        <ChartCard
-          title="TX–MX Freight Imbalance by Airport"
-          subtitle="Exports vs Imports in freight lbs per Texas airport"
-          downloadData={{ summary: { data: freightImbalance.map((d) => ({ label: d.label, Exports: d.exports, Imports: d.imports })), filename: 'tx-mx-freight-imbalance' } }}
-        >
-          <DivergingBarChart
-            data={freightImbalance}
-            leftKey="imports" rightKey="exports"
-            leftLabel="Imports (MX \u2192 TX)" rightLabel="Exports (TX \u2192 MX)"
-            formatValue={fmtLbs}
-          />
-        </ChartCard>
-      </SectionBlock>
-
-      {/* State-Level Storytelling */}
-      <SectionBlock alt>
-        <ChartCard
-          title="Top Mexico Destinations by State"
-          subtitle="Quintana Roo, Jalisco, Nuevo Leon, etc. by passenger volume"
-          downloadData={{ summary: { data: topMxStates, filename: 'tx-mx-top-mx-states' } }}
-        >
-          <BarChart data={topMxStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-        </ChartCard>
-      </SectionBlock>
-
-      {/* Border Airport Introduction */}
-      <SectionBlock alt>
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-9 h-9 rounded-lg bg-brand-blue/10 flex items-center justify-center flex-shrink-0">
-              <MapPin size={18} className="text-brand-blue" />
-            </div>
-            <h3 className="text-xl font-bold text-text-primary">Texas Border Airports</h3>
-          </div>
-          <p className="text-base text-text-secondary mb-5 max-w-3xl">
-            Six Texas airports located within a TxDOT border district serve a
-            unique role in cross-border connectivity — while most passenger traffic flows through
-            major inland hubs like DFW, IAH, and SAT, border airports handle a disproportionate
-            share of cargo traffic with Mexico.
-          </p>
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-            <div className="lg:col-span-3">
-              <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-hidden h-full">
-                <AirportMap
-                  airports={borderMapAirports}
-                  routes={[]}
-                  topN={0}
-                  highlightAirports={BORDER_AIRPORTS}
-                  hoveredAirport={hoveredBorderAirport}
-                  fixedRadius={6}
-                  legendItems={[{ color: '#0056a9', borderColor: '#E8B923', label: 'Border Airport' }]}
-                  height="100%"
-                  fitToAirports
-                  hintText={null}
-                />
-              </div>
-            </div>
-            <div className="lg:col-span-2 flex flex-col gap-3">
-              {BORDER_AIRPORT_LIST.map((b) => {
-                const info = airportIndex?.get(b.code)
-                const isHovered = hoveredBorderAirport === b.code
-                return (
-                  <button
-                    key={b.code}
-                    type="button"
-                    className="flex items-center gap-3 bg-white rounded-lg border px-4 py-3 text-left transition-all duration-150 cursor-pointer"
-                    style={{
-                      borderColor: isHovered ? '#E8B923' : undefined,
-                      boxShadow: isHovered ? '0 0 0 2px rgba(232,185,35,0.3)' : undefined,
-                    }}
-                    onMouseEnter={() => setHoveredBorderAirport(b.code)}
-                    onMouseLeave={() => setHoveredBorderAirport(null)}
-                  >
-                    <span
-                      className="inline-block w-3 h-3 rounded-full flex-shrink-0 transition-transform duration-150"
-                      style={{
-                        background: '#0056a9',
-                        border: '2px solid #E8B923',
-                        transform: isHovered ? 'scale(1.4)' : undefined,
-                      }}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-base font-bold text-text-primary leading-tight">{b.code}</p>
-                      <p className="text-base text-text-secondary leading-tight">{info?.name || b.city}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </SectionBlock>
-
-      {/* Border vs Non-Border Airport Analysis */}
-      <SectionBlock>
-        {borderInsight && (
-          <div className="mb-5 max-w-3xl mx-auto">
-            <StatCard
-              label="Border Airport Insight"
-              value={`Border airports: ${borderInsight.paxPct}% of passengers, ${borderInsight.cargoPct}% of cargo`}
-              highlight icon={ArrowRightLeft}
-            />
-          </div>
-        )}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ChartCard title="Passenger Share: Border vs Non-Border" subtitle="Texas airports serving Mexico">
-            <DonutChart data={borderPaxShare} formatValue={fmtCompact} />
-          </ChartCard>
-          <ChartCard title="Cargo Share: Border vs Non-Border" subtitle="Texas airports serving Mexico (freight lbs)">
-            <DonutChart data={borderCargoShare} formatValue={fmtLbs} />
-          </ChartCard>
-        </div>
-      </SectionBlock>
-
-      <SectionBlock alt>
-        <ChartCard
-          title="Airport Activity: Passengers vs Freight"
-          subtitle="Texas airports with Mexico service — dot size = total activity"
-          downloadData={{ summary: { data: borderSummaryTable, filename: 'tx-mx-airport-scatter' } }}
-          headerRight={
-            <select
-              value={scatterScale}
-              onChange={(e) => setScatterScale(e.target.value)}
-              className="text-base border border-border rounded-md px-2 py-1 bg-surface-primary"
-            >
-              <option value="symlog">Log Scale</option>
-              <option value="linear">Linear Scale</option>
-            </select>
-          }
-        >
-          <ScatterPlot
-            data={borderSummaryTable}
-            xKey="Passengers"
-            yKey="Freight"
-            labelKey="Code"
-            colorKey="Type"
-            sizeKey="TotalActivity"
-            formatX={fmtCompact}
-            formatY={fmtLbs}
-            xLabel="Passengers"
-            yLabel="Freight (lbs)"
-            colorMap={{ Border: CHART_COLORS[0], 'Non-Border': CHART_COLORS[7] }}
-            labelThreshold={8}
-            scaleType={scatterScale}
-          />
-        </ChartCard>
-      </SectionBlock>
-
-      {/* Border Airport Route Matrix */}
-      <SectionBlock>
-        <ChartCard
-          title="Border Airport Route Matrix"
-          subtitle="TX border airports &harr; Mexico airports"
-          headerRight={
-            <select
-              value={matrixMetric}
-              onChange={(e) => setMatrixMetric(e.target.value)}
-              className="text-base border border-border rounded-md px-2 py-1 bg-surface-primary"
-            >
-              <option value="passengers">Passengers</option>
-              <option value="freight">Freight (lbs)</option>
-            </select>
-          }
-        >
-          <HeatmapTable
-            data={odMatrixData}
-            formatValue={matrixMetric === 'passengers' ? fmtCompact : fmtLbs}
-          />
-        </ChartCard>
-      </SectionBlock>
-
-      {/* Data Table */}
-      <SectionBlock>
-        <ChartCard
-          title="Route Details"
-          subtitle={`${formatNumber(tableData.length)} routes (filtered)`}
-          downloadData={{ summary: { data: tableData, filename: 'tx-mx-route-details' } }}
-        >
-          <DataTable columns={tableColumns} data={tableData} />
-        </ChartCard>
-      </SectionBlock>
-
-      {/* Service Class Breakdown */}
-      <SectionBlock alt>
-        <div className="max-w-5xl mx-auto mb-4">
-          <h3 className="text-xl font-bold text-text-primary mb-1">Service Class Breakdown</h3>
-          <p className="text-base text-text-secondary">Charter, cargo-only, and scheduled service operations on Texas&ndash;Mexico routes.</p>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ChartCard
-            title="Flight Share by Service Class"
-            subtitle="Departures performed by class (all filtered years)"
-            downloadData={{ summary: { data: serviceClassShare, filename: 'tx-mx-service-class-share' } }}
-          >
-            <DonutChart data={serviceClassShare} formatValue={fmtCompact} />
-          </ChartCard>
-          <ChartCard
-            title="Flights by Service Class Over Time"
-            subtitle="Departures performed by class and year"
-            downloadData={{ summary: { data: serviceClassTrend, filename: 'tx-mx-service-class-trend' } }}
-          >
-            <LineChart data={serviceClassTrend} xKey="year" yKey="value" seriesKey="Class" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
-          </ChartCard>
-        </div>
-      </SectionBlock>
-
-      {/* Aircraft Mix */}
-      <SectionBlock>
-        <div className="max-w-5xl mx-auto mb-4">
-          <h3 className="text-xl font-bold text-text-primary mb-1">Aircraft Mix</h3>
-          <p className="text-base text-text-secondary">Types of aircraft serving Texas&ndash;Mexico routes, by BTS aircraft group classification.</p>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ChartCard
-            title="Departures by Aircraft Group"
-            subtitle="Share of flights by aircraft type (all filtered years)"
-            downloadData={{ summary: { data: aircraftGroupShare, filename: 'tx-mx-aircraft-group-share' } }}
-          >
-            <DonutChart data={aircraftGroupShare} formatValue={fmtCompact} />
-          </ChartCard>
-          <ChartCard
-            title="Aircraft Group Trends"
-            subtitle="Departures by aircraft group over time"
-            downloadData={{ summary: { data: aircraftGroupTrend, filename: 'tx-mx-aircraft-group-trend' } }}
-          >
-            <LineChart data={aircraftGroupTrend} xKey="year" yKey="value" seriesKey="Aircraft" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
-          </ChartCard>
-        </div>
-      </SectionBlock>
-
-      {/* Freight Per Departure */}
-      <SectionBlock alt>
-        <ChartCard
-          title="Freight Intensity by Route"
-          subtitle="Average freight per departure (lbs/flight) — top 10 routes with &ge;10 departures"
-          downloadData={{ summary: { data: freightPerDep, filename: 'tx-mx-freight-per-departure' } }}
-        >
-          <BarChart data={freightPerDep} xKey="label" yKey="value" horizontal formatValue={fmtLbs} color={CHART_COLORS[4]} />
-          <p className="text-base text-text-secondary mt-3 italic">Segment-level metric: shows how much cargo each flight actually carries, complementing market-level freight totals.</p>
-        </ChartCard>
-      </SectionBlock>
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <OverviewTab
+          mapAirports={mapAirports}
+          mapRoutes={mapRoutes}
+          mapMetric={mapMetric}
+          setMapMetric={setMapMetric}
+          mapMetricConfig={mapMetricConfig}
+          selectedAirport={selectedAirport}
+          setSelectedAirport={setSelectedAirport}
+          paxTrend={paxTrend}
+          flightTrend={flightTrend}
+          freightTrend={freightTrend}
+          mailTrend={mailTrend}
+          latestYear={latestYear}
+        />
+      )}
+      {activeTab === 'passengers' && (
+        <PassengersRoutesTab
+          topRoutes={topRoutes}
+          topTxAirports={topTxAirports}
+          topMxAirports={topMxAirports}
+          topMxStates={topMxStates}
+          carrierMarketShare={carrierMarketShare}
+          topCarriers={topCarriers}
+          tableData={tableData}
+          tableColumns={tableColumns}
+          filters={filters}
+          latestYear={latestYear}
+        />
+      )}
+      {activeTab === 'operations' && (
+        <OperationsCapacityTab
+          seatTrend={seatTrend}
+          depTrend={depTrend}
+          adherenceData={adherenceData}
+          loadFactorTrend={loadFactorTrend}
+          loadFactorByRoute={loadFactorByRoute}
+          serviceClassShare={serviceClassShare}
+          serviceClassTrend={serviceClassTrend}
+          aircraftGroupShare={aircraftGroupShare}
+          aircraftGroupTrend={aircraftGroupTrend}
+        />
+      )}
+      {activeTab === 'cargo' && (
+        <CargoTradeTab
+          freightTrend={freightTrend}
+          mailTrend={mailTrend}
+          freightImbalance={freightImbalance}
+          freightPerDep={freightPerDep}
+          borderSummaryTable={borderSummaryTable}
+          scatterScale={scatterScale}
+          setScatterScale={setScatterScale}
+        />
+      )}
+      {activeTab === 'border' && (
+        <BorderAirportsTab
+          borderMapAirports={borderMapAirports}
+          hoveredBorderAirport={hoveredBorderAirport}
+          setHoveredBorderAirport={setHoveredBorderAirport}
+          borderPaxShare={borderPaxShare}
+          borderCargoShare={borderCargoShare}
+          borderInsight={borderInsight}
+          odMatrixData={odMatrixData}
+          matrixMetric={matrixMetric}
+          setMatrixMetric={setMatrixMetric}
+          airportIndex={airportIndex}
+        />
+      )}
     </DashboardLayout>
   )
 }

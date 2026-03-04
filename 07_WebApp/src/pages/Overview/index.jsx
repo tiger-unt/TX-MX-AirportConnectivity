@@ -10,7 +10,7 @@ import {
   isTxDomestic, isTxIntl, isUsToMx, isMxToUs,
   BORDER_AIRPORTS, BORDER_AIRPORT_LIST
 } from '@/lib/aviationHelpers'
-import { aggregateAirportVolumes } from '@/lib/airportUtils'
+import { aggregateAirportVolumes, aggregateRoutes } from '@/lib/airportUtils'
 import StatCard from '@/components/ui/StatCard'
 import AirportMap from '@/components/maps/AirportMap'
 
@@ -18,6 +18,7 @@ export default function OverviewPage() {
   const { marketData, airportIndex, loading } = useAviationStore()
   const navigate = useNavigate()
   const [selectedAirport, setSelectedAirport] = useState(null)
+  const [hoveredBorderAirport, setHoveredBorderAirport] = useState(null)
 
   const latestYear = useMemo(() => {
     if (!marketData?.length) return null
@@ -57,6 +58,12 @@ export default function OverviewPage() {
     if (!marketData?.length) return []
     return marketData.filter(isTxMx)
   }, [marketData])
+
+  const mapRoutes = useMemo(() => {
+    if (!allTxMx.length || !latestYear || !airportIndex) return []
+    const latest = allTxMx.filter((d) => d.YEAR === latestYear)
+    return aggregateRoutes(latest, airportIndex)
+  }, [allTxMx, latestYear, airportIndex])
 
   const mapAirports = useMemo(() => {
     if (!allTxMx.length || !latestYear || !airportIndex) return []
@@ -208,7 +215,7 @@ export default function OverviewPage() {
               highlight icon={ArrowRightLeft} delay={100}
             />
             <StatCard
-              label="Active Texas–Mexico Routes"
+              label={`Active Texas–Mexico Routes (${latestYear || '\u2014'})`}
               value={stats ? String(stats.txMxRoutes) : '\u2014'}
               highlight icon={Route} delay={200}
             />
@@ -235,11 +242,12 @@ export default function OverviewPage() {
                 <div className="flex-1 min-h-[380px]">
                   <AirportMap
                     airports={mapAirports}
-                    routes={[]}
+                    routes={mapRoutes}
                     topN={0}
                     selectedAirport={selectedAirport}
                     onAirportSelect={setSelectedAirport}
                     highlightAirports={BORDER_AIRPORTS}
+                    hoveredAirport={hoveredBorderAirport}
                     legendItems={[
                       { color: '#0056a9', label: 'Texas' },
                       { color: '#df5c16', label: 'Mexico' },
@@ -248,6 +256,8 @@ export default function OverviewPage() {
                     height="100%"
                     center={[25.5, -99.5]}
                     zoom={5}
+                    metricLabel={`passengers (${latestYear})`}
+                    formatValue={fmtCompact}
                   />
                 </div>
               </div>
@@ -283,9 +293,16 @@ export default function OverviewPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {BORDER_AIRPORT_LIST.map((b) => (
-                    <span
+                    <button
                       key={b.code}
-                      className="inline-flex items-center gap-1.5 bg-brand-blue/5 border border-brand-blue/15 rounded-md px-2.5 py-1"
+                      type="button"
+                      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors duration-150 cursor-pointer
+                        ${hoveredBorderAirport === b.code || selectedAirport === b.code
+                          ? 'bg-brand-blue/15 border border-brand-blue/40'
+                          : 'bg-brand-blue/5 border border-brand-blue/15 hover:bg-brand-blue/10'}`}
+                      onMouseEnter={() => setHoveredBorderAirport(b.code)}
+                      onMouseLeave={() => setHoveredBorderAirport(null)}
+                      onClick={() => setSelectedAirport(selectedAirport === b.code ? null : b.code)}
                     >
                       <span
                         className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
@@ -293,7 +310,7 @@ export default function OverviewPage() {
                       />
                       <span className="text-base font-semibold text-brand-blue">{b.code}</span>
                       <span className="text-base text-text-secondary">{b.city}</span>
-                    </span>
+                    </button>
                   ))}
                 </div>
                 <Link

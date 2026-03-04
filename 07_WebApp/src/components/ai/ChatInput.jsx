@@ -21,7 +21,7 @@ export default function ChatInput({ onSend, disabled }) {
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Ask about trade data..."
+          placeholder="Ask about airport data..."
           disabled={disabled}
           className="flex-1 px-4 py-2.5 rounded-full border border-border-light
                      text-base bg-white

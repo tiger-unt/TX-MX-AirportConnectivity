@@ -122,6 +122,22 @@ function MapResizeHandler() {
   return null
 }
 
+/** Programmatically opens the popup for the selected airport and closes any others */
+function PopupController({ selectedAirport, markerRefs }) {
+  const map = useMap()
+  useEffect(() => {
+    map.closePopup()
+    if (selectedAirport && markerRefs.current[selectedAirport]) {
+      // Small delay lets React-Leaflet finish rendering updated markers
+      const timer = setTimeout(() => {
+        markerRefs.current[selectedAirport]?.openPopup()
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [map, selectedAirport, markerRefs])
+  return null
+}
+
 function ResetZoomButton({ center, zoom, onReset }) {
   const map = useMap()
   const handleClick = useCallback((e) => {
@@ -175,6 +191,7 @@ export default function AirportMap({
   metricLabel = 'passengers',
   hintText = 'Click airport to explore connections',
   fitToAirports = false,
+  locked = false,
 }) {
   const maxVolume = useMemo(
     () => Math.max(1, ...airports.map((a) => a.volume || 0)),
@@ -217,6 +234,8 @@ export default function AirportMap({
     onAirportSelect?.(null)
   }, [onAirportSelect])
 
+  const markerRefs = useRef({})
+
   const [mapActive, setMapActive] = useState(false)
   const [showHint, setShowHint] = useState(false)
   const hintTimer = useRef(null)
@@ -234,7 +253,7 @@ export default function AirportMap({
   return (
     <div
       style={{ minHeight: height, width: '100%' }}
-      className="airport-map-container h-full flex flex-col rounded-lg overflow-hidden border border-border-light"
+      className="airport-map-container h-full flex flex-col rounded-lg overflow-hidden border border-border-light isolate"
     >
       {/* Map wrapper — flex-1 fills remaining space; absolute-positioned MapContainer inside */}
       <div className="flex-1 relative" style={{ minHeight: 0 }} onWheel={handleWheel}>
@@ -263,16 +282,22 @@ export default function AirportMap({
           zoom={zoom}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           scrollWheelZoom={false}
-          zoomControl={true}
+          zoomControl={!locked}
+          dragging={!locked}
+          doubleClickZoom={!locked}
+          touchZoom={!locked}
+          boxZoom={!locked}
+          keyboard={!locked}
         >
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
           <MapClickHandler onReset={handleReset} />
-          <ScrollWheelGuard onActiveChange={setMapActive} />
-          <ResetZoomButton center={center} zoom={zoom} onReset={handleReset} />
+          {!locked && <ScrollWheelGuard onActiveChange={setMapActive} />}
+          {!locked && <ResetZoomButton center={center} zoom={zoom} onReset={handleReset} />}
           <MapResizeHandler />
+          <PopupController selectedAirport={selectedAirport} markerRefs={markerRefs} />
           {fitToAirports && airports.length > 1 && (
             <FitBoundsToAirports airports={airports} />
           )}
@@ -310,6 +335,7 @@ export default function AirportMap({
               return (
                 <CircleMarker
                   key={a.iata}
+                  ref={(el) => { if (el) markerRefs.current[a.iata] = el }}
                   center={[a.lat, a.lng]}
                   radius={isSelected ? r + 3 : isHovered ? r + 2 : r}
                   bubblingMouseEvents={false}

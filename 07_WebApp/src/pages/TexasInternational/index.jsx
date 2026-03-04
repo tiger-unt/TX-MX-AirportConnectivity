@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Plane, Users, Globe, Award } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isTxIntl, isTxToIntl, isIntlToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
@@ -44,7 +44,7 @@ const EXTRACTORS = {
 }
 
 /* ── COVID annotation for trend charts ─────────────────────────────── */
-const COVID_ANNOTATION = [{ x: 2020, x2: 2021, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
+const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
 export default function TexasInternationalPage() {
   const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
@@ -52,6 +52,13 @@ export default function TexasInternationalPage() {
   const [selectedCountry, setSelectedCountry] = useState(null)
   const [mapMetric, setMapMetric] = useState('PASSENGERS')
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
+
+  // Reset stale direction filter carried from other pages
+  useEffect(() => {
+    if (filters.direction && filters.direction !== 'TX_TO_INTL' && filters.direction !== 'INTL_TO_TX') {
+      setFilter('direction', '')
+    }
+  }, [filters.direction, setFilter])
 
   /* ── base dataset ──────────────────────────────────────────────────── */
   const baseMarket = useMemo(() => {
@@ -421,12 +428,12 @@ export default function TexasInternationalPage() {
             highlight icon={Plane} delay={100}
           />
           <StatCard
-            label="Countries Served"
+            label={`Countries Served (${latestYear || '\u2014'})`}
             value={stats ? String(stats.countries) : '\u2014'}
             highlight icon={Globe} delay={200}
           />
           <StatCard
-            label="Top International Dest"
+            label={`Top International Dest (${latestYear || '\u2014'})`}
             value={stats?.topCountry || '\u2014'}
             highlight icon={Award} delay={300}
           />
@@ -503,41 +510,41 @@ export default function TexasInternationalPage() {
         </div>
       </SectionBlock>
 
-      {/* Countries + Top Routes */}
+      {/* Top International Destinations */}
       <SectionBlock alt>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <ChartCard
-            title="Top International Destinations"
-            subtitle="From Texas (all filtered years)"
-            downloadData={{ summary: { data: topCountries, filename: 'tx-top-intl-destinations' } }}
-          >
-            <DonutChart
-              data={topCountries}
-              formatValue={fmtCompact}
-              onSliceClick={(d) => {
-                if (!d) return setSelectedCountry(null)
-                setSelectedCountry((prev) => (prev === d.label ? null : d.label))
-              }}
-              selectedSlice={selectedCountry}
-            />
-          </ChartCard>
-          <div className="lg:col-span-2">
-            <ChartCard
-              title="Top International Routes from Texas"
-              subtitle="Total passengers (all filtered years)"
-              downloadData={{ summary: { data: topRoutes, filename: 'tx-intl-top-routes' } }}
-            >
-              <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-            </ChartCard>
-          </div>
-        </div>
+        <ChartCard
+          title="Top International Destinations"
+          subtitle="From Texas (all filtered years)"
+          downloadData={{ summary: { data: topCountries, filename: 'tx-top-intl-destinations' } }}
+        >
+          <DonutChart
+            data={topCountries}
+            formatValue={fmtCompact}
+            onSliceClick={(d) => {
+              if (!d) return setSelectedCountry(null)
+              setSelectedCountry((prev) => (prev === d.label ? null : d.label))
+            }}
+            selectedSlice={selectedCountry}
+          />
+        </ChartCard>
+      </SectionBlock>
+
+      {/* Top Routes */}
+      <SectionBlock>
+        <ChartCard
+          title="Top International Routes"
+          subtitle="Total passengers (all filtered years)"
+          downloadData={{ summary: { data: topRoutes, filename: 'tx-intl-top-routes' } }}
+        >
+          <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
+        </ChartCard>
       </SectionBlock>
 
       {/* Operations (segment) */}
       <SectionBlock>
         <ChartCard
           title="Schedule Adherence"
-          subtitle="Performed vs scheduled departures (Class F, scheduled service)"
+          subtitle="Departure-weighted: performed vs scheduled (Class F, scheduled service)"
           downloadData={{ summary: { data: adherenceData, filename: 'tx-intl-schedule-adherence' } }}
         >
           <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />

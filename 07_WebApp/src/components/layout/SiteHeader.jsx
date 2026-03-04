@@ -10,17 +10,15 @@
  * Layout: Uses container-chrome (max-width 1280px centered) for consistent
  * alignment with the MainNav below it.
  *
- * ── BOILERPLATE: HOW TO ADAPT ───────────────────────────────────────────
- * When setting up a new project, change these three things:
- *   1. Logo image path — update the `src` attribute on the <img> tag
- *      (place your logo in public/assets/Logos/ or update the path)
- *   2. Dashboard title — update the <h1> text
- *   3. Subtitle — update the <p> text below the title
- *
  * The "Ask AI" button connects to the chatStore. If your project doesn't
  * need an AI chat feature, remove the button and the chatStore import.
  */
+import { Sparkles } from 'lucide-react'
+import { useChatStore } from '@/stores/chatStore'
+
 export default function SiteHeader() {
+  const toggle = useChatStore((s) => s.toggle)
+
   return (
     <header className="bg-white border-b border-border-light">
       <div className="container-chrome flex items-center justify-between py-4 gap-6">
@@ -43,6 +41,18 @@ export default function SiteHeader() {
             </p>
           </div>
         </div>
+
+        {/* Ask AI button */}
+        <button
+          onClick={toggle}
+          className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg
+                     bg-brand-blue text-white text-base font-medium
+                     hover:bg-brand-blue-dark transition-colors duration-150
+                     cursor-pointer flex-shrink-0"
+        >
+          <Sparkles size={16} />
+          Ask AI
+        </button>
       </div>
     </header>
   )

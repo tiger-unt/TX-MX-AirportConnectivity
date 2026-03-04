@@ -157,7 +157,7 @@ The segment total (370) is higher because the 50 through-passengers are counted 
 | Freight/mail counting | Journey-level (enplaned) | Leg-level (transported) |
 | Operational metrics | Not available | Departures scheduled/performed, seats, payload |
 | Typical total PAX | Lower | Higher (passengers counted on multiple legs) |
-| Number of columns in our output | 17 | 21 |
+| Number of columns in our output | 17 | 23 |
 | Primary use case | Demand & connectivity analysis | Operational & capacity analysis |
 
 ---
@@ -314,7 +314,7 @@ The pipeline transforms ~19.7 million raw database records into two clean, analy
                      └──────────┬──────────┘
                                 │  SQL query + annual aggregation
                                 │  Filter: TX or Mexico routes, 2015-2024
-                                │  41→17 cols (market), 50→21 cols (segment)
+                                │  41→17 cols (market), 50→22 cols (segment)
                                 │  Airport Master List → GeoJSON
                                 ▼
               ┌────────────────────────────────────────┐
@@ -409,7 +409,7 @@ self.dbpath = "..."  # Path where the output .db file should be created
 
 ### 8.1 What Gets Extracted
 
-The extraction script connects to the SQLite database and runs SQL queries against both `BTS_MARKET` and `BTS_SEGMENT` tables. It selects only the columns needed for analysis (reducing from 41/50 raw columns down to 17/21 output columns) and aggregates monthly data into annual totals.
+The extraction script connects to the SQLite database and runs SQL queries against both `BTS_MARKET` and `BTS_SEGMENT` tables. It selects only the columns needed for analysis (reducing from 41/50 raw columns down to 17/22 output columns) and aggregates monthly data into annual totals.
 
 **Columns retained for Market output (17):**
 
@@ -433,15 +433,16 @@ The extraction script connects to the SQLite database and runs SQL queries again
 | 16 | MAIL | Annual mail in pounds (summed) |
 | 17 | DATA_SOURCE | Reporting source code (DU, IU, DF, IF) |
 
-**Segment output adds 4 more columns (21 total):**
+**Segment output adds 5 more columns (22 total):**
 
 | # | Column | Role |
 |---|---|---|
-| 14 | DEPARTURES_SCHEDULED | Annual scheduled departures (summed) |
-| 15 | DEPARTURES_PERFORMED | Annual performed departures (summed) |
-| 16 | PAYLOAD | Annual payload capacity in pounds (summed) |
-| 17 | SEATS | Annual seat capacity (summed) |
-| 18–21 | PASSENGERS, FREIGHT, MAIL, DATA_SOURCE | Same as market |
+| 14 | AIRCRAFT_GROUP | BTS aircraft group classification (0–8); preserves aircraft category per row |
+| 15 | DEPARTURES_SCHEDULED | Annual scheduled departures (summed) |
+| 16 | DEPARTURES_PERFORMED | Annual performed departures (summed) |
+| 17 | PAYLOAD | Annual payload capacity in pounds (summed) |
+| 18 | SEATS | Annual seat capacity (summed) |
+| 19–22 | PASSENGERS, FREIGHT, MAIL, DATA_SOURCE | Same as market |
 
 **Columns intentionally excluded** (not needed for this project's analysis scope):
 - QUARTER, MONTH — aggregated to YEAR
@@ -451,7 +452,7 @@ The extraction script connects to the SQLite database and runs SQL queries again
 - ORIGIN/DEST_STATE_ABR, ORIGIN/DEST_STATE_FIPS — abbreviations and FIPS codes
 - ORIGIN/DEST_COUNTRY, ORIGIN/DEST_WAC — country codes and WAC
 - DISTANCE, DISTANCE_GROUP — not needed after removing DISTANCE from pipeline
-- AIRCRAFT_GROUP, AIRCRAFT_TYPE, AIRCRAFT_CONFIG — aggregated across aircraft types
+- AIRCRAFT_TYPE, AIRCRAFT_CONFIG — detailed aircraft type/configuration (AIRCRAFT_GROUP is retained for segment data)
 - RAMP_TO_RAMP, AIR_TIME — operational timing metrics
 - REGION — carrier operation region
 
@@ -1369,7 +1370,7 @@ All `DATA_SOURCE = IF` or `DF` records have `DEPARTURES_SCHEDULED = 0`. This is 
 
 ### 13.3 Segment Data Was Originally Split by Aircraft Type
 
-In the raw BTS database, segment data has separate rows for each aircraft type used on a route. For example, American Airlines operating DFW→MEX with both Boeing 737s and Airbus A321s in January would have two rows. Our extraction aggregates across aircraft types to produce one row per carrier/route/year/class/source — but this is why the raw segment table has more records than market.
+In the raw BTS database, segment data has separate rows for each aircraft type used on a route. For example, American Airlines operating DFW→MEX with both Boeing 737s and Airbus A321s in January would have two rows. Our extraction aggregates monthly data to annual totals but **preserves the aircraft group dimension** (`AIRCRAFT_GROUP` in GROUP BY via `SEGMENT_EXTRA_GROUP_BY`), producing one row per carrier/route/year/class/source/aircraft group. This is why the segment output has more records than market — each route can have multiple rows for different aircraft groups.
 
 ### 13.4 Performed > Scheduled is Normal (Within Reason)
 

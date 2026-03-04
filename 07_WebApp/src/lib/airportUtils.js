@@ -15,7 +15,7 @@ export function buildAirportIndex(geojson) {
     const p = f.properties
     if (!p?.AIRPORT) continue
     index.set(p.AIRPORT, {
-      name: p.DISPLAY_AIRPORT_NAME || p.AIRPORT,
+      name: p.AIRPORT_NAME || p.AIRPORT,
       lat: p.LATITUDE ?? f.geometry?.coordinates?.[1] ?? null,
       lng: p.LONGITUDE ?? f.geometry?.coordinates?.[0] ?? null,
     })

@@ -141,8 +141,9 @@ export const isTxDomestic = (d) => isTxToUs(d) || isUsToTx(d)
  * Filters to SCHED_REPORTED=1 (trustworthy schedule data) AND CLASS='F'.
  * Excludes foreign carriers (IF/DF, who don't report schedules) and
  * US scheduled-service rows with missing-as-zero schedule data (~14% of DU/F).
- * Buckets by (DEPARTURES_PERFORMED − DEPARTURES_SCHEDULED) and returns
- * an array sorted by descending percentage, ready for BarChart.
+ * Buckets by (DEPARTURES_PERFORMED − DEPARTURES_SCHEDULED), weighted by
+ * DEPARTURES_SCHEDULED (departure-weighted, not row-weighted).
+ * Returns an array sorted by descending percentage, ready for BarChart.
  */
 export function computeAdherenceData(segmentData) {
   if (!segmentData?.length) return []
@@ -152,7 +153,9 @@ export function computeAdherenceData(segmentData) {
   )
   if (!scheduled.length) return []
 
-  const total = scheduled.length
+  const totalDeps = scheduled.reduce((s, d) => s + d.DEPARTURES_SCHEDULED, 0)
+  if (!totalDeps) return []
+
   const buckets = {
     'Exact match': 0,
     '1\u20132 fewer': 0,
@@ -166,18 +169,19 @@ export function computeAdherenceData(segmentData) {
 
   for (const d of scheduled) {
     const diff = d.DEPARTURES_PERFORMED - d.DEPARTURES_SCHEDULED
-    if (diff === 0) buckets['Exact match']++
-    else if (diff >= -2 && diff <= -1) buckets['1\u20132 fewer']++
-    else if (diff >= -5 && diff <= -3) buckets['3\u20135 fewer']++
-    else if (diff >= -10 && diff <= -6) buckets['6\u201310 fewer']++
-    else if (diff < -10) buckets['11+ fewer']++
-    else if (diff >= 1 && diff <= 2) buckets['1\u20132 extra']++
-    else if (diff >= 3 && diff <= 5) buckets['3\u20135 extra']++
-    else if (diff >= 6) buckets['6+ extra']++
+    const weight = d.DEPARTURES_SCHEDULED
+    if (diff === 0) buckets['Exact match'] += weight
+    else if (diff >= -2 && diff <= -1) buckets['1\u20132 fewer'] += weight
+    else if (diff >= -5 && diff <= -3) buckets['3\u20135 fewer'] += weight
+    else if (diff >= -10 && diff <= -6) buckets['6\u201310 fewer'] += weight
+    else if (diff < -10) buckets['11+ fewer'] += weight
+    else if (diff >= 1 && diff <= 2) buckets['1\u20132 extra'] += weight
+    else if (diff >= 3 && diff <= 5) buckets['3\u20135 extra'] += weight
+    else if (diff >= 6) buckets['6+ extra'] += weight
   }
 
   return Object.entries(buckets)
-    .map(([label, count]) => ({ label, value: +((count / total) * 100).toFixed(1) }))
+    .map(([label, count]) => ({ label, value: +((count / totalDeps) * 100).toFixed(1) }))
     .filter((d) => d.value > 0)
     .sort((a, b) => b.value - a.value)
 }

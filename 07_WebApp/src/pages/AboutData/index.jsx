@@ -430,16 +430,34 @@ export default function AboutDataPage() {
 
         {/* ── Data Quality & Cleaning Insights ───────────────────────────── */}
         <section className="pb-10">
-          <h3 className="text-xl font-bold text-text-primary mb-2">Data Quality Insights</h3>
+          <h3 className="text-xl font-bold text-text-primary mb-2">Data Quality Insights — Texas&ndash;Mexico</h3>
           <p className="text-base text-text-secondary mb-5">
-            Raw BTS data contains structural patterns that may appear anomalous but are explainable.
-            Understanding these is critical for accurate analysis.
+            The Texas&ndash;Mexico air traffic dataset contains <strong>5,044 segment records</strong> and{' '}
+            <strong>3,694 market records</strong> spanning 2015&ndash;2024, covering <strong>89 carriers</strong> across{' '}
+            <strong>591 route pairs</strong>. Raw BTS data contains structural patterns that may appear
+            anomalous but are explainable. Understanding these is critical for accurate interpretation of
+            Texas&ndash;Mexico connectivity.
           </p>
+
+          {/* TX-MX at a glance */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {[
+              ['79.2M', 'Passengers (market)'],
+              ['852K', 'Departures performed'],
+              ['459M lbs', 'Freight (market)'],
+              ['21.7M lbs', 'Mail (market)'],
+            ].map(([stat, label]) => (
+              <div key={label} className="bg-white rounded-xl border border-border-light shadow-sm p-4 text-center">
+                <p className="text-2xl font-bold text-brand-blue">{stat}</p>
+                <p className="text-base text-text-secondary mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
 
           {/* Departures Performed vs Scheduled */}
           <div className="bg-white rounded-xl border border-border-light shadow-sm p-6 mb-6">
             <h4 className="text-base font-bold text-text-primary mb-4">
-              Departures Performed vs. Scheduled — The Big Picture
+              Departures Performed vs. Scheduled — Texas&ndash;Mexico Routes
             </h4>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
@@ -448,63 +466,65 @@ export default function AboutDataPage() {
                     <tr className="border-b border-border-light">
                       <th className="text-left py-2 pr-4 font-semibold text-text-primary">Category</th>
                       <th className="text-right py-2 pr-4 font-semibold text-text-primary">Records</th>
-                      <th className="text-right py-2 font-semibold text-text-primary">% of 11.4M</th>
+                      <th className="text-right py-2 font-semibold text-text-primary">%</th>
                     </tr>
                   </thead>
                   <tbody className="text-text-secondary">
                     <tr className="border-b border-border-light/50">
                       <td className="py-2 pr-4">Performed = Scheduled</td>
-                      <td className="py-2 pr-4 text-right font-mono">5,297,023</td>
-                      <td className="py-2 text-right font-mono">46.5%</td>
+                      <td className="py-2 pr-4 text-right font-mono">1,594</td>
+                      <td className="py-2 text-right font-mono">31.6%</td>
                     </tr>
                     <tr className="border-b border-border-light/50">
                       <td className="py-2 pr-4">Performed &gt; Scheduled</td>
-                      <td className="py-2 pr-4 text-right font-mono">4,236,023</td>
-                      <td className="py-2 text-right font-mono">37.1%</td>
+                      <td className="py-2 pr-4 text-right font-mono">2,548</td>
+                      <td className="py-2 text-right font-mono">50.5%</td>
                     </tr>
                     <tr>
                       <td className="py-2 pr-4">Performed &lt; Scheduled</td>
-                      <td className="py-2 pr-4 text-right font-mono">1,868,765</td>
-                      <td className="py-2 text-right font-mono">16.4%</td>
+                      <td className="py-2 pr-4 text-right font-mono">902</td>
+                      <td className="py-2 text-right font-mono">17.9%</td>
                     </tr>
                   </tbody>
                 </table>
                 <p className="text-base text-text-secondary leading-relaxed">
-                  At first glance, 37% of records showing more performed than scheduled departures looks
-                  alarming — but most of it is explainable by structural data reasons, not data errors.
+                  Half of Texas&ndash;Mexico segment records show more performed than scheduled departures.
+                  This looks alarming at first, but is almost entirely explained by three structural reasons
+                  — not data errors.
                 </p>
               </div>
 
               <div>
                 <h5 className="text-base font-bold text-text-primary mb-3">
-                  Why DEPARTURES_SCHEDULED = 0 for ~3.9M records
+                  Why DEPARTURES_SCHEDULED = 0 for 2,498 TX&ndash;MX records (49.5%)
                 </h5>
                 <ul className="space-y-3 text-base text-text-secondary">
                   <li className="flex gap-2">
                     <AlertTriangle size={16} className="text-brand-yellow flex-shrink-0 mt-0.5" />
                     <span>
-                      <strong className="text-text-primary">Foreign carriers (DATA_SOURCE = IF, DF):</strong>{' '}
-                      ~932K records. Airlines like Aeromexico, Volaris, and VivaAerobus are <em>not required</em> to
-                      report scheduled departures — they only report what they actually flew. All 15,091 IF records
-                      in TX-Mexico data have DEPARTURES_SCHEDULED&nbsp;=&nbsp;0.
+                      <strong className="text-text-primary">Foreign carriers (DATA_SOURCE = IF):</strong>{' '}
+                      790 records (15.7%). Mexican airlines like Aeromexico, Volaris, and VivaAerobus are{' '}
+                      <em>not required</em> to report scheduled departures under T-100(f) — they only report
+                      what they actually flew. All IF records on Texas&ndash;Mexico routes have
+                      DEPARTURES_SCHEDULED&nbsp;=&nbsp;0.
                     </span>
                   </li>
                   <li className="flex gap-2">
                     <AlertTriangle size={16} className="text-brand-yellow flex-shrink-0 mt-0.5" />
                     <span>
                       <strong className="text-text-primary">Non-scheduled service (CLASS = L, P):</strong>{' '}
-                      ~22,051 records in TX-Mexico. Charter and small/commuter carriers don't file schedules
-                      by definition, so scheduled&nbsp;=&nbsp;0 is correct.
+                      1,419 records (28.1%). Charter flights and non-scheduled civilian operations between
+                      Texas and Mexico don't file schedules by definition, so scheduled&nbsp;=&nbsp;0 is correct.
+                      This is a substantial share — nearly 1 in 3 TX&ndash;MX segment records are non-scheduled.
                     </span>
                   </li>
                   <li className="flex gap-2">
                     <AlertTriangle size={16} className="text-brand-yellow flex-shrink-0 mt-0.5" />
                     <span>
-                      <strong className="text-text-primary">Missing-as-zero (CLASS = F, DATA_SOURCE = DU/IU):</strong>{' '}
-                      ~14% of DU (domestic) and ~13.5% of IU (international) Class F records have
-                      DEPARTURES_PERFORMED &gt; 0 but DEPARTURES_SCHEDULED = 0.
-                      These are U.S. scheduled-service carriers that operated flights but did not report schedule data.
-                      The <code className="bg-surface-alt px-1 py-0.5 rounded text-base">SCHED_REPORTED</code> flag
+                      <strong className="text-text-primary">Missing-as-zero (U.S. scheduled carriers):</strong>{' '}
+                      289 records (5.7%). U.S. carriers on international routes (IU, Class F) that operated flights
+                      but did not report schedule data. The{' '}
+                      <code className="bg-surface-alt px-1 py-0.5 rounded text-base">SCHED_REPORTED</code> flag
                       marks these as 0 (unreported).
                     </span>
                   </li>
@@ -516,11 +536,11 @@ export default function AboutDataPage() {
           {/* True Scheduled Service */}
           <div className="bg-white rounded-xl border border-border-light shadow-sm p-6 mb-6">
             <h4 className="text-base font-bold text-text-primary mb-1">
-              For True Scheduled Service (SCHED_REPORTED=1, CLASS=F): It's Actually Quite Clean
+              Texas&ndash;Mexico Scheduled Service: Schedule Adherence Is Strong
             </h4>
             <p className="text-base text-text-secondary mb-4">
-              When we filter to rows with trustworthy schedule data (SCHED_REPORTED = 1, CLASS = F), the
-              performed-vs-scheduled match is strong.
+              Filtering to the <strong>2,441 trustworthy scheduled-service records</strong> (SCHED_REPORTED = 1,
+              CLASS = F) on Texas&ndash;Mexico routes reveals that airlines largely operate what they schedule.
             </p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <table className="w-full text-base">
@@ -533,14 +553,14 @@ export default function AboutDataPage() {
                 </thead>
                 <tbody className="text-text-secondary">
                   {[
-                    ['Exact match (0)', '4,413,915', '67.2%', true],
-                    ['1\u20132 fewer', '1,096,299', '16.7%', false],
-                    ['3\u20135 fewer', '393,858', '6.0%', false],
-                    ['1\u20132 extra', '200,479', '3.1%', false],
-                    ['6\u201310 fewer', '185,050', '2.8%', false],
-                    ['11+ fewer', '173,043', '2.6%', false],
-                    ['3\u20135 extra', '56,457', '0.9%', false],
-                    ['31+ extra', '7,230', '0.1%', false],
+                    ['Exact match (0)', '1,493', '61.2%', true],
+                    ['1\u20132 fewer', '274', '11.2%', false],
+                    ['3\u20135 fewer', '205', '8.4%', false],
+                    ['6\u201310 fewer', '191', '7.8%', false],
+                    ['11+ fewer', '231', '9.5%', false],
+                    ['1\u20132 extra', '35', '1.4%', false],
+                    ['3\u20135 extra', '6', '0.2%', false],
+                    ['6+ extra', '6', '0.2%', false],
                   ].map(([label, records, pct, highlight]) => (
                     <tr key={label} className={`border-b border-border-light/50 ${highlight ? 'bg-brand-blue/5 font-semibold' : ''}`}>
                       <td className="py-2 pr-4">{label}</td>
@@ -555,24 +575,120 @@ export default function AboutDataPage() {
                 <div className="flex gap-3 items-start">
                   <CheckCircle2 size={18} className="text-brand-green flex-shrink-0 mt-0.5" />
                   <p className="text-base text-text-secondary leading-relaxed">
-                    <strong className="text-text-primary">67.2%</strong> of true scheduled service records
-                    are an exact match between performed and scheduled departures.
+                    <strong className="text-text-primary">61.2%</strong> of Texas&ndash;Mexico scheduled-service
+                    records are an exact match between performed and scheduled departures.
                   </p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <ArrowDownRight size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
                   <p className="text-base text-text-secondary leading-relaxed">
-                    <strong className="text-text-primary">Performed &lt; Scheduled (28.4%)</strong> represents
+                    <strong className="text-text-primary">Performed &lt; Scheduled (36.9%)</strong> represents
                     normal flight cancellations — airlines scheduled flights but didn't operate all of them.
+                    The higher cancellation rate compared to all BTS data reflects the volatility of
+                    cross-border international routes.
                   </p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <ArrowRight size={18} className="text-brand-green flex-shrink-0 mt-0.5" />
                   <p className="text-base text-text-secondary leading-relaxed">
-                    <strong className="text-text-primary">Performed &gt; Scheduled (4.7%)</strong> indicates
-                    extra-section flights, schedule changes mid-month, or charter additions to scheduled routes.
+                    <strong className="text-text-primary">Performed &gt; Scheduled (1.9%)</strong> indicates
+                    extra-section flights or schedule changes mid-month — a very small share on
+                    Texas&ndash;Mexico routes.
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* TX-MX Service Mix */}
+          <div className="bg-white rounded-xl border border-border-light shadow-sm p-6 mb-6">
+            <h4 className="text-base font-bold text-text-primary mb-3">
+              Texas&ndash;Mexico Service Mix
+            </h4>
+            <p className="text-base text-text-secondary leading-relaxed mb-4">
+              Texas&ndash;Mexico air traffic is not just scheduled airlines. The route mix includes a
+              significant share of charter and non-scheduled operations, plus dedicated cargo carriers.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-4">
+              {/* By service class */}
+              <div>
+                <h5 className="text-base font-semibold text-text-primary mb-3">By Service Class</h5>
+                <table className="w-full text-base">
+                  <thead>
+                    <tr className="border-b border-border-light">
+                      <th className="text-left py-2 pr-4 font-semibold text-text-primary">Class</th>
+                      <th className="text-right py-2 pr-4 font-semibold text-text-primary">Records</th>
+                      <th className="text-right py-2 font-semibold text-text-primary">%</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-text-secondary">
+                    <tr className="border-b border-border-light/50">
+                      <td className="py-2 pr-4">F &mdash; Scheduled</td>
+                      <td className="py-2 pr-4 text-right font-mono">3,305</td>
+                      <td className="py-2 text-right font-mono">65.5%</td>
+                    </tr>
+                    <tr className="border-b border-border-light/50">
+                      <td className="py-2 pr-4">P &mdash; Non-scheduled</td>
+                      <td className="py-2 pr-4 text-right font-mono">1,083</td>
+                      <td className="py-2 text-right font-mono">21.5%</td>
+                    </tr>
+                    <tr className="border-b border-border-light/50">
+                      <td className="py-2 pr-4">L &mdash; Charter</td>
+                      <td className="py-2 pr-4 text-right font-mono">473</td>
+                      <td className="py-2 text-right font-mono">9.4%</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 pr-4">G &mdash; Cargo-only</td>
+                      <td className="py-2 pr-4 text-right font-mono">183</td>
+                      <td className="py-2 text-right font-mono">3.6%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* By carrier nationality */}
+              <div>
+                <h5 className="text-base font-semibold text-text-primary mb-3">By Carrier Nationality</h5>
+                <table className="w-full text-base">
+                  <thead>
+                    <tr className="border-b border-border-light">
+                      <th className="text-left py-2 pr-4 font-semibold text-text-primary">Data Source</th>
+                      <th className="text-right py-2 pr-4 font-semibold text-text-primary">Records</th>
+                      <th className="text-right py-2 font-semibold text-text-primary">%</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-text-secondary">
+                    <tr className="border-b border-border-light/50">
+                      <td className="py-2 pr-4">IU &mdash; U.S. carriers</td>
+                      <td className="py-2 pr-4 text-right font-mono">4,254</td>
+                      <td className="py-2 text-right font-mono">84.3%</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 pr-4">IF &mdash; Mexican carriers</td>
+                      <td className="py-2 pr-4 text-right font-mono">790</td>
+                      <td className="py-2 text-right font-mono">15.7%</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="text-base text-text-secondary mt-3 leading-relaxed">
+                  U.S. carriers dominate the record count, but Mexican carriers
+                  (Aeromexico, Volaris, VivaAerobus) are significant players on these routes.
+                  Foreign carriers report under T-100(f) with limited field coverage.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-5">
+              <div className="flex gap-3">
+                <Info size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
+                <p className="text-base text-text-secondary leading-relaxed">
+                  <strong className="text-text-primary">Why this matters:</strong> Over a third of
+                  Texas&ndash;Mexico segment records are non-scheduled (charter + non-scheduled = 30.9%) or
+                  from foreign carriers (15.7%). These records have structural zeros in schedule fields — not
+                  missing data. The dashboard's schedule adherence and service class charts account for this
+                  by filtering to trustworthy subsets.
+                </p>
               </div>
             </div>
           </div>
@@ -580,87 +696,27 @@ export default function AboutDataPage() {
           {/* Repositioning & Empty Flights */}
           <div className="bg-white rounded-xl border border-border-light shadow-sm p-6 mb-6">
             <h4 className="text-base font-bold text-text-primary mb-3">
-              Repositioning &amp; Empty Flights
+              Texas&ndash;Mexico Repositioning &amp; Empty Flights
             </h4>
             <p className="text-base text-text-secondary leading-relaxed mb-4">
-              The cleaning pipeline filters out <strong>all-zero activity rows</strong> &mdash; records where
-              passengers, freight, and mail are all zero. However, a significant subset of these rows in the
-              segment data represent <strong>real flights that were operated but carried no commercial
-              traffic</strong>. These are primarily aircraft repositioning (ferry flights), empty cargo
-              returns, and charter deadhead legs.
+              The cleaning pipeline filters out <strong>all-zero activity rows</strong> — records where
+              passengers, freight, and mail are all zero. On Texas&ndash;Mexico routes, a notable subset
+              of these represent <strong>real flights that were operated but carried no commercial
+              traffic</strong>: aircraft repositioning (ferry flights), empty cargo returns, and
+              charter deadhead legs.
             </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              <div className="bg-surface-alt rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-brand-blue">14,221</p>
-                <p className="text-base text-text-secondary mt-1">Operated empty flight records</p>
-              </div>
-              <div className="bg-surface-alt rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-brand-blue">28,487</p>
-                <p className="text-base text-text-secondary mt-1">Departures performed</p>
-              </div>
-              <div className="bg-surface-alt rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-brand-blue">1.3B lbs</p>
-                <p className="text-base text-text-secondary mt-1">Payload capacity</p>
-              </div>
-            </div>
-
-            <p className="text-base text-text-secondary leading-relaxed mb-3">
-              These rows are excluded from the dashboard because they do not represent actual connectivity
-              (no passengers or goods moved). The breakdown by service class:
-            </p>
-
-            <div className="overflow-x-auto mb-4">
-              <table className="w-full text-base">
-                <thead>
-                  <tr className="border-b border-border-light">
-                    <th className="text-left py-2 pr-4 font-semibold text-text-primary">Class</th>
-                    <th className="text-right py-2 pr-4 font-semibold text-text-primary">Records</th>
-                    <th className="text-right py-2 pr-4 font-semibold text-text-primary">Departures</th>
-                    <th className="text-right py-2 font-semibold text-text-primary">Payload (lbs)</th>
-                  </tr>
-                </thead>
-                <tbody className="text-text-secondary">
-                  <tr className="border-b border-border-light/50">
-                    <td className="py-2 pr-4">L &mdash; Charter</td>
-                    <td className="py-2 pr-4 text-right font-mono">7,768</td>
-                    <td className="py-2 pr-4 text-right font-mono">15,093</td>
-                    <td className="py-2 text-right font-mono">658.5M</td>
-                  </tr>
-                  <tr className="border-b border-border-light/50">
-                    <td className="py-2 pr-4">P &mdash; Non-scheduled</td>
-                    <td className="py-2 pr-4 text-right font-mono">4,293</td>
-                    <td className="py-2 pr-4 text-right font-mono">9,427</td>
-                    <td className="py-2 text-right font-mono">521.5M</td>
-                  </tr>
-                  <tr className="border-b border-border-light/50">
-                    <td className="py-2 pr-4">F &mdash; Scheduled</td>
-                    <td className="py-2 pr-4 text-right font-mono">2,065</td>
-                    <td className="py-2 pr-4 text-right font-mono">3,594</td>
-                    <td className="py-2 text-right font-mono">59.0M</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 pr-4">G &mdash; All-cargo</td>
-                    <td className="py-2 pr-4 text-right font-mono">95</td>
-                    <td className="py-2 pr-4 text-right font-mono">373</td>
-                    <td className="py-2 text-right font-mono">58.4M</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
 
             <div className="bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-5">
               <div className="flex gap-3">
                 <Info size={18} className="text-brand-blue flex-shrink-0 mt-0.5" />
                 <div className="text-base text-text-secondary leading-relaxed">
-                  <strong className="text-text-primary">Cross-border context:</strong> In addition to the
-                  flights carrying cargo between Texas and Mexico shown in this dashboard,{' '}
-                  <strong>1,748 repositioning and empty cargo flights</strong> were operated on TX&ndash;Mexico
-                  routes (2015&ndash;2024), representing <strong>741 route-carrier-year records</strong>.
-                  Major operators include Turkish Airlines (NLU/MEX&rarr;IAH cargo returns), USA Jet Airlines
-                  (BJX&rarr;LRD), and Kalitta Charters (ELP&rarr;CUU). These flights highlight existing
-                  cross-border air cargo infrastructure that operates even on return legs with no commercial
-                  load.
+                  <strong className="text-text-primary">Cross-border repositioning:</strong> Beyond the
+                  traffic shown in this dashboard, <strong>1,748 repositioning and empty cargo flights</strong>{' '}
+                  were operated on Texas&ndash;Mexico routes (2015&ndash;2024), representing{' '}
+                  <strong>741 route-carrier-year records</strong>. Major operators include Turkish Airlines
+                  (NLU/MEX&rarr;IAH cargo returns), USA Jet Airlines (BJX&rarr;LRD), and Kalitta Charters
+                  (ELP&rarr;CUU). These flights highlight existing cross-border air cargo infrastructure
+                  that operates even on return legs with no commercial load.
                 </div>
               </div>
             </div>

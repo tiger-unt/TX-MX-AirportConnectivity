@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Users, PieChart, MapPin, Route, Package } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isUsToMx, isMxToUs, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
@@ -19,7 +19,7 @@ import AirportMap from '@/components/maps/AirportMap'
 const isUsMx = (d) => isUsToMx(d) || isMxToUs(d)
 
 /* ── COVID annotation for trend charts ─────────────────────────────── */
-const COVID_ANNOTATION = [{ x: 2020, x2: 2021, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
+const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
 /* ── cascading-filter config (stable refs, defined once) ───────────── */
 const buildApplicators = (f) => ({
@@ -53,6 +53,13 @@ export default function USMexicoPage() {
   const [selectedAirport, setSelectedAirport] = useState(null)
   const [mapMetric, setMapMetric] = useState('PASSENGERS')
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
+
+  // Reset stale direction filter carried from other pages
+  useEffect(() => {
+    if (filters.direction && filters.direction !== 'US_TO_MX' && filters.direction !== 'MX_TO_US') {
+      setFilter('direction', '')
+    }
+  }, [filters.direction, setFilter])
 
   /* ── base dataset ──────────────────────────────────────────────────── */
   const baseMarket = useMemo(() => {
@@ -514,17 +521,17 @@ export default function USMexicoPage() {
             highlight variant="primary" icon={Users} delay={0}
           />
           <StatCard
-            label="Texas Share"
+            label={`Texas Share (${latestYear || '\u2014'})`}
             value={stats?.txShare || '\u2014'}
             highlight icon={PieChart} delay={100}
           />
           <StatCard
-            label="U.S. States Serving Mexico"
+            label={`U.S. States Serving Mexico (${latestYear || '\u2014'})`}
             value={stats ? String(stats.usStates) : '\u2014'}
             highlight icon={MapPin} delay={200}
           />
           <StatCard
-            label="Top U.S.–Mexico Route"
+            label={`Top U.S.–Mexico Route (${latestYear || '\u2014'})`}
             value={stats?.topRoute || '\u2014'}
             title={stats?.topRouteFull ? `${stats.topRouteFull} was the top U.S.\u2013Mexico route in ${stats.latestYear}` : undefined}
             highlight icon={Route} delay={300}
@@ -629,12 +636,12 @@ export default function USMexicoPage() {
       <SectionBlock>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-5">
           <StatCard
-            label="TX Passenger Rank"
+            label={`TX Passenger Rank (${latestYear || '\u2014'})`}
             value={`#${txRankStats.paxRank} (${txRankStats.paxPct}%)`}
             highlight variant="primary" icon={Users}
           />
           <StatCard
-            label="TX Cargo Rank"
+            label={`TX Cargo Rank (${latestYear || '\u2014'})`}
             value={`#${txRankStats.cargoRank} (${txRankStats.cargoPct}%)`}
             highlight icon={Package}
           />
@@ -672,7 +679,7 @@ export default function USMexicoPage() {
       <SectionBlock alt>
         <ChartCard
           title="Schedule Adherence"
-          subtitle="Performed vs scheduled departures (Class F, scheduled service)"
+          subtitle="Departure-weighted: performed vs scheduled (Class F, scheduled service)"
           downloadData={{ summary: { data: adherenceData, filename: 'us-mx-schedule-adherence' } }}
         >
           <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />

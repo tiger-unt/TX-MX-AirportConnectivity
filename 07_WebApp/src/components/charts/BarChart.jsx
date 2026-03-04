@@ -86,6 +86,7 @@ export default function BarChart({
 }) {
   const containerRef = useRef(null)
   const svgRef = useRef(null)
+  const tooltipRef = useRef(null)
   const { width, height: containerHeight, isFullscreen } = useChartResize(containerRef)
 
   useEffect(() => {
@@ -98,7 +99,7 @@ export default function BarChart({
     const displayData = data.slice(0, maxBars)
     const maxLabelLen = d3.max(displayData, (d) => (d[xKey] || '').length) || 0
     const dynamicLeft = horizontal
-      ? Math.min(width * 0.4, Math.max(160, maxLabelLen * charW + 20))
+      ? Math.min(width * 0.5, Math.max(160, maxLabelLen * charW + 20))
       : 16
     // Estimate if vertical labels need rotation (before scale is built)
     const approxBandwidth = horizontal ? 0 : (width - 32) / displayData.length * 0.7
@@ -194,19 +195,35 @@ export default function BarChart({
         .attr('stroke', '#9ca3af')
       // Fit labels: shrink font or truncate only if needed
       const labelSpace = dynamicLeft - 20 // available px for label text
+      const tooltip = tooltipRef.current
       yAxisH.selectAll('.tick text')
         .attr('fill', 'var(--color-text-secondary)')
         .attr('dx', '-0.4em')
         .each(function () {
-          const text = d3.select(this).text()
-          const fits = text.length * charW <= labelSpace
-          if (fits) {
-            d3.select(this).attr('font-size', `${FS}px`)
-          } else {
-            d3.select(this).attr('font-size', `${FS}px`)
+          const fullText = d3.select(this).text()
+          const fits = fullText.length * charW <= labelSpace
+          d3.select(this).attr('font-size', `${FS}px`)
+          if (!fits) {
             const maxChars = Math.floor(labelSpace / charW)
-            d3.select(this).text(text.slice(0, maxChars - 1) + '…')
+            d3.select(this).text(fullText.slice(0, maxChars - 1) + '…')
           }
+          // Show HTML tooltip on hover with full label text
+          d3.select(this)
+            .style('cursor', !fits ? 'pointer' : null)
+            .on('mouseover', function (event) {
+              if (!tooltip) return
+              tooltip.textContent = fullText
+              tooltip.style.opacity = '1'
+              const containerRect = containerRef.current.getBoundingClientRect()
+              const tickRect = this.getBoundingClientRect()
+              tooltip.style.left = `${tickRect.right - containerRect.left + 8}px`
+              tooltip.style.top = `${tickRect.top - containerRect.top + tickRect.height / 2}px`
+              tooltip.style.transform = 'translateY(-50%)'
+            })
+            .on('mouseout', function () {
+              if (!tooltip) return
+              tooltip.style.opacity = '0'
+            })
         })
 
     } else {
@@ -271,6 +288,7 @@ export default function BarChart({
       const longestLabel = d3.max(displayData, (d) => (d[xKey] || '').length) || 0
       const needsRotation = longestLabel * charW > x.bandwidth()
 
+      const tooltipV = tooltipRef.current
       xAxisV.selectAll('.tick text')
         .attr('font-size', `${FS}px`)
         .attr('fill', 'var(--color-text-secondary)')
@@ -279,8 +297,26 @@ export default function BarChart({
         .attr('transform', needsRotation ? 'rotate(-35)' : null)
         .attr('text-anchor', needsRotation ? 'end' : 'middle')
         .each(function () {
-          const text = d3.select(this).text()
-          if (text.length > 20) d3.select(this).text(text.slice(0, 18) + '…')
+          const fullText = d3.select(this).text()
+          const truncated = fullText.length > 20
+          if (truncated) d3.select(this).text(fullText.slice(0, 18) + '…')
+          // Show HTML tooltip on hover with full label text
+          d3.select(this)
+            .style('cursor', truncated ? 'pointer' : null)
+            .on('mouseover', function () {
+              if (!tooltipV) return
+              tooltipV.textContent = fullText
+              tooltipV.style.opacity = '1'
+              const containerRect = containerRef.current.getBoundingClientRect()
+              const tickRect = this.getBoundingClientRect()
+              tooltipV.style.left = `${tickRect.left - containerRect.left + tickRect.width / 2}px`
+              tooltipV.style.top = `${tickRect.top - containerRect.top - 8}px`
+              tooltipV.style.transform = 'translate(-50%, -100%)'
+            })
+            .on('mouseout', function () {
+              if (!tooltipV) return
+              tooltipV.style.opacity = '0'
+            })
         })
     }
 
@@ -292,8 +328,27 @@ export default function BarChart({
   const minH = horizontal ? Math.max(220, displayCount * 32 + 32) : undefined
 
   return (
-    <div ref={containerRef} className="w-full" style={{ minHeight: minH }}>
+    <div ref={containerRef} className="w-full relative" style={{ minHeight: minH }}>
       <svg ref={svgRef} className="w-full" />
+      <div
+        ref={tooltipRef}
+        style={{
+          position: 'absolute',
+          pointerEvents: 'none',
+          opacity: 0,
+          transition: 'opacity 0.15s',
+          background: '#1f2937',
+          color: '#fff',
+          padding: '6px 10px',
+          borderRadius: '6px',
+          fontSize: '14px',
+          lineHeight: '1.3',
+          maxWidth: '320px',
+          whiteSpace: 'normal',
+          zIndex: 50,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+        }}
+      />
     </div>
   )
 }

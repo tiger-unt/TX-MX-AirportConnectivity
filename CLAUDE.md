@@ -107,16 +107,24 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 | `/texas-domestic` | Texas Domestic | TX origin → US destination |
 | `/texas-international` | Texas International | TX origin → non-US destination |
 | `/us-mexico` | US-Mexico | Any US ↔ Mexico (national). Includes seat capacity & load factor analysis |
-| `/texas-mexico` | Texas-Mexico | TX ↔ Mexico (bidirectional). Includes service class breakdown, aircraft mix, freight intensity |
+| `/texas-mexico` | Texas-Mexico | TX ↔ Mexico (bidirectional). Tabbed sub-navigation with 5 chapters (see below) |
 | `/about-data` | About Data | Static: pipeline docs, glossary, quality insights, "When to Use Which" table |
 
 ### Component Architecture
 ```
 src/
 ├── pages/              # Route-level views (each applies a data predicate)
+│   └── TexasMexico/
+│       ├── index.jsx   # Parent orchestrator (data hooks, filters, tab state)
+│       └── tabs/       # Tab sub-components (receive data as props)
+│           ├── OverviewTab.jsx          # Map + 4 trend charts
+│           ├── PassengersRoutesTab.jsx  # Routes, airports, carriers, states, table
+│           ├── OperationsCapacityTab.jsx # Seats, departures, load factor, service class, aircraft
+│           ├── CargoTradeTab.jsx        # Freight/mail trends, imbalance, intensity, scatter
+│           └── BorderAirportsTab.jsx    # Border intro, donut charts, scatter, heatmap
 ├── components/
 │   ├── layout/         # SiteHeader, MainNav, DashboardLayout, PageWrapper, Footer, UtilityBar
-│   ├── ui/             # StatCard, ChartCard, DataTable, FullscreenChart, DownloadButton, PageHeader, SectionBlock, ErrorBoundary, MapPlaceholder
+│   ├── ui/             # StatCard, ChartCard, DataTable, FullscreenChart, DownloadButton, PageHeader, SectionBlock, TabBar, ErrorBoundary, MapPlaceholder
 │   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot
 │   ├── maps/           # AirportMap (Leaflet markers + great-circle route arcs)
 │   ├── filters/        # FilterSidebar, FilterBar, FilterSelect, FilterMultiSelect, ActiveFilterTags
@@ -146,6 +154,7 @@ src/
 - **DataTable sizing**: Tables must NOT be full-width. Use `w-fit max-w-full mx-auto` on the root container so columns size to their content and the table is centered. Do NOT add `w-full` to the DataTable root or the `<table>` element. **Exception**: when any column has `wrap: true`, `w-fit` is dropped so the table fills its container and text can reflow naturally.
 - **DataTable column wrapping**: Columns accept `wrap: true` and optional `minWidth` (default 80px). Long-text columns (airport names, carrier names) should use `wrap: true` to allow multi-line text and avoid horizontal scrolling. Wrap cells use `overflow-wrap: anywhere` so the browser can break mid-word when needed to fit the container. Numeric and short columns keep `whitespace-nowrap`. When wrapping columns are present, the table uses `w-full` (auto layout) instead of fixed-layout column stabilization, and the table fills its container width.
 - **Paginated table column stability**: For multi-page tables without wrapping columns, measure the maximum column width needed across ALL pages, then apply that width to every page. This prevents the table from shifting/resizing when the user clicks next/previous.
+- **StatCard latest-year labeling**: When a StatCard displays a metric that is specific to a single year (e.g., passengers, flights, destinations served, top destination), its label should include `(${latestYear})` to indicate the year. This uses the latest year available in the (filtered) dataset, computed dynamically. Only omit the year suffix for metrics that are inherently time-independent.
 
 ### Chart Value Formatting (IMPORTANT)
 All chart components accept a `formatValue` prop that controls how numeric values are displayed in **both** tooltips and axis labels. The page passing data to a chart is responsible for choosing the correct formatter based on the metric being displayed.
@@ -170,6 +179,8 @@ All chart components accept a `formatValue` prop that controls how numeric value
 - **Route predicates**: `isTxDomestic()`, `isTxIntl()`, `isTxMx()`, `isUsMx()` etc. in `aviationHelpers.js`
 - **Single-select vs multi-select filters**: Filters with only 2 options (e.g., Direction, Carrier Type) use `FilterSelect` (single-select radio-style). Filters with many possible values use `FilterMultiSelect` (checkbox-style, multiple selections). **Rule of thumb**: if a filter has only 2 mutually exclusive options, always use `FilterSelect`; if it has 3+ options where multiple selections make sense, use `FilterMultiSelect`. Filter state in `aviationStore`: string (`''` = all) for single-select; arrays (`[]` = all) for multi-select. Filtering logic: `filters.key === 'VALUE'` for strings; `filters.key.length` guard + `.includes()` for arrays. Active tags: single-select generates one tag with `onRemove → setFilter(key, '')`; multi-select generates one tag per value with individual removal.
 - **Cascading/interdependent filters**: Filter dropdown options are interdependent via `useCascadingFilters` hook (`lib/useCascadingFilters.js`). For each filter key, a "pool" is computed by applying all OTHER active filters except that key — so dropdown options only show contextually valid values (e.g. selecting Year=2023 narrows carrier/airport options to 2023 data; selecting Dest State=Florida narrows dest airports to Florida airports). Each page defines a module-level `buildApplicators(filters)` function (maps filter keys to single-filter applicators) and an `EXTRACTORS` object (maps filter keys to row→value extractors for auto-pruning). The hook also auto-prunes stale selected values via `useEffect` + batch `setFilters()` store method. The `filtered`/`filteredSegment` memos (applying ALL filters for charts/stats) remain unchanged.
+- **Direction filter sanitization**: The `direction` filter is a global string in the store, but each page uses different direction values (e.g. `TX_TO_US` vs `TX_TO_MX`). Each page includes a `useEffect` that resets `direction` to `''` if the current value doesn't match that page's valid options, preventing stale/misleading direction filters when navigating between pages.
+- **Counterpart-state logic**: On the Texas Domestic page, bidirectional state rankings use "counterpart state" logic: for TX→US rows the dest state is used, for US→TX rows the origin state is used. This avoids double-counting Texas when both directions are active.
 - **Memoization**: Heavy use of `useMemo()` for filtered data and aggregations
 - **TxDOT brand colors**: Primary #0056a9, defined in `chartColors.js` and `globals.css`
 - **Fonts**: IBM Plex Sans (primary), IBM Plex Sans Condensed, IBM Plex Mono
@@ -177,11 +188,22 @@ All chart components accept a `formatValue` prop that controls how numeric value
 - **BORDER_AIRPORTS constant**: `aviationHelpers.js` exports `BORDER_AIRPORTS` (Set) and `BORDER_AIRPORT_LIST` (array of `{code, city}`) — the six Texas border airports, defined as airports located within a TxDOT border district: ELP (El Paso), LRD (Laredo), MFE (McAllen), HRL (Harlingen), BRO (Brownsville), DRT (Del Rio). Used on the Overview page (sidebar card + map highlighting), and the Texas-Mexico page (intro section with mini-map, border vs non-border analysis, O-D route matrix). AirportMap accepts a `highlightAirports` prop (Set of IATA codes) to render those markers with a thick white halo stroke.
 - **DivergingBarChart**: Bilateral horizontal bar chart (left/right from center axis). Props: `data`, `labelKey`, `leftKey`, `rightKey`, `leftLabel`, `rightLabel`, `leftColor`, `rightColor`, `formatValue`, `maxBars`, `animate`. Used for freight import/export imbalance.
 - **HeatmapTable**: Color-intensity HTML grid table. Props: `data` (with `rowLabels`, `colLabels`, `cells` 2D array), `formatValue`. Cell background alpha scales with value. Used for border airport O-D route matrices.
-- **ScatterPlot**: Scatter/bubble chart with two numeric axes. Props: `data`, `xKey`, `yKey`, `labelKey`, `colorKey`, `sizeKey`, `formatX`, `formatY`, `colorMap`, `labelThreshold`, `scaleType` (`'symlog'`/`'linear'`/`'log'`), `animate`. Supports `d3.scaleSymlog()` for data with extreme skew and zero values. Optional bubble sizing via `scaleSqrt`. Permanent labels on top-N points, tooltip on hover for all. Used on Texas-Mexico page for Passengers vs Freight airport activity.
+- **ScatterPlot**: Scatter/bubble chart with two numeric axes. Props: `data`, `xKey`, `yKey`, `labelKey`, `colorKey`, `sizeKey`, `formatX`, `formatY`, `colorMap`, `labelThreshold`, `scaleType` (`'symlog'`/`'linear'`/`'log'`), `animate`. Supports `d3.scaleSymlog()` for data with extreme skew and zero values. Optional bubble sizing via `scaleSqrt`. Permanent labels on top-N points, tooltip on hover for all. Used on Texas-Mexico Cargo & Trade tab for Passengers vs Freight airport activity (uniform dot size — no `sizeKey` — to avoid mixing incompatible units).
 - **Map metric selector**: Each page's AirportMap has a `<select>` dropdown (via ChartCard `headerRight`) letting users switch between Passengers, Freight (lbs), Mail (lbs), and Flights. Configuration is centralized in `MAP_METRIC_OPTIONS` (aviationHelpers.js). Each option specifies the CSV field, data source (market/segment), formatter, and unit label. The map metric is page-local state (`useState`), not global store state, since it only affects map visualization. `aggregateRoutes(data, airportIndex, field)` and `aggregateAirportVolumes(data, field)` accept an optional field parameter (default `'PASSENGERS'`). AirportMap accepts `formatValue` and `metricLabel` props for popup formatting.
 - **AIRCRAFT_GROUP_LABELS constant**: `aviationHelpers.js` exports `AIRCRAFT_GROUP_LABELS` mapping BTS aircraft group codes (0–8) to readable names. Used on the Texas-Mexico page for Aircraft Mix donut chart and trend line. The segment CSV includes `AIRCRAFT_GROUP` as a dimension column (added to `SEGMENT_EXTRA_GROUP_BY` in Extract_BTS_Data.py).
 - **Service class analysis**: Texas-Mexico page includes a Service Class Breakdown section showing flight share by CLASS (F/G/L/P) as a donut chart and multi-series trend line. Uses `CLASS_LABELS` for readable names.
 - **Freight intensity**: Texas-Mexico page includes a "Freight Intensity by Route" bar chart showing average freight per departure (lbs/flight) from segment data. Only routes with ≥10 departures are included to avoid statistical noise.
+- **TabBar component**: Reusable horizontal tab navigation (`components/ui/TabBar.jsx`). Props: `tabs` (array of `{key, label, icon?}`), `activeTab`, `onChange`. Active tab styled with `bg-brand-blue text-white`; mobile-friendly with horizontal scroll via `scrollbar-hide` utility. Uses `role="tablist"` and `aria-selected` for accessibility.
+- **Texas-Mexico tabbed sub-navigation**: The Texas-Mexico page uses `TabBar` to split 25+ visualizations into 5 narrative chapters. KPI stat cards stay above the tab bar (always visible). All `useMemo` data hooks remain in the parent `index.jsx`; tab components receive data as props. Tab state is local (`useState`), not in URL or store. On tab switch, the page scrolls to the tab bar position. Each tab begins with a narrative intro paragraph providing context.
+
+### Texas-Mexico Tab Structure
+| Tab | Key | Content |
+|---|---|---|
+| Overview | `overview` | Route map (metric selector) + 4 bidirectional trend charts (passengers, flights, freight, mail) |
+| Passengers & Routes | `passengers` | Top 10 routes, TX/MX airport rankings, Mexico states, carrier market share, route details table |
+| Operations & Capacity | `operations` | Seat capacity, scheduled vs performed departures, schedule adherence, load factor (trend + top/bottom), service class breakdown, aircraft mix |
+| Cargo & Trade | `cargo` | Freight/mail trends, freight imbalance by airport (diverging bar), freight intensity by route, passengers-vs-freight scatter |
+| Border Airports | `border` | Border airport intro (mini-map + buttons), border vs non-border share (donut), O-D route matrix (heatmap) |
 
 ### Running the WebApp
 ```bash

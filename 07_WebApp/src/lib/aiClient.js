@@ -1,8 +1,8 @@
-import { useTradeStore } from '@/stores/tradeStore'
-import { formatCurrency } from '@/lib/chartColors'
+import { useAviationStore } from '@/stores/aviationStore'
+import { fmtCompact, fmtLbs, isTxMx, isUsToMx, isMxToUs, isTxDomestic, isTxIntl, BORDER_AIRPORTS } from '@/lib/aviationHelpers'
 
 /**
- * Mock AI responder — computes real answers from dashboard data.
+ * Mock AI responder — computes real answers from BTS aviation data.
  * When a real backend is ready, replace the body of this function with
  * a fetch('/api/chat', ...) call. The signature stays the same.
  */
@@ -17,67 +17,67 @@ export async function sendChatMessage(question, pageContext, history, onChunk) {
 export function getFollowUpSuggestions(question) {
   const q = question.toLowerCase()
 
-  if (/\btotal\b/.test(q) && /\btrade\b/.test(q)) {
+  if (matchesAny(q, ['total passenger', 'how many passenger', 'passenger count'])) {
     return [
       'How has this changed over time?',
-      'What are the top states by trade?',
-      'Break this down by transportation mode',
+      'Which airports have the most passengers?',
+      'What are the top routes?',
     ]
   }
-  if (matchesAny(q, ['top state', 'which state', 'biggest state', 'most trade'])) {
+  if (matchesAny(q, ['top route', 'busiest route', 'most popular route'])) {
     return [
-      'Tell me more about Texas trade',
-      'What are the top commodities?',
-      'How has state trade changed over time?',
+      'Which airlines fly these routes?',
+      'How much freight moves on these routes?',
+      'How have the top routes changed over time?',
     ]
   }
-  if (matchesAny(q, ['commodit', 'product'])) {
+  if (matchesAny(q, ['airport', 'busiest airport'])) {
     return [
-      'Which commodities go by truck?',
-      'What was the total trade in 2024?',
-      'Show me the top border ports',
+      'What are the top routes from this airport?',
+      'How many airlines serve this airport?',
+      'How has passenger traffic changed over time?',
     ]
   }
-  if (matchesAny(q, ['port', 'border', 'laredo', 'el paso', 'pharr'])) {
+  if (matchesAny(q, ['freight', 'cargo', 'mail'])) {
     return [
-      'How has Laredo trade changed over time?',
-      'What about El Paso?',
-      'What are the top commodities at this port?',
+      'Which airports handle the most freight?',
+      'How has freight volume changed over time?',
+      'What is the freight vs passenger comparison?',
     ]
   }
-  if (matchesAny(q, ['truck', 'rail', 'vessel', 'air', 'mode', 'transport'])) {
+  if (matchesAny(q, ['airline', 'carrier'])) {
     return [
-      'What are the top commodities by truck?',
-      'How has mode share changed over time?',
-      'Which border ports handle the most rail trade?',
+      'Which routes does this airline serve?',
+      'What is the carrier market share?',
+      'How many passengers do the top carriers fly?',
     ]
   }
-  if (matchesAny(q, ['trend', 'over time', 'growth', 'change'])) {
+  if (matchesAny(q, ['border', 'el paso', 'laredo', 'mcallen', 'harlingen', 'brownsville'])) {
     return [
-      'What was the total trade in 2024?',
-      'Which state had the biggest growth?',
-      'Show the export vs import balance',
+      'How do border airports compare to non-border?',
+      'What are the top Mexico destinations from border airports?',
+      'How has border airport traffic changed over time?',
     ]
   }
-  if (matchesAny(q, ['export', 'import', 'balance', 'deficit', 'surplus'])) {
+  if (matchesAny(q, ['trend', 'over time', 'growth', 'change', 'covid'])) {
     return [
-      'How has the balance changed over time?',
-      'Which states export the most?',
-      'What are the top export commodities?',
+      'What was the passenger count in the latest year?',
+      'Which routes grew the most?',
+      'How did COVID affect air travel?',
     ]
   }
-  if (matchesAny(q, ['texas', 'tx'])) {
+  if (matchesAny(q, ['mexico', 'international'])) {
     return [
-      'Which border ports are in Texas?',
-      'What does Texas export the most?',
-      'How has Texas trade changed over time?',
+      'Which Texas airports fly to Mexico?',
+      'What are the top Mexico destinations?',
+      'How much freight goes to Mexico?',
     ]
   }
 
   return [
-    'What was the total U.S.–Mexico trade in 2024?',
-    'Which state trades the most with Mexico?',
-    'Show me the top border ports',
+    'How many passengers flew Texas–Mexico routes?',
+    'What are the busiest airports?',
+    'Which airlines have the most flights?',
   ]
 }
 
@@ -97,85 +97,101 @@ async function streamText(text, onChunk, delayMs = 12) {
 // ---------------------------------------------------------------------------
 
 function generateMockAnswer(question, pageContext) {
-  const store = useTradeStore.getState()
+  const store = useAviationStore.getState()
   const q = question.toLowerCase()
 
-  // Pick the right dataset based on question keywords + current page
-  const data = pickDataset(q, pageContext, store)
-  if (!data || data.length === 0) {
+  if (store.loading || !store.marketData) {
     return "I don't have enough data loaded yet to answer that question. Please wait for the dashboard to finish loading and try again."
   }
 
-  // Merge active page filters with any year/filters mentioned in the question
-  const questionFilters = extractFiltersFromQuestion(q)
-  const mergedFilters = { ...pageContext.activeFilters }
-  for (const [key, val] of Object.entries(questionFilters)) {
-    if (val) mergedFilters[key] = val
+  // Pick the right dataset scoped to the current page
+  const { market, segment } = pickDataset(pageContext, store)
+  if (!market || market.length === 0) {
+    return "No data is available for the current view. Try adjusting your filters or navigating to a different page."
   }
-  const filtered = applyFilters(data, mergedFilters)
 
-  // Build a context object with merged filters for answer functions
+  // Merge active page filters with any year mentioned in the question
+  const questionFilters = extractFiltersFromQuestion(q)
+  const mergedFilters = { ...pageContext.activeFilters, ...questionFilters }
+  const filtered = applyFilters(market, mergedFilters)
+  const filteredSeg = segment ? applyFilters(segment, mergedFilters) : []
+
   const ctx = { ...pageContext, activeFilters: mergedFilters }
 
   // Route to the appropriate answer generator
-  if (matchesAny(q, ['total trade', 'total value', 'how much trade', 'overall trade', 'grand total']) ||
-      (/\btotal\b/.test(q) && /\btrade\b/.test(q))) {
-    return answerTotalTrade(filtered, ctx)
+  if (matchesAny(q, ['total passenger', 'how many passenger', 'passenger count', 'passenger traffic']) ||
+      (/\btotal\b/.test(q) && /\bpassenger\b/.test(q))) {
+    return answerTotalPassengers(filtered, ctx)
   }
-  if (matchesAny(q, ['top state', 'which state', 'biggest state', 'leading state']) ||
-      (/\bmost\b/.test(q) && /\btrade\b/.test(q) && /\bstate\b/.test(q))) {
-    return answerTopStates(filtered, store)
+  if (matchesAny(q, ['top route', 'busiest route', 'popular route', 'which route'])) {
+    return answerTopRoutes(filtered)
   }
-  if (matchesAny(q, ['top commodit', 'which commodit', 'biggest commodit', 'leading commodit', 'most traded'])) {
-    return answerTopCommodities(filtered, store)
+  if (matchesAny(q, ['top airport', 'busiest airport', 'which airport', 'most passenger'])) {
+    return answerTopAirports(filtered)
   }
-  if (matchesAny(q, ['top port', 'which port', 'biggest port', 'leading port', 'busiest port'])) {
-    return answerTopPorts(store)
+  if (matchesAny(q, ['top airline', 'top carrier', 'which airline', 'which carrier', 'market share', 'biggest airline'])) {
+    return answerTopCarriers(filtered)
   }
-  if (matchesAny(q, ['laredo'])) {
-    return answerPortDetail('Laredo', store)
+  if (matchesAny(q, ['freight', 'cargo'])) {
+    return answerFreight(filtered, ctx)
   }
-  if (matchesAny(q, ['el paso'])) {
-    return answerPortDetail('El Paso + Ysleta', store)
+  if (matchesAny(q, ['mail'])) {
+    return answerMail(filtered, ctx)
   }
-  if (matchesAny(q, ['truck', 'rail', 'vessel', 'air', 'mode', 'transport'])) {
-    return answerByMode(filtered)
+  if (matchesAny(q, ['border airport', 'border vs'])) {
+    return answerBorderAirports(filtered)
   }
-  if (matchesAny(q, ['export', 'import', 'balance', 'deficit', 'surplus'])) {
-    return answerTradeBalance(filtered, ctx)
+  if (matchesAny(q, ['flight', 'departure', 'how many flight'])) {
+    return answerFlights(filteredSeg, ctx)
   }
-  if (matchesAny(q, ['trend', 'over time', 'year over year', 'growth', 'change', 'increase', 'decrease'])) {
+  if (matchesAny(q, ['seat', 'capacity', 'load factor'])) {
+    return answerCapacity(filteredSeg, ctx)
+  }
+  if (matchesAny(q, ['trend', 'over time', 'year over year', 'growth', 'change', 'increase', 'decrease', 'covid'])) {
     return answerTrend(filtered)
   }
-  if (matchesAny(q, ['texas', 'tx'])) {
-    return answerTexas(store)
+  if (matchesAny(q, ['mexico', 'mx'])) {
+    return answerMexico(store)
+  }
+  if (matchesAny(q, ['domestic', 'within us', 'us destination'])) {
+    return answerDomestic(store)
+  }
+  if (matchesAny(q, ['international', 'intl'])) {
+    return answerInternational(store)
   }
 
-  // Fallback — give a general summary of the current view
-  return answerGeneralSummary(filtered, ctx)
+  // Specific airport lookup
+  const airportMatch = q.match(/\b([A-Z]{3})\b/i)
+  if (airportMatch && store.airportIndex?.has(airportMatch[1].toUpperCase())) {
+    return answerAirportDetail(airportMatch[1].toUpperCase(), filtered, store)
+  }
+
+  // Fallback — general summary of the current view
+  return answerGeneralSummary(filtered, filteredSeg, ctx)
 }
 
 // ---------------------------------------------------------------------------
-// Dataset selection
+// Dataset selection — scope data to the current page's filter predicate
 // ---------------------------------------------------------------------------
 
-function pickDataset(q, pageContext, store) {
-  // Keyword overrides
-  if (matchesAny(q, ['port', 'border', 'laredo', 'el paso', 'pharr', 'eagle pass', 'brownsville'])) {
-    return store.txBorderPorts
-  }
-  if (matchesAny(q, ['state', 'california', 'michigan', 'illinois', 'ohio', 'new york'])) {
-    return store.btsUsState
+function pickDataset(pageContext, store) {
+  const predicateMap = {
+    'Texas-Mexico': isTxMx,
+    'US-Mexico': (d) => isUsToMx(d) || isMxToUs(d),
+    'Texas Domestic': isTxDomestic,
+    'Texas International': isTxIntl,
   }
 
-  // Default to current page's dataset
-  const datasetMap = {
-    usAggregated: store.usAggregated,
-    btsUsState: store.btsUsState,
-    txBorderPorts: store.txBorderPorts,
-    masterData: store.masterData,
+  const predicate = predicateMap[pageContext.currentPage]
+  if (predicate) {
+    return {
+      market: store.marketData.filter(predicate),
+      segment: store.segmentData?.filter(predicate) || [],
+    }
   }
-  return datasetMap[pageContext.datasetKey] || store.usAggregated
+
+  // Overview & About Data — use all data
+  return { market: store.marketData, segment: store.segmentData || [] }
 }
 
 // ---------------------------------------------------------------------------
@@ -185,12 +201,12 @@ function pickDataset(q, pageContext, store) {
 function applyFilters(data, filters) {
   if (!filters) return data
   return data.filter((d) => {
-    if (filters.year && d.Year !== +filters.year) return false
-    if (filters.tradeType && d.TradeType !== filters.tradeType) return false
-    if (filters.mode && d.Mode !== filters.mode) return false
-    if (filters.state && d.State !== filters.state) return false
-    if (filters.commodityGroup && d.CommodityGroup !== filters.commodityGroup) return false
-    if (filters.port && d.POE !== filters.port) return false
+    if (filters.year?.length && !filters.year.includes(d.YEAR) && !filters.year.includes(String(d.YEAR))) return false
+    if (filters.carrier?.length && !filters.carrier.includes(d.CARRIER_NAME)) return false
+    if (filters.originAirport?.length && !filters.originAirport.includes(d.ORIGIN)) return false
+    if (filters.destAirport?.length && !filters.destAirport.includes(d.DEST)) return false
+    if (filters.originState?.length && !filters.originState.includes(d.ORIGIN_STATE_NM)) return false
+    if (filters.destState?.length && !filters.destState.includes(d.DEST_STATE_NM)) return false
     return true
   })
 }
@@ -199,175 +215,280 @@ function applyFilters(data, filters) {
 // Answer generators
 // ---------------------------------------------------------------------------
 
-function answerTotalTrade(data, ctx) {
-  const total = sumTradeValue(data)
-  const exports = sumTradeValue(data.filter((d) => d.TradeType === 'Export'))
-  const imports = sumTradeValue(data.filter((d) => d.TradeType === 'Import'))
+function answerTotalPassengers(data, ctx) {
+  const total = sumField(data, 'PASSENGERS')
+  const years = uniqueYears(data)
   const filterDesc = describeFilters(ctx.activeFilters)
 
-  return `Based on the ${ctx.currentPage} data${filterDesc}, the total U.S.–Mexico trade is ${formatCurrency(total)}.\n\n` +
-    `• Exports: ${formatCurrency(exports)}\n` +
-    `• Imports: ${formatCurrency(imports)}\n\n` +
-    `The trade balance shows a ${exports > imports ? 'surplus' : 'deficit'} of ${formatCurrency(Math.abs(exports - imports))}.`
+  let response = `Based on the ${ctx.currentPage} data${filterDesc}, the total passenger count is ${fmtCompact(total)}`
+  if (years.length > 1) {
+    response += ` (${years[0]}–${years[years.length - 1]})`
+  } else if (years.length === 1) {
+    response += ` (${years[0]})`
+  }
+  response += '.\n\n'
+
+  // Year breakdown if multiple years
+  if (years.length > 1 && years.length <= 12) {
+    const byYear = groupAndSum(data, 'YEAR', 'PASSENGERS')
+    response += 'By year:\n'
+    byYear.forEach((y) => {
+      response += `• ${y.label}: ${fmtCompact(y.value)}\n`
+    })
+  }
+  return response
 }
 
-function answerTopStates(data, store) {
-  const stateData = store.btsUsState || data
-  const byState = groupAndSum(stateData, 'State')
-  const top10 = byState.slice(0, 10)
+function answerTopRoutes(data) {
+  const routeMap = new Map()
+  data.forEach((d) => {
+    const key = `${d.ORIGIN}–${d.DEST}`
+    const label = `${d.ORIGIN_CITY_NAME || d.ORIGIN} → ${d.DEST_CITY_NAME || d.DEST}`
+    const cur = routeMap.get(key) || { label, value: 0 }
+    cur.value += d.PASSENGERS || 0
+    routeMap.set(key, cur)
+  })
+  const top10 = Array.from(routeMap.values())
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10)
 
-  let response = 'Here are the top 10 states by total trade with Mexico:\n\n'
-  top10.forEach((s, i) => {
-    response += `${i + 1}. ${s.label} — ${formatCurrency(s.value)}\n`
+  let response = 'Top 10 routes by passengers:\n\n'
+  top10.forEach((r, i) => {
+    response += `${i + 1}. ${r.label} — ${fmtCompact(r.value)} passengers\n`
   })
   return response
 }
 
-function answerTopCommodities(data, store) {
-  const commData = store.usAggregated || data
-  const byComm = groupAndSum(commData, 'CommodityGroup')
-  const top10 = byComm.slice(0, 10)
+function answerTopAirports(data) {
+  const airportMap = new Map()
+  data.forEach((d) => {
+    // Count origin side
+    const oLabel = d.ORIGIN_CITY_NAME ? `${d.ORIGIN} (${d.ORIGIN_CITY_NAME})` : d.ORIGIN
+    const o = airportMap.get(d.ORIGIN) || { label: oLabel, value: 0 }
+    o.value += d.PASSENGERS || 0
+    airportMap.set(d.ORIGIN, o)
+    // Count dest side
+    const dLabel = d.DEST_CITY_NAME ? `${d.DEST} (${d.DEST_CITY_NAME})` : d.DEST
+    const dest = airportMap.get(d.DEST) || { label: dLabel, value: 0 }
+    dest.value += d.PASSENGERS || 0
+    airportMap.set(d.DEST, dest)
+  })
 
-  let response = 'Here are the top 10 commodity groups in U.S.–Mexico trade:\n\n'
+  const top10 = Array.from(airportMap.values())
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10)
+
+  let response = 'Top 10 airports by passenger volume:\n\n'
+  top10.forEach((a, i) => {
+    response += `${i + 1}. ${a.label} — ${fmtCompact(a.value)} passengers\n`
+  })
+  return response
+}
+
+function answerTopCarriers(data) {
+  const byCarrier = groupAndSum(data, 'CARRIER_NAME', 'PASSENGERS')
+  const top10 = byCarrier.slice(0, 10)
+  const total = sumField(data, 'PASSENGERS')
+
+  let response = 'Top airlines by passengers:\n\n'
   top10.forEach((c, i) => {
-    response += `${i + 1}. ${c.label} — ${formatCurrency(c.value)}\n`
+    const pct = total > 0 ? ((c.value / total) * 100).toFixed(1) : '0.0'
+    response += `${i + 1}. ${c.label} — ${fmtCompact(c.value)} (${pct}%)\n`
   })
   return response
 }
 
-function answerTopPorts(store) {
-  const portData = store.txBorderPorts
-  if (!portData) return 'Border port data is not available.'
-
-  const byPort = groupAndSum(portData, 'POE')
-  const top10 = byPort.slice(0, 10)
-
-  let response = 'Here are the top Texas border ports by total trade:\n\n'
-  top10.forEach((p, i) => {
-    response += `${i + 1}. ${p.label} — ${formatCurrency(p.value)}\n`
-  })
-  return response
-}
-
-function answerPortDetail(portName, store) {
-  const portData = store.txBorderPorts
-  if (!portData) return 'Border port data is not available.'
-
-  const portRows = portData.filter((d) => d.POE === portName)
-  if (portRows.length === 0) return `No data found for port "${portName}".`
-
-  const total = sumTradeValue(portRows)
-  const exports = sumTradeValue(portRows.filter((d) => d.TradeType === 'Export'))
-  const imports = sumTradeValue(portRows.filter((d) => d.TradeType === 'Import'))
-  const byMode = groupAndSum(portRows, 'Mode')
-  const years = [...new Set(portRows.map((d) => d.Year))].sort()
-
-  let response = `${portName} port trade summary (${years[0]}–${years[years.length - 1]}):\n\n`
-  response += `• Total trade: ${formatCurrency(total)}\n`
-  response += `• Exports: ${formatCurrency(exports)}\n`
-  response += `• Imports: ${formatCurrency(imports)}\n\n`
-  response += 'By transportation mode:\n'
-  byMode.forEach((m) => {
-    response += `• ${m.label}: ${formatCurrency(m.value)}\n`
-  })
-  return response
-}
-
-function answerByMode(data) {
-  const byMode = groupAndSum(data, 'Mode')
-
-  let response = 'Trade breakdown by transportation mode:\n\n'
-  const total = byMode.reduce((s, m) => s + m.value, 0)
-  byMode.forEach((m) => {
-    const pct = total > 0 ? ((m.value / total) * 100).toFixed(1) : '0.0'
-    response += `• ${m.label}: ${formatCurrency(m.value)} (${pct}%)\n`
-  })
-  return response
-}
-
-function answerTradeBalance(data, ctx) {
-  const exports = sumTradeValue(data.filter((d) => d.TradeType === 'Export'))
-  const imports = sumTradeValue(data.filter((d) => d.TradeType === 'Import'))
-  const balance = exports - imports
+function answerFreight(data, ctx) {
+  const total = sumField(data, 'FREIGHT')
   const filterDesc = describeFilters(ctx.activeFilters)
 
-  return `Trade balance${filterDesc}:\n\n` +
-    `• Exports: ${formatCurrency(exports)}\n` +
-    `• Imports: ${formatCurrency(imports)}\n` +
-    `• Balance: ${balance >= 0 ? '+' : ''}${formatCurrency(Math.abs(balance))} (${balance >= 0 ? 'surplus' : 'deficit'})\n\n` +
-    `The U.S. ${balance >= 0 ? 'exports more to' : 'imports more from'} Mexico in this view.`
+  let response = `Total freight${filterDesc}: ${fmtLbs(total)}.\n\n`
+
+  const byAirport = new Map()
+  data.forEach((d) => {
+    const o = byAirport.get(d.ORIGIN) || { label: d.ORIGIN_CITY_NAME || d.ORIGIN, value: 0 }
+    o.value += d.FREIGHT || 0
+    byAirport.set(d.ORIGIN, o)
+  })
+  const top5 = Array.from(byAirport.values()).sort((a, b) => b.value - a.value).slice(0, 5)
+
+  response += 'Top 5 origin airports by freight:\n'
+  top5.forEach((a, i) => {
+    response += `${i + 1}. ${a.label} — ${fmtLbs(a.value)}\n`
+  })
+  return response
+}
+
+function answerMail(data, ctx) {
+  const total = sumField(data, 'MAIL')
+  const filterDesc = describeFilters(ctx.activeFilters)
+  return `Total mail${filterDesc}: ${fmtLbs(total)}.`
+}
+
+function answerBorderAirports(data) {
+  const borderData = data.filter((d) => BORDER_AIRPORTS.has(d.ORIGIN) || BORDER_AIRPORTS.has(d.DEST))
+  const nonBorder = data.filter((d) => !BORDER_AIRPORTS.has(d.ORIGIN) && !BORDER_AIRPORTS.has(d.DEST))
+
+  const borderPax = sumField(borderData, 'PASSENGERS')
+  const nonBorderPax = sumField(nonBorder, 'PASSENGERS')
+  const total = borderPax + nonBorderPax
+  const borderPct = total > 0 ? ((borderPax / total) * 100).toFixed(1) : '0'
+
+  let response = `Border airports account for ${borderPct}% of passengers (${fmtCompact(borderPax)} of ${fmtCompact(total)}).\n\n`
+  response += 'Border airports: ELP (El Paso), LRD (Laredo), MFE (McAllen), HRL (Harlingen), BRO (Brownsville), DRT (Del Rio).\n\n'
+
+  // Per-airport breakdown
+  const byAirport = new Map()
+  borderData.forEach((d) => {
+    const codes = []
+    if (BORDER_AIRPORTS.has(d.ORIGIN)) codes.push(d.ORIGIN)
+    if (BORDER_AIRPORTS.has(d.DEST)) codes.push(d.DEST)
+    codes.forEach((code) => {
+      byAirport.set(code, (byAirport.get(code) || 0) + (d.PASSENGERS || 0))
+    })
+  })
+  const sorted = Array.from(byAirport.entries()).sort((a, b) => b[1] - a[1])
+  response += 'By border airport:\n'
+  sorted.forEach(([code, pax]) => {
+    response += `• ${code}: ${fmtCompact(pax)} passengers\n`
+  })
+  return response
+}
+
+function answerFlights(segmentData, ctx) {
+  if (!segmentData?.length) return 'Flight data (segment) is not available for this view.'
+  const total = sumField(segmentData, 'DEPARTURES_PERFORMED')
+  const filterDesc = describeFilters(ctx.activeFilters)
+  return `Total departures performed${filterDesc}: ${fmtCompact(total)} flights.`
+}
+
+function answerCapacity(segmentData, ctx) {
+  if (!segmentData?.length) return 'Capacity data (segment) is not available for this view.'
+  const seats = sumField(segmentData, 'SEATS')
+  const pax = sumField(segmentData, 'PASSENGERS')
+  const loadFactor = seats > 0 ? ((pax / seats) * 100).toFixed(1) : 'N/A'
+  const filterDesc = describeFilters(ctx.activeFilters)
+
+  return `Capacity${filterDesc}:\n\n` +
+    `• Total seats: ${fmtCompact(seats)}\n` +
+    `• Total passengers: ${fmtCompact(pax)}\n` +
+    `• Load factor: ${loadFactor}%`
 }
 
 function answerTrend(data) {
-  const byYear = new Map()
-  data.forEach((d) => {
-    if (!d.Year) return
-    byYear.set(d.Year, (byYear.get(d.Year) || 0) + (d.TradeValue || 0))
-  })
+  const byYear = groupAndSum(data, 'YEAR', 'PASSENGERS')
+  if (byYear.length < 2) return 'Not enough yearly data to show a trend.'
 
-  const years = [...byYear.entries()].sort((a, b) => a[0] - b[0])
-  if (years.length < 2) return 'Not enough yearly data to show a trend.'
-
-  let response = 'Year-over-year trade trend:\n\n'
-  years.forEach(([year, value], i) => {
+  let response = 'Passenger trend by year:\n\n'
+  byYear.forEach((y, i) => {
     let change = ''
     if (i > 0) {
-      const prev = years[i - 1][1]
-      const pct = prev > 0 ? (((value - prev) / prev) * 100).toFixed(1) : 'N/A'
-      change = ` (${value >= prev ? '+' : ''}${pct}%)`
+      const prev = byYear[i - 1].value
+      const pct = prev > 0 ? (((y.value - prev) / prev) * 100).toFixed(1) : 'N/A'
+      change = ` (${y.value >= prev ? '+' : ''}${pct}%)`
     }
-    response += `• ${year}: ${formatCurrency(value)}${change}\n`
+    response += `• ${y.label}: ${fmtCompact(y.value)}${change}\n`
   })
 
-  const first = years[0][1]
-  const last = years[years.length - 1][1]
+  const first = byYear[0].value
+  const last = byYear[byYear.length - 1].value
   const overallPct = first > 0 ? (((last - first) / first) * 100).toFixed(1) : 'N/A'
-  response += `\nOverall change from ${years[0][0]} to ${years[years.length - 1][0]}: ${overallPct}%`
-
+  response += `\nOverall change from ${byYear[0].label} to ${byYear[byYear.length - 1].label}: ${overallPct}%`
   return response
 }
 
-function answerTexas(store) {
-  const stateData = store.btsUsState
-  if (!stateData) return 'State-level data is not available.'
+function answerMexico(store) {
+  const txMx = store.marketData.filter(isTxMx)
+  const total = sumField(txMx, 'PASSENGERS')
+  const freight = sumField(txMx, 'FREIGHT')
+  const years = uniqueYears(txMx)
 
-  const txRows = stateData.filter((d) => d.State === 'Texas')
-  if (txRows.length === 0) return 'No data found for Texas.'
+  let response = `Texas–Mexico air connectivity (${years[0]}–${years[years.length - 1]}):\n\n`
+  response += `• Total passengers: ${fmtCompact(total)}\n`
+  response += `• Total freight: ${fmtLbs(freight)}\n\n`
 
-  const total = sumTradeValue(txRows)
-  const exports = sumTradeValue(txRows.filter((d) => d.TradeType === 'Export'))
-  const imports = sumTradeValue(txRows.filter((d) => d.TradeType === 'Import'))
-  const byMode = groupAndSum(txRows, 'Mode')
-
-  // Calculate Texas share of total U.S. trade
-  const usTotal = sumTradeValue(stateData)
-  const txShare = usTotal > 0 ? ((total / usTotal) * 100).toFixed(1) : 'N/A'
-
-  let response = `Texas is the largest U.S. trading partner with Mexico, accounting for ${txShare}% of total trade.\n\n`
-  response += `• Total Texas–Mexico trade: ${formatCurrency(total)}\n`
-  response += `• Exports: ${formatCurrency(exports)}\n`
-  response += `• Imports: ${formatCurrency(imports)}\n\n`
-  response += 'By mode:\n'
-  byMode.forEach((m) => {
-    response += `• ${m.label}: ${formatCurrency(m.value)}\n`
+  const byDest = groupAndSum(txMx.filter((d) => d.DEST_COUNTRY_NAME === 'Mexico'), 'DEST_CITY_NAME', 'PASSENGERS')
+  response += 'Top Mexico destinations from Texas:\n'
+  byDest.slice(0, 5).forEach((d, i) => {
+    response += `${i + 1}. ${d.label} — ${fmtCompact(d.value)} passengers\n`
   })
   return response
 }
 
-function answerGeneralSummary(data, ctx) {
-  const total = sumTradeValue(data)
-  const records = data.length
+function answerDomestic(store) {
+  const dom = store.marketData.filter(isTxDomestic)
+  const total = sumField(dom, 'PASSENGERS')
+  const years = uniqueYears(dom)
+
+  let response = `Texas domestic air connectivity (${years[0]}–${years[years.length - 1]}):\n\n`
+  response += `• Total passengers: ${fmtCompact(total)}\n\n`
+
+  const byDest = groupAndSum(dom, 'DEST_CITY_NAME', 'PASSENGERS')
+  response += 'Top destination cities:\n'
+  byDest.slice(0, 5).forEach((d, i) => {
+    response += `${i + 1}. ${d.label} — ${fmtCompact(d.value)} passengers\n`
+  })
+  return response
+}
+
+function answerInternational(store) {
+  const intl = store.marketData.filter(isTxIntl)
+  const total = sumField(intl, 'PASSENGERS')
+  const years = uniqueYears(intl)
+
+  let response = `Texas international air connectivity (${years[0]}–${years[years.length - 1]}):\n\n`
+  response += `• Total passengers: ${fmtCompact(total)}\n\n`
+
+  const byCountry = groupAndSum(intl, 'DEST_COUNTRY_NAME', 'PASSENGERS')
+  response += 'Top destination countries:\n'
+  byCountry.slice(0, 5).forEach((d, i) => {
+    response += `${i + 1}. ${d.label} — ${fmtCompact(d.value)} passengers\n`
+  })
+  return response
+}
+
+function answerAirportDetail(code, data, store) {
+  const info = store.airportIndex?.get(code)
+  const name = info?.name || code
+
+  const asOrigin = data.filter((d) => d.ORIGIN === code)
+  const asDest = data.filter((d) => d.DEST === code)
+  const paxOut = sumField(asOrigin, 'PASSENGERS')
+  const paxIn = sumField(asDest, 'PASSENGERS')
+  const freightOut = sumField(asOrigin, 'FREIGHT')
+
+  let response = `${name} (${code}):\n\n`
+  response += `• Outbound passengers: ${fmtCompact(paxOut)}\n`
+  response += `• Inbound passengers: ${fmtCompact(paxIn)}\n`
+  response += `• Outbound freight: ${fmtLbs(freightOut)}\n\n`
+
+  const destinations = groupAndSum(asOrigin, 'DEST_CITY_NAME', 'PASSENGERS')
+  if (destinations.length > 0) {
+    response += 'Top destinations:\n'
+    destinations.slice(0, 5).forEach((d, i) => {
+      response += `${i + 1}. ${d.label} — ${fmtCompact(d.value)} passengers\n`
+    })
+  }
+  return response
+}
+
+function answerGeneralSummary(market, segment, ctx) {
+  const pax = sumField(market, 'PASSENGERS')
+  const freight = sumField(market, 'FREIGHT')
+  const routes = new Set(market.map((d) => `${d.ORIGIN}-${d.DEST}`)).size
   const filterDesc = describeFilters(ctx.activeFilters)
 
-  return `You're viewing the ${ctx.currentPage} page${filterDesc}. ` +
-    `The current view contains ${records.toLocaleString()} records with a total trade value of ${formatCurrency(total)}.\n\n` +
-    'You can ask me about:\n' +
-    '• Total trade values and balances\n' +
-    '• Top states, commodities, or border ports\n' +
-    '• Trade trends over time\n' +
-    '• Breakdown by transportation mode\n' +
-    '• Specific port details (Laredo, El Paso, etc.)\n' +
-    '• Texas trade with Mexico'
+  let response = `You're viewing the ${ctx.currentPage} page${filterDesc}.\n\n`
+  response += `• ${fmtCompact(pax)} passengers across ${routes.toLocaleString()} routes\n`
+  response += `• ${fmtLbs(freight)} of freight\n\n`
+  response += 'You can ask me about:\n'
+  response += '• Passenger counts and trends over time\n'
+  response += '• Top routes, airports, or airlines\n'
+  response += '• Freight and mail volumes\n'
+  response += '• Border airport analysis\n'
+  response += '• Flight counts and seat capacity\n'
+  response += '• Specific airports (e.g., "Tell me about DFW")'
+  return response
 }
 
 // ---------------------------------------------------------------------------
@@ -378,50 +499,43 @@ function matchesAny(text, keywords) {
   return keywords.some((kw) => text.includes(kw))
 }
 
-function sumTradeValue(data) {
-  return data.reduce((sum, d) => sum + (d.TradeValue || 0), 0)
+function sumField(data, field) {
+  return data.reduce((sum, d) => sum + (d[field] || 0), 0)
 }
 
-function groupAndSum(data, key) {
+function groupAndSum(data, key, valueField) {
   const map = new Map()
   data.forEach((d) => {
     const label = d[key]
-    if (!label) return
-    map.set(label, (map.get(label) || 0) + (d.TradeValue || 0))
+    if (label == null) return
+    map.set(label, (map.get(label) || 0) + (d[valueField] || 0))
   })
   return Array.from(map, ([label, value]) => ({ label, value })).sort(
     (a, b) => b.value - a.value,
   )
 }
 
+function uniqueYears(data) {
+  return [...new Set(data.map((d) => d.YEAR).filter(Boolean))].sort((a, b) => a - b)
+}
+
 function describeFilters(filters) {
   if (!filters) return ''
   const parts = []
-  if (filters.year) parts.push(`Year: ${filters.year}`)
-  if (filters.tradeType) parts.push(filters.tradeType)
-  if (filters.mode) parts.push(`Mode: ${filters.mode}`)
-  if (filters.state) parts.push(`State: ${filters.state}`)
-  if (filters.commodityGroup) parts.push(`Commodity: ${filters.commodityGroup}`)
-  if (filters.port) parts.push(`Port: ${filters.port}`)
-  return parts.length > 0 ? ` (filtered by ${parts.join(', ')})` : ''
+  if (filters.year?.length) parts.push(`Year: ${filters.year.join(', ')}`)
+  if (filters.direction) parts.push(`Direction: ${filters.direction}`)
+  if (filters.carrier?.length) parts.push(`Carrier: ${filters.carrier.join(', ')}`)
+  if (filters.originAirport?.length) parts.push(`Origin: ${filters.originAirport.join(', ')}`)
+  if (filters.destAirport?.length) parts.push(`Dest: ${filters.destAirport.join(', ')}`)
+  return parts.length > 0 ? ` (filtered by ${parts.join('; ')})` : ''
 }
 
 function extractFiltersFromQuestion(q) {
   const filters = {}
 
-  // Extract year (4-digit number between 2013-2025)
-  const yearMatch = q.match(/\b(201[3-9]|202[0-5])\b/)
-  if (yearMatch) filters.year = yearMatch[1]
-
-  // Extract trade type
-  if (/\bexports?\b/.test(q) && !/\bimports?\b/.test(q)) filters.tradeType = 'Export'
-  if (/\bimports?\b/.test(q) && !/\bexports?\b/.test(q)) filters.tradeType = 'Import'
-
-  // Extract mode
-  if (/\btruck\b/.test(q)) filters.mode = 'Truck'
-  if (/\brail\b/.test(q)) filters.mode = 'Rail'
-  if (/\bvessel\b/.test(q)) filters.mode = 'Vessel'
-  if (/\bair\b/.test(q)) filters.mode = 'Air'
+  // Extract year (4-digit number between 2015-2025)
+  const yearMatch = q.match(/\b(201[5-9]|202[0-5])\b/)
+  if (yearMatch) filters.year = [parseInt(yearMatch[1], 10)]
 
   return filters
 }

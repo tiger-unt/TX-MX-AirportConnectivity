@@ -1,21 +1,22 @@
-import { useTradeStore } from '@/stores/tradeStore'
+import { useAviationStore } from '@/stores/aviationStore'
 
 const PAGE_MAP = {
-  '/': { dataset: 'usAggregated', label: 'Overview' },
-  '/trade-by-state': { dataset: 'btsUsState', label: 'Trade by State' },
-  '/commodities': { dataset: 'usAggregated', label: 'Trade by Commodity' },
-  '/trade-by-mode': { dataset: 'usAggregated', label: 'Trade by Mode' },
-  '/border-ports': { dataset: 'txBorderPorts', label: 'Texas Border Ports' },
+  '/': { dataset: 'market', label: 'Overview' },
+  '/texas-domestic': { dataset: 'market', label: 'Texas Domestic' },
+  '/texas-international': { dataset: 'market', label: 'Texas International' },
+  '/us-mexico': { dataset: 'market', label: 'US-Mexico' },
+  '/texas-mexico': { dataset: 'market', label: 'Texas-Mexico' },
+  '/about-data': { dataset: 'market', label: 'About Data' },
 }
 
 export function gatherPageContext() {
-  const state = useTradeStore.getState()
-  const path = window.location.pathname
-  const page = PAGE_MAP[path] || PAGE_MAP['/']
+  const state = useAviationStore.getState()
+  const hash = window.location.hash.replace('#', '') || '/'
+  const page = PAGE_MAP[hash] || PAGE_MAP['/']
 
   return {
     currentPage: page.label,
-    currentPath: path,
+    currentPath: hash,
     datasetKey: page.dataset,
     activeFilters: { ...state.filters },
     dataLoaded: !state.loading,

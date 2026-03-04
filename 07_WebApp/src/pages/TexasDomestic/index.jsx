@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Plane, Users, MapPin, Award } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isTxDomestic, isTxToUs, isUsToTx, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
@@ -43,13 +43,20 @@ const EXTRACTORS = {
 }
 
 /* ── COVID annotation for trend charts ─────────────────────────────── */
-const COVID_ANNOTATION = [{ x: 2020, x2: 2021, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
+const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
 export default function TexasDomesticPage() {
   const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
   const [mapMetric, setMapMetric] = useState('PASSENGERS')
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
+
+  // Reset stale direction filter carried from other pages
+  useEffect(() => {
+    if (filters.direction && filters.direction !== 'TX_TO_US' && filters.direction !== 'US_TO_TX') {
+      setFilter('direction', '')
+    }
+  }, [filters.direction, setFilter])
 
   /* ── base dataset ──────────────────────────────────────────────────── */
   const baseMarket = useMemo(() => {
@@ -224,13 +231,15 @@ export default function TexasDomesticPage() {
       .filter((d) => d.YEAR === latestYear)
       .reduce((s, d) => s + d.DEPARTURES_PERFORMED, 0)
 
-    const destStates = new Set(latest.map((d) => d.DEST_STATE_NM)).size
+    // Counterpart state: for outbound (TX→US), use dest; for inbound (US→TX), use origin
+    const counterpartState = (d) => isTxToUs(d) ? d.DEST_STATE_NM : d.ORIGIN_STATE_NM
+    const destStates = new Set(latest.map(counterpartState).filter(Boolean)).size
 
-    // Top destination state
     const byState = new Map()
     latest.forEach((d) => {
-      if (!d.DEST_STATE_NM) return
-      byState.set(d.DEST_STATE_NM, (byState.get(d.DEST_STATE_NM) || 0) + d.PASSENGERS)
+      const s = counterpartState(d)
+      if (!s) return
+      byState.set(s, (byState.get(s) || 0) + d.PASSENGERS)
     })
     const topState = byState.size
       ? [...byState.entries()].sort((a, b) => b[1] - a[1])[0][0]
@@ -272,12 +281,14 @@ export default function TexasDomesticPage() {
     return Array.from(byYear, ([year, value]) => ({ year, value })).sort((a, b) => a.year - b.year)
   }, [filtered])
 
-  /* ── top destination states ────────────────────────────────────────── */
+  /* ── top connected states ──────────────────────────────────────────── */
   const topStates = useMemo(() => {
     const byState = new Map()
     filtered.forEach((d) => {
-      if (!d.DEST_STATE_NM) return
-      byState.set(d.DEST_STATE_NM, (byState.get(d.DEST_STATE_NM) || 0) + d.PASSENGERS)
+      // Counterpart state: for outbound (TX→US), use dest; for inbound (US→TX), use origin
+      const state = isTxToUs(d) ? d.DEST_STATE_NM : d.ORIGIN_STATE_NM
+      if (!state) return
+      byState.set(state, (byState.get(state) || 0) + d.PASSENGERS)
     })
     return Array.from(byState, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
@@ -412,12 +423,12 @@ export default function TexasDomesticPage() {
             highlight icon={Plane} delay={100}
           />
           <StatCard
-            label="Domestic Destinations Served"
+            label={`Connected U.S. States (${latestYear || '\u2014'})`}
             value={stats ? String(stats.destStates) : '\u2014'}
             highlight icon={MapPin} delay={200}
           />
           <StatCard
-            label="Top Domestic Destination"
+            label={`Top Connected State (${latestYear || '\u2014'})`}
             value={stats?.topState || '\u2014'}
             highlight icon={Award} delay={300}
           />
@@ -493,31 +504,33 @@ export default function TexasDomesticPage() {
         </div>
       </SectionBlock>
 
-      {/* Top States + Top Routes */}
+      {/* Top States */}
       <SectionBlock alt>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ChartCard
-            title="Top Destination States from Texas"
-            subtitle="Total passengers (all filtered years)"
-            downloadData={{ summary: { data: topStates, filename: 'tx-domestic-top-states' } }}
-          >
-            <BarChart data={topStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-          </ChartCard>
-          <ChartCard
-            title="Top Domestic Routes from Texas"
-            subtitle="Total passengers (all filtered years)"
-            downloadData={{ summary: { data: topRoutes, filename: 'tx-domestic-top-routes' } }}
-          >
-            <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
-          </ChartCard>
-        </div>
+        <ChartCard
+          title="Top Connected U.S. States"
+          subtitle="Counterpart state by passengers (bidirectional totals)"
+          downloadData={{ summary: { data: topStates, filename: 'tx-domestic-top-states' } }}
+        >
+          <BarChart data={topStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
+        </ChartCard>
+      </SectionBlock>
+
+      {/* Top Routes — full width for long airport-name labels */}
+      <SectionBlock>
+        <ChartCard
+          title="Top Domestic Routes from Texas"
+          subtitle="Total passengers (all filtered years)"
+          downloadData={{ summary: { data: topRoutes, filename: 'tx-domestic-top-routes' } }}
+        >
+          <BarChart data={topRoutes} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
+        </ChartCard>
       </SectionBlock>
 
       {/* Operations (segment) */}
       <SectionBlock>
         <ChartCard
           title="Schedule Adherence"
-          subtitle="Performed vs scheduled departures (Class F, scheduled service)"
+          subtitle="Departure-weighted: performed vs scheduled (Class F, scheduled service)"
           downloadData={{ summary: { data: adherenceData, filename: 'tx-domestic-schedule-adherence' } }}
         >
           <BarChart data={adherenceData} xKey="label" yKey="value" horizontal color={CHART_COLORS[2]} formatValue={(v) => `${v.toFixed(1)}%`} maxBars={10} animate />

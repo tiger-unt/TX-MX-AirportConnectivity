@@ -76,6 +76,10 @@ export default function DonutChart({
   const hasAnimated = useRef(false)
   const { width, height: containerHeight, isFullscreen } = useChartResize(containerRef)
 
+  // Legend visibility: right-side SVG legend for wide containers, bottom HTML legend for narrow ones
+  const showLegendRight = width > 500 && data.length <= 10
+  const showBottomLegend = width > 0 && !showLegendRight && data.length > 0 && data.length <= 15
+
   // Click-outside handler: deselect when clicking anywhere outside the chart container
   useEffect(() => {
     if (!onSliceClick || !selectedSlice) return
@@ -99,8 +103,7 @@ export default function DonutChart({
     const maxLabelLen = d3.max(data, (d) => `${d[nameKey]} (${formatValue(d[valueKey])})`.length) || 20
     const legendW = isFullscreen
       ? Math.min(width * 0.35, Math.max(320, maxLabelLen * charW + 40))
-      : 300
-    const showLegendRight = width > 500 && data.length <= 10
+      : Math.min(width * 0.4, Math.max(300, maxLabelLen * charW + 40))
     const legendWidth = showLegendRight ? legendW : 0
     const chartArea = width - legendWidth
     const maxSize = containerHeight > 100 ? containerHeight : 300
@@ -207,7 +210,7 @@ export default function DonutChart({
     }
 
     // Legend
-    if (showLegendRight && data.length <= 10) {
+    if (showLegendRight) {
       const dotR = isFullscreen ? 8 : 6
       const rowH = isFullscreen ? Math.round(FS * 1.8) : 26
       const legendX = chartArea + 16
@@ -240,11 +243,35 @@ export default function DonutChart({
       })
     }
 
-  }, [data, width, containerHeight, isFullscreen, nameKey, valueKey, selectedSlice, animate])
+  }, [data, width, containerHeight, isFullscreen, nameKey, valueKey, selectedSlice, animate, showLegendRight])
 
   return (
     <div ref={containerRef} className="w-full" style={{ minHeight: 300 }}>
       <svg ref={svgRef} className="w-full" />
+      {showBottomLegend && (
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-2 px-2">
+          {data.map((d, i) => {
+            const isDimmed = selectedSlice && d[nameKey] !== selectedSlice
+            return (
+              <button
+                key={d[nameKey]}
+                type="button"
+                className="flex items-center gap-2 bg-transparent border-0 p-0 transition-opacity"
+                style={{ opacity: isDimmed ? 0.4 : 1, cursor: onSliceClick ? 'pointer' : 'default' }}
+                onClick={(e) => { e.stopPropagation(); onSliceClick?.(d) }}
+              >
+                <span
+                  className="w-3 h-3 rounded-full inline-block shrink-0"
+                  style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                />
+                <span style={{ fontSize: '16px', color: 'var(--color-text-primary)' }}>
+                  {d[nameKey]} ({formatValue(d[valueKey])})
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

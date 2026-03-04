@@ -1,12 +1,12 @@
 import { Sparkles } from 'lucide-react'
 
 const SUGGESTIONS = [
-  'What was the total U.S.–Mexico trade in 2024?',
-  'Which state trades the most with Mexico?',
-  'What are the top commodities shipped by truck?',
-  'How has Laredo port trade changed over time?',
-  'What is Texas\u2019s export vs import balance?',
-  'Which border port had the highest trade?',
+  'How many passengers flew Texas–Mexico routes?',
+  'What are the top routes by passengers?',
+  'Which airports are the busiest?',
+  'How has passenger traffic changed over time?',
+  'Which airlines carry the most passengers?',
+  'How do border airports compare to non-border?',
 ]
 
 export default function SuggestedQuestions({ onSelect }) {
@@ -17,7 +17,7 @@ export default function SuggestedQuestions({ onSelect }) {
       </div>
       <h3 className="text-lg font-semibold text-text-primary mb-1">Ask AI</h3>
       <p className="text-base text-text-secondary text-center mb-6">
-        Ask questions about U.S.–Mexico trade data. Try one of these:
+        Ask questions about airport connectivity data. Try one of these:
       </p>
       <div className="flex flex-wrap gap-2 justify-center max-w-sm">
         {SUGGESTIONS.map((q) => (

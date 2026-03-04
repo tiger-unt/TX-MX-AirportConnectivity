@@ -317,6 +317,10 @@
     stroke-width: 3 !important;
   }
 
+  /* Hidden scrollbar — used by TabBar for mobile horizontal scroll */
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
   /* Ask AI — typing indicator dots */
   .typing-dot {
     animation: typingDot 1.4s ease-in-out infinite;
