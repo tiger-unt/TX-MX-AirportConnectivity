@@ -30,7 +30,7 @@ const SUGGESTIONS_BY_ROUTE = {
     'How many passengers flew Texas–Mexico routes?',
     'What are the top routes by passengers?',
     'How do border airports compare to non-border?',
-    'Which airlines carry the most passengers?',
+    'What does freight trade between Texas and Mexico look like?',
   ],
   '/about-data': [
     'What is the difference between market and segment data?',

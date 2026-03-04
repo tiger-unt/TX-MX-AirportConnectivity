@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
-import { Users } from 'lucide-react'
+import { Users, Plane } from 'lucide-react'
 import SectionBlock from '@/components/ui/SectionBlock'
 import ChartCard from '@/components/ui/ChartCard'
 import InsightCallout from '@/components/ui/InsightCallout'
 import LineChart from '@/components/charts/LineChart'
 import BarChart from '@/components/charts/BarChart'
+import LollipopChart from '@/components/charts/LollipopChart'
 import DonutChart from '@/components/charts/DonutChart'
-import { fmtCompact } from '@/lib/aviationHelpers'
+import StackedBarChart from '@/components/charts/StackedBarChart'
+import { fmtCompact, fmtLbs } from '@/lib/aviationHelpers'
 import { CHART_COLORS } from '@/lib/chartColors'
 
 const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
@@ -15,7 +17,8 @@ export default function OperationsCapacityTab({
   seatTrend, depTrend, adherenceData,
   loadFactorTrend, loadFactorByRoute,
   serviceClassShare, serviceClassTrend,
-  aircraftGroupShare, aircraftGroupTrend,
+  aircraftMixInsight, aircraftFreightByYear, aircraftFreightIntensity,
+  nonNbCargoCarriers, nonNbDepTrend,
 }) {
   const loadFactorInsight = useMemo(() => {
     if (!loadFactorTrend.length) return null
@@ -92,14 +95,14 @@ export default function OperationsCapacityTab({
             subtitle="Top 10 routes by passenger/seat ratio"
             downloadData={{ summary: { data: loadFactorByRoute.top, filename: 'tx-mx-top-load-factor' } }}
           >
-            <BarChart data={loadFactorByRoute.top} xKey="label" yKey="value" horizontal formatValue={(v) => `${v}%`} color={CHART_COLORS[0]} />
+            <LollipopChart data={loadFactorByRoute.top} xKey="label" yKey="value" formatValue={(v) => `${v}%`} color={CHART_COLORS[0]} />
           </ChartCard>
           <ChartCard
             title="Lowest Load Factor Routes"
             subtitle="Bottom 10 routes (min 100 seats)"
             downloadData={{ summary: { data: loadFactorByRoute.bottom, filename: 'tx-mx-low-load-factor' } }}
           >
-            <BarChart data={loadFactorByRoute.bottom} xKey="label" yKey="value" horizontal formatValue={(v) => `${v}%`} color={CHART_COLORS[8]} />
+            <LollipopChart data={loadFactorByRoute.bottom} xKey="label" yKey="value" formatValue={(v) => `${v}%`} color={CHART_COLORS[8]} />
           </ChartCard>
         </div>
       </SectionBlock>
@@ -132,22 +135,77 @@ export default function OperationsCapacityTab({
       <SectionBlock>
         <div className="mb-4">
           <h3 className="text-xl font-bold text-text-primary mb-1">Aircraft Mix</h3>
-          <p className="text-base text-text-secondary">Types of aircraft serving Texas&ndash;Mexico routes, by BTS aircraft group classification.</p>
+          <p className="text-base text-text-secondary">
+            Narrow-body jets dominate Texas&ndash;Mexico departures, but the freight story reveals the
+            critical role of wide-body and specialty aircraft in cross-border cargo operations.
+          </p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {aircraftMixInsight && (
+          <div className="mb-5">
+            <InsightCallout
+              finding={`Narrow-Body jets account for ${aircraftMixInsight.nbDepPct}% of departures but carry only ${aircraftMixInsight.nbFreightPct}% of freight \u2014 wide-body and specialty aircraft handle ${aircraftMixInsight.nonNbFreightPct}% of all cargo despite just ${aircraftMixInsight.nonNbDepPct}% of flights.`}
+              context="Non-narrow-body aircraft serve specialized cargo operations with significantly higher freight loads per departure."
+              variant="warning"
+              icon={Plane}
+            />
+          </div>
+        )}
+
+        <ChartCard
+          title="Freight Volume by Aircraft Group"
+          subtitle="Annual freight (lbs) carried by each aircraft type"
+          downloadData={{ summary: { data: aircraftFreightByYear.data, filename: 'tx-mx-aircraft-freight-by-year' } }}
+        >
+          <StackedBarChart data={aircraftFreightByYear.data} xKey="year" stackKeys={aircraftFreightByYear.keys} formatValue={fmtLbs} />
+          <p className="text-base text-text-secondary mt-3 italic">
+            Unlike departure counts (dominated by narrow-body), freight reveals a more balanced
+            picture &mdash; wide-body jets carry disproportionately large cargo loads per flight.
+          </p>
+        </ChartCard>
+
+        <div className="mt-5">
           <ChartCard
-            title="Departures by Aircraft Group"
-            subtitle="Share of flights by aircraft type (all filtered years)"
-            downloadData={{ summary: { data: aircraftGroupShare, filename: 'tx-mx-aircraft-group-share' } }}
+            title="Freight per Departure by Aircraft Type"
+            subtitle="Average freight load (lbs/flight) by aircraft group — label shows each type's share of total departures"
+            downloadData={{ summary: { data: aircraftFreightIntensity, filename: 'tx-mx-aircraft-freight-intensity' } }}
           >
-            <DonutChart data={aircraftGroupShare} formatValue={fmtCompact} />
+            <BarChart
+              data={aircraftFreightIntensity}
+              xKey="label"
+              yKey="value"
+              horizontal
+              formatValue={fmtLbs}
+              labelAccessor={(d) => `${fmtLbs(d.value)}  ·  ${d.depPct}% of flights`}
+              color={CHART_COLORS[2]}
+            />
+            <p className="text-base text-text-secondary mt-3 italic">
+              Wide-body freighters carry over 100&times; more freight per departure than narrow-body jets,
+              yet narrow-body jets dominate total flight counts. The departure share shows how rare each aircraft type is on this corridor.
+            </p>
           </ChartCard>
+        </div>
+        <div className="mt-5">
           <ChartCard
-            title="Aircraft Group Trends"
-            subtitle="Departures by aircraft group over time"
-            downloadData={{ summary: { data: aircraftGroupTrend, filename: 'tx-mx-aircraft-group-trend' } }}
+            title="Top Cargo Carriers (Non-Narrow-Body)"
+            subtitle="Total freight by carriers using wide-body, turboprop, or piston aircraft"
+            downloadData={{ summary: { data: nonNbCargoCarriers, filename: 'tx-mx-non-nb-cargo-carriers' } }}
           >
-            <LineChart data={aircraftGroupTrend} xKey="year" yKey="value" seriesKey="Aircraft" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+            <BarChart data={nonNbCargoCarriers} xKey="label" yKey="value" horizontal formatValue={fmtLbs} color={CHART_COLORS[4]} />
+          </ChartCard>
+        </div>
+
+        <div className="mt-5">
+          <ChartCard
+            title="Non-Narrow-Body Departure Trends"
+            subtitle="Departures by aircraft type over time (narrow-body excluded)"
+            downloadData={{ summary: { data: nonNbDepTrend, filename: 'tx-mx-non-nb-departure-trends' } }}
+          >
+            <LineChart data={nonNbDepTrend} xKey="year" yKey="value" seriesKey="Aircraft" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+            <p className="text-base text-text-secondary mt-3 italic">
+              Narrow-body departures (~85K/year) are excluded to reveal the dynamics of the specialized cargo and
+              regional fleet &mdash; including turboprop and wide-body freight operations.
+            </p>
           </ChartCard>
         </div>
       </SectionBlock>

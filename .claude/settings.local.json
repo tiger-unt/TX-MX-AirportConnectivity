@@ -100,7 +100,14 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
       "Bash(grep -n \"BarChart.*horizontal\\\\|horizontal.*BarChart\" **/*.jsx)",
       "Bash(curl -s http://localhost:5174)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Read(//c/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Task 6 - Airport Connectivity/NR > 1 && $6 ~ /Texas/ && $11 ~ /Mexico/ {\n  group = $14\n  departures = $16\n  groups[group] += departures\n}\nNR > 1 && $11 ~ /Mexico/ && $6 ~ /Texas/**)",
+      "Bash(sort -t' ' -k2 -nr)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-mexico --tab operations)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --route /texas-mexico --tab operations --screenshots --out-dir ./screenshots-check)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-mexico --tab operations --viewport 1440x900 --wait 4000)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --route /us-mexico --screenshots --out-dir ./screenshots-temp)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",
@@ -108,7 +115,9 @@
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate",
       "C:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\$SRC",
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\02_Data_Staging\\BTS_Air_Carrier_Statistics\\Script\\_Archive\\Andrew_Sample_Code",
-      "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\07_WebApp\\screenshots"
+      "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\07_WebApp\\screenshots",
+      "C:\\Users\\UNT\\.claude\\skills\\visual-check",
+      "C:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Task 6 - Airport Connectivity\\02_Data_Staging\\BTS_Air_Carrier_Statistics\\Script\\_temp"
     ]
   }
 }

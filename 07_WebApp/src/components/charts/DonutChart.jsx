@@ -76,8 +76,11 @@ export default function DonutChart({
   const hasAnimated = useRef(false)
   const { width, height: containerHeight, isFullscreen } = useChartResize(containerRef)
 
-  // Legend visibility: right-side SVG legend for wide containers, bottom HTML legend for narrow ones
-  const showLegendRight = width > 500 && data.length <= 10
+  // Legend visibility: right-side SVG legend when labels fit, bottom HTML legend otherwise
+  const estLegendPx = data.length > 0
+    ? Math.max(...data.map(d => `${d[nameKey]} (${formatValue(d[valueKey])})`.length)) * 9 + 50
+    : 0
+  const showLegendRight = width > 500 && data.length <= 10 && data.length > 0 && (width - estLegendPx) >= 220
   const showBottomLegend = width > 0 && !showLegendRight && data.length > 0 && data.length <= 15
 
   // Click-outside handler: deselect when clicking anywhere outside the chart container
@@ -99,11 +102,11 @@ export default function DonutChart({
     const FS = getResponsiveFontSize(width, isFullscreen)
     const charW = FS * 0.6
 
-    // In fullscreen, give legend more space based on longest label
+    // Give legend enough space based on longest label, ensuring donut gets at least 220px
     const maxLabelLen = d3.max(data, (d) => `${d[nameKey]} (${formatValue(d[valueKey])})`.length) || 20
     const legendW = isFullscreen
-      ? Math.min(width * 0.35, Math.max(320, maxLabelLen * charW + 40))
-      : Math.min(width * 0.4, Math.max(300, maxLabelLen * charW + 40))
+      ? Math.min(width - 220, Math.max(320, maxLabelLen * charW + 50))
+      : Math.min(width - 220, Math.max(280, maxLabelLen * charW + 50))
     const legendWidth = showLegendRight ? legendW : 0
     const chartArea = width - legendWidth
     const maxSize = containerHeight > 100 ? containerHeight : 300

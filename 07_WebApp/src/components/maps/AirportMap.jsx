@@ -430,6 +430,15 @@ export default function AirportMap({
             Selected airport routes
           </span>
         )}
+        {fixedRadius == null && !hideVolume && (
+          <span className="flex items-center gap-1.5">
+            <svg width="24" height="16" aria-hidden="true" className="flex-shrink-0">
+              <circle cx="7" cy="11" r="3" fill="#999" opacity="0.5" />
+              <circle cx="17" cy="8" r="6" fill="#999" opacity="0.5" />
+            </svg>
+            Size = {metricLabel} volume
+          </span>
+        )}
         {hintText && <span className="ml-auto text-base">{hintText}</span>}
       </div>
     </div>

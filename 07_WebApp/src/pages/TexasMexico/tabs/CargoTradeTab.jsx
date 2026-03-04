@@ -126,12 +126,13 @@ export default function CargoTradeTab({
             xKey="Passengers"
             yKey="Freight"
             labelKey="Code"
+            nameKey="Airport"
             colorKey="Type"
             formatX={fmtCompact}
             formatY={fmtLbs}
             xLabel="Passengers"
             yLabel="Freight (lbs)"
-            colorMap={{ Border: CHART_COLORS[0], 'Non-Border': CHART_COLORS[7] }}
+            colorMap={{ 'Border Airport': CHART_COLORS[0], 'Non-Border Airport': CHART_COLORS[7] }}
             labelThreshold={8}
             scaleType={scatterScale}
           />

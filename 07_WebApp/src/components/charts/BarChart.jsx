@@ -79,6 +79,7 @@ export default function BarChart({
   color = CHART_COLORS[0],
   horizontal = false,
   formatValue = formatCompact,
+  labelAccessor,
   onBarClick,
   selectedBar,
   maxBars = 15,
@@ -99,19 +100,21 @@ export default function BarChart({
     const displayData = data.slice(0, maxBars)
     const maxLabelLen = d3.max(displayData, (d) => (d[xKey] || '').length) || 0
     const dynamicLeft = horizontal
-      ? Math.min(width * 0.5, Math.max(160, maxLabelLen * charW + 20))
+      ? Math.min(width * 0.5, Math.max(100, maxLabelLen * charW + 20))
       : 16
     // Estimate if vertical labels need rotation (before scale is built)
     const approxBandwidth = horizontal ? 0 : (width - 32) / displayData.length * 0.7
     const vLabelRotated = !horizontal && maxLabelLen * 9 > approxBandwidth
     const margin = horizontal
-      ? { top: 8, right: 80, bottom: 24, left: dynamicLeft }
-      : { top: 24, right: 16, bottom: vLabelRotated ? 100 : 48, left: 16 }
+      ? { top: 8, right: 48, bottom: 24, left: dynamicLeft }
+      : { top: 24, right: 12, bottom: vLabelRotated ? 100 : 48, left: 12 }
 
     const defaultH = horizontal ? Math.max(220, displayData.length * 32 + margin.top + margin.bottom) : 320
-    // For horizontal bars, always use at least defaultH so labels don't overlap
+    // For horizontal bars, use bar-count-based height (not containerHeight) to avoid
+    // feedback loops with CSS grid/flex layouts where h-full causes unbounded growth.
+    // For vertical bars, fill the available container height.
     const height = horizontal
-      ? Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
+      ? defaultH
       : (containerHeight > 100 ? containerHeight : defaultH)
     const innerW = Math.max(1, width - margin.left - margin.right)
     const innerH = Math.max(1, height - margin.top - margin.bottom)
@@ -125,7 +128,6 @@ export default function BarChart({
     if (horizontal) {
       const x = d3.scaleLinear()
         .domain([0, d3.max(displayData, (d) => d[yKey]) || 1])
-        .nice()
         .range([0, innerW])
 
       const y = d3.scaleBand()
@@ -170,7 +172,7 @@ export default function BarChart({
         .attr('font-size', `${FS}px`)
         .each(function (d) {
           const barW = x(d[yKey])
-          const labelText = formatValue(d[yKey])
+          const labelText = labelAccessor ? labelAccessor(d) : formatValue(d[yKey])
           const labelW = labelText.length * charW // approx char width
           const overflows = barW + labelW + 8 > innerW + rightMarginPx
           d3.select(this)
@@ -267,7 +269,7 @@ export default function BarChart({
         .attr('text-anchor', 'middle')
         .attr('font-size', `${FS}px`)
         .attr('fill', 'var(--color-text-secondary)')
-        .text((d) => formatValue(d[yKey]))
+        .text((d) => labelAccessor ? labelAccessor(d) : formatValue(d[yKey]))
         .attr('y', innerH)
         .attr('opacity', 0)
         .transition()
@@ -320,7 +322,7 @@ export default function BarChart({
         })
     }
 
-  }, [data, width, containerHeight, isFullscreen, xKey, yKey, color, horizontal, selectedBar, maxBars, animate])
+  }, [data, width, containerHeight, isFullscreen, xKey, yKey, color, horizontal, selectedBar, maxBars, animate, labelAccessor])
 
   // In horizontal mode, set a minimum height so each bar gets enough space
   // (~32px per bar). This allows the parent grid cell to grow accordingly.
@@ -328,7 +330,7 @@ export default function BarChart({
   const minH = horizontal ? Math.max(220, displayCount * 32 + 32) : undefined
 
   return (
-    <div ref={containerRef} className="w-full relative" style={{ minHeight: minH }}>
+    <div ref={containerRef} className="w-full h-full relative" style={{ minHeight: minH }}>
       <svg ref={svgRef} className="w-full" />
       <div
         ref={tooltipRef}

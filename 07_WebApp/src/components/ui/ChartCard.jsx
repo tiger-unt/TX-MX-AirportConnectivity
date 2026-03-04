@@ -102,7 +102,7 @@ export default function ChartCard({
                     h-full flex flex-col ${className}`}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+        <div className="flex items-start justify-between gap-3 px-3 pt-5 pb-3">
           <div className="min-w-0">
             <h3 className="text-xl font-semibold text-text-primary leading-snug">
               {title}
@@ -111,7 +111,7 @@ export default function ChartCard({
               <p className="text-base text-text-secondary mt-0.5">{subtitle}</p>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 group/actions">
             {headerRight}
             {effectiveDownloadData && (
               <DownloadButton
@@ -119,32 +119,35 @@ export default function ChartCard({
                 detail={effectiveDownloadData.detail}
               />
             )}
-            <button
-              onClick={handleExportPng}
-              className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
-                         hover:bg-surface-alt transition-all duration-150"
-              title="Export as PNG"
-            >
-              <ImageIcon size={14} />
-            </button>
-            <button
-              onClick={() => setIsFullscreen(true)}
-              className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
-                         hover:bg-surface-alt transition-all duration-150"
-              title="Full screen"
-            >
-              <Maximize2 size={14} />
-            </button>
-            {onReset && (
+            {/* Secondary actions — revealed on hover or keyboard focus */}
+            <div className="flex items-center gap-2 opacity-0 group-hover/actions:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
               <button
-                onClick={onReset}
+                onClick={handleExportPng}
                 className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
                            hover:bg-surface-alt transition-all duration-150"
-                title="Reset filter"
+                title="Export as PNG"
               >
-                <RotateCcw size={14} />
+                <ImageIcon size={14} />
               </button>
-            )}
+              <button
+                onClick={() => setIsFullscreen(true)}
+                className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
+                           hover:bg-surface-alt transition-all duration-150"
+                title="Full screen"
+              >
+                <Maximize2 size={14} />
+              </button>
+              {onReset && (
+                <button
+                  onClick={onReset}
+                  className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
+                             hover:bg-surface-alt transition-all duration-150"
+                  title="Reset filter"
+                >
+                  <RotateCcw size={14} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -152,7 +155,7 @@ export default function ChartCard({
             Chart components set their own minHeight based on data/legend needs.
             The flex-1 lets this area grow; the chart's inline minHeight drives expansion.
             When fullscreen is active, hide card children to avoid duplicate Leaflet maps. */}
-        <div ref={chartAreaRef} className="px-5 pb-5 flex-1" style={{ minHeight }}>
+        <div ref={chartAreaRef} className="px-3 pb-5 flex-1" style={{ minHeight }}>
           {!isFullscreen && children}
         </div>
       </div>

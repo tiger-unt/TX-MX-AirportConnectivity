@@ -86,7 +86,7 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 ### Tech Stack
 - **React 19** + Vite 7 — SPA with HashRouter (static-hosting friendly)
 - **Zustand** — lightweight state management (aviationStore, chatStore)
-- **D3.js** — chart rendering (bar, line, donut, stacked bar, treemap, diverging bar, heatmap table, scatter plot)
+- **D3.js** — chart rendering (bar, line, donut, stacked bar, treemap, diverging bar, heatmap table, scatter plot, lollipop)
 - **Leaflet + React-Leaflet** — interactive airport maps with route arcs
 - **Tailwind CSS 4** — utility-first styling with TxDOT brand tokens
 - **Lucide React** — icon library
@@ -125,7 +125,7 @@ src/
 ├── components/
 │   ├── layout/         # SiteHeader, MainNav, DashboardLayout, PageWrapper, Footer, UtilityBar
 │   ├── ui/             # StatCard, ChartCard, DataTable, FullscreenChart, DownloadButton, PageHeader, SectionBlock, TabBar, InsightCallout, ErrorBoundary, MapPlaceholder
-│   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot
+│   ├── charts/         # BarChart, LineChart, DonutChart, StackedBarChart, TreemapChart, DivergingBarChart, HeatmapTable, ScatterPlot, LollipopChart
 │   ├── maps/           # AirportMap (Leaflet markers + great-circle route arcs)
 │   ├── filters/        # FilterSidebar, FilterBar, FilterSelect, FilterMultiSelect, ActiveFilterTags
 │   └── ai/             # AskAIDrawer, ChatInput, ChatMessage, SuggestedQuestions
@@ -188,6 +188,7 @@ All chart components accept a `formatValue` prop that controls how numeric value
 - **BORDER_AIRPORTS constant**: `aviationHelpers.js` exports `BORDER_AIRPORTS` (Set) and `BORDER_AIRPORT_LIST` (array of `{code, city}`) — the six Texas border airports, defined as airports located within a TxDOT border district: ELP (El Paso), LRD (Laredo), MFE (McAllen), HRL (Harlingen), BRO (Brownsville), DRT (Del Rio). Used on the Overview page (sidebar card + map highlighting), and the Texas-Mexico page (intro section with mini-map, border vs non-border analysis, O-D route matrix). AirportMap accepts a `highlightAirports` prop (Set of IATA codes) to render those markers with a thick white halo stroke.
 - **DivergingBarChart**: Bilateral horizontal bar chart (left/right from center axis). Props: `data`, `labelKey`, `leftKey`, `rightKey`, `leftLabel`, `rightLabel`, `leftColor`, `rightColor`, `formatValue`, `maxBars`, `animate`. Used for freight import/export imbalance.
 - **HeatmapTable**: Color-intensity HTML grid table. Props: `data` (with `rowLabels`, `colLabels`, `cells` 2D array), `formatValue`. Cell background alpha scales with value. Used for border airport O-D route matrices.
+- **LollipopChart**: Horizontal lollipop chart (thin stem + dot) for ranked data with long labels. Props: `data`, `xKey`, `yKey`, `color`, `formatValue`, `maxBars`, `animate`, `dotRadius`. Route labels auto-split on " → " for two-line display (origin / destination). Subtle guide lines and animated entrance. Used for load factor route rankings on the Texas-Mexico Operations & Capacity tab.
 - **ScatterPlot**: Scatter/bubble chart with two numeric axes. Props: `data`, `xKey`, `yKey`, `labelKey`, `colorKey`, `sizeKey`, `formatX`, `formatY`, `colorMap`, `labelThreshold`, `scaleType` (`'symlog'`/`'linear'`/`'log'`), `animate`. Supports `d3.scaleSymlog()` for data with extreme skew and zero values. Optional bubble sizing via `scaleSqrt`. Permanent labels on top-N points, tooltip on hover for all. Used on Texas-Mexico Cargo & Trade tab for Passengers vs Freight airport activity (uniform dot size — no `sizeKey` — to avoid mixing incompatible units).
 - **Map metric selector**: Each page's AirportMap has a `<select>` dropdown (via ChartCard `headerRight`) letting users switch between Passengers, Freight (lbs), Mail (lbs), and Flights. Configuration is centralized in `MAP_METRIC_OPTIONS` (aviationHelpers.js). Each option specifies the CSV field, data source (market/segment), formatter, and unit label. The map metric is page-local state (`useState`), not global store state, since it only affects map visualization. `aggregateRoutes(data, airportIndex, field)` and `aggregateAirportVolumes(data, field)` accept an optional field parameter (default `'PASSENGERS'`). AirportMap accepts `formatValue` and `metricLabel` props for popup formatting.
 - **AIRCRAFT_GROUP_LABELS constant**: `aviationHelpers.js` exports `AIRCRAFT_GROUP_LABELS` mapping BTS aircraft group codes (0–8) to readable names. Used on the Texas-Mexico page for Aircraft Mix donut chart and trend line. The segment CSV includes `AIRCRAFT_GROUP` as a dimension column (added to `SEGMENT_EXTRA_GROUP_BY` in Extract_BTS_Data.py).

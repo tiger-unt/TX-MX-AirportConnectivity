@@ -33,6 +33,7 @@ export default function ScatterPlot({
   xKey = 'x',
   yKey = 'y',
   labelKey = 'label',
+  nameKey,
   colorKey,
   sizeKey,
   formatX = formatCompact,
@@ -59,8 +60,8 @@ export default function ScatterPlot({
 
     /* ── margins & dimensions ─────────────────────────────────────── */
     const margin = isFullscreen
-      ? { top: 24, right: 56, bottom: 88, left: 112 }
-      : { top: 20, right: 48, bottom: 80, left: 104 }
+      ? { top: 24, right: 48, bottom: 88, left: 112 }
+      : { top: 20, right: 32, bottom: 80, left: 104 }
 
     // Reserve space for legend if colorKey has categories
     const categories = colorKey
@@ -276,6 +277,15 @@ export default function ScatterPlot({
         header.textContent = d[labelKey]
         tipDiv.appendChild(header)
 
+        // Name (e.g. airport name)
+        if (nameKey && d[nameKey]) {
+          const nameEl = document.createElement('div')
+          nameEl.style.color = '#6b7280'
+          nameEl.style.marginBottom = '2px'
+          nameEl.textContent = d[nameKey]
+          tipDiv.appendChild(nameEl)
+        }
+
         // Category
         if (colorKey && d[colorKey]) {
           const cat = document.createElement('div')
@@ -437,7 +447,7 @@ export default function ScatterPlot({
     return () => {
       document.getElementById(tipId)?.remove()
     }
-  }, [data, width, containerHeight, isFullscreen, xKey, yKey, labelKey, colorKey, sizeKey, formatX, formatY, colorMap, xLabel, yLabel, labelThreshold, scaleType, animate])
+  }, [data, width, containerHeight, isFullscreen, xKey, yKey, labelKey, nameKey, colorKey, sizeKey, formatX, formatY, colorMap, xLabel, yLabel, labelThreshold, scaleType, animate])
 
   return (
     <div ref={containerRef} className="w-full" style={{ minHeight: 380 }}>

@@ -261,6 +261,140 @@ Add micro-tooltips on key KPIs (share, load factor, schedule adherence) with exa
 - Frequency of "About Data" visits from analysis pages
 - Stakeholder-reported confusion points during demos
 
+## Addendum: Missing Areas (Now Covered)
+
+The following requested gaps were audited with direct measurements and spot-checks.
+
+## 1) Performance Observations
+
+### What was measured
+- Web app source data payload actually loaded in-browser:
+  - `BTS_T-100_Market_2015-2024.csv`: 13,501,966 bytes
+  - `BTS_T-100_Segment_2015-2024.csv`: 15,774,286 bytes
+  - `BTS_T-100_Airports_2015-2024.geojson`: 280,681 bytes
+- Row volume loaded by the web app:
+  - Market: 94,115 rows
+  - Segment: 96,321 rows
+  - Total: 190,436 rows
+
+### Interaction timing benchmarks (Playwright, desktop 1440x900)
+- Home ready: ~1,560 ms
+- `U.S.-Mexico` ready: ~1,265 ms
+- `Texas-Mexico` ready: ~1,334 ms
+- Filter update (`Carrier Type -> Domestic` on `U.S.-Mexico`): ~597 ms
+- Tab switches (`Texas-Mexico`):
+  - Overview -> Cargo: ~185 ms
+  - Cargo -> Border: ~170 ms
+
+### CPU profile findings (live interaction profile)
+- Profile duration: 128.10s
+- Total samples: 55,120 (validated from raw profile JSON)
+- Active CPU: 17.1%, idle: 82.9%
+- Highest self-time contributors:
+  - garbage collector (largest single bucket)
+  - D3 CSV tokenization/parsing (`token`, `parseRows`, `parse`, `autoType`)
+- Interpretation:
+  - Main cost is startup parse/typing of CSV plus GC churn, not sustained chart interaction jank.
+  - Ongoing interactions are generally responsive, but startup parse cost is real.
+
+### Performance recommendation
+- Replace `d3.autoType` with explicit column typing for known fields to reduce parse overhead.
+- Consider pre-typed JSON/Parquet or chunked loading for first render.
+- Consider moving heavy parse/enrichment to a Web Worker.
+
+## 2) Mobile/Responsive Assessment
+
+### Viewport checks (`Texas-Mexico`)
+- Mobile (390x844):
+  - mobile nav toggle visible
+  - desktop filter sidebar hidden
+  - no horizontal overflow
+  - tab row overflows horizontally (scroll expected/works)
+- Tablet (768x1024):
+  - desktop nav active (mobile toggle hidden)
+  - desktop filter sidebar hidden
+  - no horizontal overflow
+  - tab row still overflow-scroll
+- Desktop (1280x800):
+  - desktop nav + filter sidebar visible
+  - no horizontal overflow
+
+### Map sizing across viewports (`AirportMap` first map in `Texas-Mexico`)
+- Mobile: 282 x 381
+- Tablet: 660 x 409
+- Desktop: 884 x 437
+- Zoom controls present in all tested viewports.
+
+### Responsive interpretation
+- Core responsiveness is working and no horizontal overflow bug was observed in Playwright.
+- Tablet layout is functional but can feel dense (desktop nav + no right filter panel + many controls).
+
+## 3) Accessibility Audit
+
+### Lighthouse (Texas-Mexico route)
+- Accessibility score: 0.92
+- Failing audits:
+  - `color-contrast`: insufficient contrast on at least one body text block
+  - `select-name`: unlabeled `<select>` controls (3 instances)
+
+### Keyboard navigation check
+- Tab order reaches major controls (header nav, tabs, chart actions, map controls).
+- However, ARIA tablist keyboard behavior is incomplete:
+  - Arrow key did **not** switch active tab in testing.
+  - Tabs are clickable and tab-focusable, but expected left/right arrow navigation is missing.
+- No skip-link observed in early tab order (first focus target starts on header controls).
+
+### Accessibility recommendation
+- Add programmatic labels (`aria-label` or `<label htmlFor>`) to chart header selects.
+- Implement arrow-key behavior on `TabBar` to match tablist accessibility pattern.
+- Add a visible skip link (`Skip to main content`).
+- Re-check text contrast tokens on low-emphasis paragraph styles.
+
+## 4) Data Accuracy Spot-Checks (CSV Cross-Reference)
+
+Displayed metrics were cross-checked against `07_WebApp/public/data/*.csv`.
+
+### Matches confirmed
+- Texas Domestic Passengers (2024): 164.0M
+- Texas International Passengers (2024): 27.0M
+- U.S.-Mexico Passengers (2024): 40.3M
+- Texas-Mexico Passengers (2024): 11.0M
+- U.S.-Mexico Texas share (latest-year all-states method): 27.5%
+- U.S.-Mexico top route (latest year): LAX-GDL
+- Border share callout:
+  - passengers: 0.3%
+  - cargo: 28.5%
+
+### Important nuance verified
+- `Connected U.S. States = 52` is mathematically true under current logic because it includes:
+  - Puerto Rico
+  - U.S. Virgin Islands
+
+### Confirmed inconsistency source
+- The `U.S.-Mexico` 28.1% figure comes from a **top-15 all-years ranking denominator**.
+- The 27.5% KPI comes from a **latest-year all-states denominator**.
+- Both are internally consistent to their own formulas, but inconsistent with each other in presentation context.
+
+## 5) AirportMap-Specific Review
+
+### What works well
+- Strong visual centerpiece with clear geospatial context.
+- Good interaction design for wheel-zoom guarding ("click map to enable zooming").
+- Border-airport highlighting is effective and understandable.
+- Supports fit-to-bounds and fullscreen reuse.
+
+### Confusion/risk points
+- Marker-size meaning is implicit; there is no explicit bubble-size legend.
+- Reset behavior for selected airport is discoverable by experience, but not explicit in controls text.
+- Selection can change arc density dramatically; users may not understand why map complexity suddenly increases.
+- Accessibility: circle markers are mouse-first interactions; keyboard/screen-reader discoverability is limited.
+
+### Map recommendations
+- Add a compact "Marker size = metric volume" legend cue.
+- Add explicit helper text near map title: "Click airport to filter routes; click map background to clear."
+- Add a keyboard-accessible airport list control synchronized with map selection (especially for accessibility).
+- Consider clustering or optional density mode for high-point maps (`U.S.-Mexico`) to reduce visual clutter.
+
 ## Closing Note
 
 The dashboard already has strong data depth and visual polish.  

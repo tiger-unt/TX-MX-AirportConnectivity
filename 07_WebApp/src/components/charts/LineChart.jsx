@@ -99,9 +99,16 @@ export default function LineChart({
     if (!data.length || !width) return
 
     const FS = getResponsiveFontSize(width, isFullscreen)
+
+    // Dynamic left margin: measure the longest Y-axis label to prevent clipping
+    const yMaxEst = d3.max(data, (d) => d[yKey]) || 1
+    const yTicksEst = d3.scaleLinear().domain([0, yMaxEst]).nice().ticks(5)
+    const maxYLabelLen = d3.max(yTicksEst, (v) => (v === 0 ? '' : formatValue(v)).length) || 4
+    const dynamicLeft = Math.max(48, maxYLabelLen * (FS * 0.6) + 16)
+
     const margin = isFullscreen
-      ? { top: 20, right: 36, bottom: 72, left: 100 }
-      : { top: 16, right: 28, bottom: 60, left: 80 }
+      ? { top: 20, right: 28, bottom: 72, left: Math.max(100, dynamicLeft) }
+      : { top: 16, right: 16, bottom: 60, left: dynamicLeft }
 
     // ── Pre-calculate legend dimensions ──────────────────────────
     const LEGEND_FONT = FS

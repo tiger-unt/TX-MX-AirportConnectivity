@@ -439,7 +439,7 @@ export default function TexasDomesticPage() {
         <div className="space-y-4">
           <p className="text-base text-text-secondary leading-relaxed">
             Texas is one of the most air-connected states in the U.S., with dozens of airports
-            linking Texans to destinations across all 50 states. But domestic connectivity
+            linking Texans to destinations across all 52 U.S. states and territories. But domestic connectivity
             isn&rsquo;t evenly distributed &mdash; a handful of hub airports carry the vast majority
             of traffic. This page examines passenger volumes, flight operations, cargo flows,
             and schedule reliability from 2015 to {latestYear || '\u2026'}.

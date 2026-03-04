@@ -401,15 +401,49 @@ export default function USMexicoPage() {
     return { totalPax, totalCargo }
   }, [filtered])
 
+  /* Latest-year national totals & rankings for consistent TX share % (matches KPI card) */
+  const nationalTotalsLatest = useMemo(() => {
+    if (!latestYear) return { totalPax: 0, totalCargo: 0 }
+    let totalPax = 0, totalCargo = 0
+    filtered.filter(isUsToMx).filter((d) => d.YEAR === latestYear).forEach((d) => {
+      if (!d.ORIGIN_STATE_NM) return
+      totalPax += d.PASSENGERS
+      totalCargo += d.FREIGHT
+    })
+    return { totalPax, totalCargo }
+  }, [filtered, latestYear])
+
+  const stateRankingPaxLatest = useMemo(() => {
+    if (!latestYear) return []
+    const byState = new Map()
+    filtered.filter(isUsToMx).filter((d) => d.YEAR === latestYear).forEach((d) => {
+      if (!d.ORIGIN_STATE_NM) return
+      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.PASSENGERS)
+    })
+    return Array.from(byState, ([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+  }, [filtered, latestYear])
+
+  const stateRankingCargoLatest = useMemo(() => {
+    if (!latestYear) return []
+    const byState = new Map()
+    filtered.filter(isUsToMx).filter((d) => d.YEAR === latestYear).forEach((d) => {
+      if (!d.ORIGIN_STATE_NM) return
+      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.FREIGHT)
+    })
+    return Array.from(byState, ([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+  }, [filtered, latestYear])
+
   const txRankStats = useMemo(() => {
-    const paxRank = stateRankingPax.findIndex((d) => d.label === 'Texas') + 1
-    const cargoRank = stateRankingCargo.findIndex((d) => d.label === 'Texas') + 1
-    const txPax = stateRankingPax.find((d) => d.label === 'Texas')?.value || 0
-    const paxPct = nationalTotals.totalPax ? (txPax / nationalTotals.totalPax * 100).toFixed(1) : '0'
-    const txCargo = stateRankingCargo.find((d) => d.label === 'Texas')?.value || 0
-    const cargoPct = nationalTotals.totalCargo ? (txCargo / nationalTotals.totalCargo * 100).toFixed(1) : '0'
+    const paxRank = stateRankingPaxLatest.findIndex((d) => d.label === 'Texas') + 1
+    const cargoRank = stateRankingCargoLatest.findIndex((d) => d.label === 'Texas') + 1
+    const txPax = stateRankingPaxLatest.find((d) => d.label === 'Texas')?.value || 0
+    const paxPct = nationalTotalsLatest.totalPax ? (txPax / nationalTotalsLatest.totalPax * 100).toFixed(1) : '0'
+    const txCargo = stateRankingCargoLatest.find((d) => d.label === 'Texas')?.value || 0
+    const cargoPct = nationalTotalsLatest.totalCargo ? (txCargo / nationalTotalsLatest.totalCargo * 100).toFixed(1) : '0'
     return { paxRank: paxRank || '-', paxPct, cargoRank: cargoRank || '-', cargoPct }
-  }, [stateRankingPax, stateRankingCargo, nationalTotals])
+  }, [stateRankingPaxLatest, stateRankingCargoLatest, nationalTotalsLatest])
 
   /* ── storytelling insights ───────────────────────────────────────── */
   const loadFactorInsight = useMemo(() => {
@@ -538,6 +572,10 @@ export default function USMexicoPage() {
             U.S.-Mexico passengers depart from Texas airports than from any other state.
             This page provides a national perspective on the cross-border market and
             Texas&rsquo;s outsized role in it, from 2015 to {latestYear || '\u2026'}.
+          </p>
+          <p className="text-base text-text-secondary/70 leading-relaxed italic">
+            Scope: all U.S.&ndash;Mexico air traffic nationwide, both directions. For Texas-specific
+            analysis, see the <a href="#/texas-mexico" className="text-brand-blue underline hover:text-brand-blue/80">Texas&ndash;Mexico</a> page.
           </p>
           {txRankStats.paxRank && txRankStats.paxRank !== '-' && (
             <InsightCallout
@@ -676,7 +714,7 @@ export default function USMexicoPage() {
           <div className="lg:col-span-2">
             <ChartCard
               title="Top U.S. States Serving Mexico"
-              subtitle="Total passengers, U.S. \u2192 Mexico (all filtered years)"
+              subtitle={`Total passengers, U.S. \u2192 Mexico (all filtered years)`}
               downloadData={{ summary: { data: topStates, filename: 'top-us-states-to-mexico' } }}
             >
               <BarChart data={topStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />

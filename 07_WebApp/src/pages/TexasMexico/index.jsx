@@ -501,7 +501,7 @@ export default function TexasMexicoPage() {
       if (!byAirport.has(txCode)) {
         byAirport.set(txCode, {
           Code: txCode, Airport: txLabel, City: txCity,
-          Type: BORDER_AIRPORTS.has(txCode) ? 'Border' : 'Non-Border',
+          Type: BORDER_AIRPORTS.has(txCode) ? 'Border Airport' : 'Non-Border Airport',
           Passengers: 0, Freight: 0,
         })
       }
@@ -623,25 +623,102 @@ export default function TexasMexicoPage() {
   }, [filteredSegment])
 
   /* ── aircraft mix ──────────────────────────────────────────────────── */
-  const aircraftGroupShare = useMemo(() => {
+  const NB_GROUP = 6 // AIRCRAFT_GROUP code for Narrow-Body Jet
+
+  const aircraftMixInsight = useMemo(() => {
+    if (!filteredSegment.length) return null
     const byGroup = new Map()
     filteredSegment.forEach((d) => {
       const grp = d.AIRCRAFT_GROUP
       if (grp == null) return
-      byGroup.set(grp, (byGroup.get(grp) || 0) + d.DEPARTURES_PERFORMED)
+      if (!byGroup.has(grp)) byGroup.set(grp, { deps: 0, freight: 0 })
+      const row = byGroup.get(grp)
+      row.deps += d.DEPARTURES_PERFORMED
+      row.freight += d.FREIGHT
     })
-    return Array.from(byGroup, ([grp, value]) => ({
-      label: AIRCRAFT_GROUP_LABELS[grp] || `Group ${grp}`,
-      value,
-    })).sort((a, b) => b.value - a.value)
+    const totalDeps = [...byGroup.values()].reduce((s, r) => s + r.deps, 0)
+    const totalFreight = [...byGroup.values()].reduce((s, r) => s + r.freight, 0)
+    if (!totalDeps || !totalFreight) return null
+    const nb = byGroup.get(NB_GROUP) || { deps: 0, freight: 0 }
+    const nbDepPct = ((nb.deps / totalDeps) * 100).toFixed(1)
+    const nbFreightPct = ((nb.freight / totalFreight) * 100).toFixed(1)
+    const nonNbFreightPct = (100 - parseFloat(nbFreightPct)).toFixed(0)
+    const nonNbDepPct = (100 - parseFloat(nbDepPct)).toFixed(1)
+    return { nbDepPct, nbFreightPct, nonNbFreightPct, nonNbDepPct }
   }, [filteredSegment])
 
-  const aircraftGroupTrend = useMemo(() => {
+  const aircraftFreightByYear = useMemo(() => {
     const byYG = new Map()
+    const groups = new Set()
     filteredSegment.forEach((d) => {
       const grp = d.AIRCRAFT_GROUP
       if (grp == null) return
       const label = AIRCRAFT_GROUP_LABELS[grp] || `Group ${grp}`
+      groups.add(label)
+      if (!byYG.has(d.YEAR)) byYG.set(d.YEAR, { year: d.YEAR })
+      byYG.get(d.YEAR)[label] = (byYG.get(d.YEAR)[label] || 0) + d.FREIGHT
+    })
+    const groupTotals = new Map()
+    groups.forEach((g) => {
+      let total = 0
+      byYG.forEach((row) => { total += row[g] || 0 })
+      groupTotals.set(g, total)
+    })
+    const sortedGroups = [...groups].sort((a, b) => groupTotals.get(b) - groupTotals.get(a))
+    const data = Array.from(byYG.values())
+      .map((row) => {
+        sortedGroups.forEach((g) => { if (!(g in row)) row[g] = 0 })
+        return row
+      })
+      .sort((a, b) => a.year - b.year)
+    return { data, keys: sortedGroups }
+  }, [filteredSegment])
+
+  const aircraftFreightIntensity = useMemo(() => {
+    const byGroup = new Map()
+    let totalDeps = 0
+    filteredSegment.forEach((d) => {
+      const grp = d.AIRCRAFT_GROUP
+      if (grp == null || d.DEPARTURES_PERFORMED <= 0) return
+      totalDeps += d.DEPARTURES_PERFORMED
+      const label = AIRCRAFT_GROUP_LABELS[grp] || `Group ${grp}`
+      if (!byGroup.has(label)) byGroup.set(label, { freight: 0, deps: 0 })
+      const row = byGroup.get(label)
+      row.freight += d.FREIGHT
+      row.deps += d.DEPARTURES_PERFORMED
+    })
+    return Array.from(byGroup, ([label, r]) => ({
+      label,
+      value: r.deps > 0 ? Math.round(r.freight / r.deps) : 0,
+      deps: r.deps,
+      depPct: totalDeps > 0
+        ? ((r.deps / totalDeps) * 100) < 0.05 ? '< 0.1' : ((r.deps / totalDeps) * 100).toFixed(1)
+        : '0',
+      freight: r.freight,
+    }))
+      .filter((d) => d.value > 0)
+      .sort((a, b) => b.value - a.value)
+  }, [filteredSegment])
+
+  const nonNbCargoCarriers = useMemo(() => {
+    const byCarrier = new Map()
+    filteredSegment.forEach((d) => {
+      if (d.AIRCRAFT_GROUP == null || d.AIRCRAFT_GROUP === NB_GROUP) return
+      if (d.FREIGHT <= 0 && d.DEPARTURES_PERFORMED <= 0) return
+      const carrier = d.CARRIER_NAME || 'Unknown'
+      byCarrier.set(carrier, (byCarrier.get(carrier) || 0) + d.FREIGHT)
+    })
+    return Array.from(byCarrier, ([label, value]) => ({ label, value }))
+      .filter((d) => d.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
+  }, [filteredSegment])
+
+  const nonNbDepTrend = useMemo(() => {
+    const byYG = new Map()
+    filteredSegment.forEach((d) => {
+      if (d.AIRCRAFT_GROUP == null || d.AIRCRAFT_GROUP === NB_GROUP) return
+      const label = AIRCRAFT_GROUP_LABELS[d.AIRCRAFT_GROUP] || `Group ${d.AIRCRAFT_GROUP}`
       const key = `${d.YEAR}|${label}`
       if (!byYG.has(key)) byYG.set(key, { year: d.YEAR, value: 0, Aircraft: label })
       byYG.get(key).value += d.DEPARTURES_PERFORMED
@@ -866,8 +943,11 @@ export default function TexasMexicoPage() {
           loadFactorByRoute={loadFactorByRoute}
           serviceClassShare={serviceClassShare}
           serviceClassTrend={serviceClassTrend}
-          aircraftGroupShare={aircraftGroupShare}
-          aircraftGroupTrend={aircraftGroupTrend}
+          aircraftMixInsight={aircraftMixInsight}
+          aircraftFreightByYear={aircraftFreightByYear}
+          aircraftFreightIntensity={aircraftFreightIntensity}
+          nonNbCargoCarriers={nonNbCargoCarriers}
+          nonNbDepTrend={nonNbDepTrend}
         />
       )}
       {activeTab === 'cargo' && (

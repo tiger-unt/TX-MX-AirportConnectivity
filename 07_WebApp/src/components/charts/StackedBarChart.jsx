@@ -75,9 +75,17 @@ export default function StackedBarChart({
     if (!data.length || !width || !stackKeys.length) return
 
     const FS = getResponsiveFontSize(width, isFullscreen)
+
+    // Dynamic left margin: measure the longest Y-axis label to prevent clipping
+    const stackEst = d3.stack().keys(stackKeys)(data)
+    const yMaxEst = d3.max(stackEst, (layer) => d3.max(layer, (d) => d[1])) || 1
+    const yTicksEst = d3.scaleLinear().domain([0, yMaxEst]).nice().ticks(5)
+    const maxYLabelLen = d3.max(yTicksEst, (v) => (v === 0 ? '' : formatValue(v)).length) || 4
+    const dynamicLeft = Math.max(48, maxYLabelLen * (FS * 0.6) + 16)
+
     const margin = isFullscreen
-      ? { top: 16, right: 20, bottom: 68, left: 100 }
-      : { top: 12, right: 16, bottom: 56, left: 80 }
+      ? { top: 16, right: 20, bottom: 68, left: Math.max(100, dynamicLeft) }
+      : { top: 12, right: 12, bottom: 56, left: dynamicLeft }
 
     // Pre-calculate legend rows
     const LEGEND_FONT = FS

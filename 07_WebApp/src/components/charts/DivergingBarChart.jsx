@@ -56,7 +56,7 @@ export default function DivergingBarChart({
     const maxLabelLen = d3.max(displayData, (d) => (d[labelKey] || '').length) || 0
     const labelW = Math.min(width * 0.3, Math.max(100, maxLabelLen * charW + 16))
 
-    const margin = { top: 8, right: 70, bottom: 48, left: labelW }
+    const margin = { top: 8, right: 56, bottom: 48, left: labelW }
     const defaultH = Math.max(240, displayData.length * 36 + margin.top + margin.bottom)
     const height = Math.max(defaultH, containerHeight > 100 ? containerHeight : defaultH)
     const innerW = Math.max(1, width - margin.left - margin.right)

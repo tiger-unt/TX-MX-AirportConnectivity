@@ -9,7 +9,7 @@
  *   - Scrollable dropdown with configurable max height
  *   - Outside click dismissal
  */
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useId } from 'react'
 import { ChevronDown, Check, Search } from 'lucide-react'
 
 function getVal(opt) {
@@ -29,6 +29,7 @@ export default function FilterMultiSelect({
   searchable = false,
   maxHeight = 280,
 }) {
+  const id = useId()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const ref = useRef(null)
@@ -164,11 +165,12 @@ export default function FilterMultiSelect({
 
   return (
     <div className="flex flex-col gap-1 min-w-0 w-full" ref={ref}>
-      <label className="text-base font-medium text-text-secondary uppercase tracking-wider">
+      <label htmlFor={id} className="text-base font-medium text-text-secondary uppercase tracking-wider">
         {label}
       </label>
       <div className="relative">
         <button
+          id={id}
           ref={triggerRef}
           type="button"
           onClick={() => setOpen((o) => !o)}
