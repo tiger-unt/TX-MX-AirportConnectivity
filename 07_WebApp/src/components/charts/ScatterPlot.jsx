@@ -67,7 +67,7 @@ export default function ScatterPlot({
     const categories = colorKey
       ? [...new Set(data.map((d) => d[colorKey]))]
       : []
-    const legendSpace = categories.length >= 2 ? 36 : 0
+    const legendSpace = categories.length >= 2 ? 48 : 0
 
     const defaultH = 380 + legendSpace
     // Use computed default height in normal mode to prevent feedback loops.
@@ -420,7 +420,7 @@ export default function ScatterPlot({
 
     /* ── legend ────────────────────────────────────────────────────── */
     if (categories.length >= 2) {
-      const legendY = margin.top + innerH + (isFullscreen ? 68 : 60)
+      const legendY = margin.top + innerH + (isFullscreen ? 80 : 74)
       const legendItems = categories.map((cat) => ({
         label: cat,
         color: colorMap ? (colorMap[cat] || CHART_COLORS[0]) : CHART_COLORS[categories.indexOf(cat) % CHART_COLORS.length],
