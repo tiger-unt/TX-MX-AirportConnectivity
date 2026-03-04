@@ -1,4 +1,4 @@
-import { MapPin, ArrowRightLeft } from 'lucide-react'
+import { MapPin, ArrowRightLeft, Info, Zap } from 'lucide-react'
 import SectionBlock from '@/components/ui/SectionBlock'
 import ChartCard from '@/components/ui/ChartCard'
 import InsightCallout from '@/components/ui/InsightCallout'
@@ -25,12 +25,19 @@ export default function BorderAirportsTab({
             </div>
             <h3 className="text-xl font-bold text-text-primary">Texas Border Airports</h3>
           </div>
-          <p className="text-base text-text-secondary mb-5">
+          <p className="text-base text-text-secondary mb-3">
             Six Texas airports located within a TxDOT border district serve a
-            unique role in cross-border connectivity &mdash; while most passenger traffic flows through
+            unique role in cross-border connectivity. While most passenger traffic flows through
             major inland hubs like DFW, IAH, and SAT, border airports handle a disproportionate
-            share of cargo traffic with Mexico. This section explores how these six airports
-            compare to inland hubs and which Mexican destinations they connect to.
+            share of cargo traffic with Mexico. Their cargo patterns tend to be sporadic rather
+            than steady &mdash; characterized by irregular spikes that may reflect &ldquo;emergency
+            supply chain&rdquo; usage, where air becomes the last-resort option for urgent,
+            high-value shipments when surface transport cannot meet delivery timelines.
+          </p>
+          <p className="text-base text-text-secondary/70 mb-5 italic">
+            Note: these statistics cover direct flights only. Because many border-region
+            travelers connect through major hubs (DFW, IAH), actual demand for travel between
+            the Texas border region and Mexico is likely higher than what direct-flight data shows.
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
             <div className="lg:col-span-3">
@@ -90,12 +97,24 @@ export default function BorderAirportsTab({
       {/* Border vs Non-Border Analysis */}
       <SectionBlock alt>
         {borderInsight && (
-          <div className="mb-5">
+          <div className="space-y-3 mb-5">
             <InsightCallout
               finding={`Border airports handle ${borderInsight.paxPct}% of Texas\u2013Mexico passengers but ${borderInsight.cargoPct}% of cargo.`}
               context="The gap between passenger and cargo share highlights the outsized role border airports play in cross-border freight."
               variant="default"
               icon={ArrowRightLeft}
+            />
+            <InsightCallout
+              finding="During COVID-19, some border airports saw passenger departures spike even as major hubs plummeted."
+              context="U.S.–Mexico land border crossings were closed to non-essential travel from March 2020 to November 2021, but air travel remained open — making border airports a critical alternative for cross-border movement during the pandemic."
+              variant="warning"
+              icon={Info}
+            />
+            <InsightCallout
+              finding="Laredo (LRD) operates a Unified Cargo Processing program with joint U.S.–Mexico customs inspection."
+              context="Since 2013, cargo inspected jointly at LRD receives expedited clearance at eight Mexican airports — eliminating redundant inspections and reducing transit times for industries like automotive, aerospace, and electronics."
+              variant="highlight"
+              icon={Zap}
             />
           </div>
         )}

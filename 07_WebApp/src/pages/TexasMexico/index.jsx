@@ -622,6 +622,21 @@ export default function TexasMexicoPage() {
     return Array.from(byYC.values()).sort((a, b) => a.year - b.year || a.Class.localeCompare(b.Class))
   }, [filteredSegment])
 
+  // Wide-format pivot for StackedBarChart: { year, 'Class F – ...': val, 'Class G – ...': val, ... }
+  const serviceClassTrendWide = useMemo(() => {
+    const classes = [...new Set(serviceClassTrend.map((d) => d.Class))].sort()
+    const byYear = new Map()
+    serviceClassTrend.forEach((d) => {
+      if (!byYear.has(d.year)) {
+        const row = { year: d.year }
+        classes.forEach((c) => { row[c] = 0 })
+        byYear.set(d.year, row)
+      }
+      byYear.get(d.year)[d.Class] = d.value
+    })
+    return { data: Array.from(byYear.values()).sort((a, b) => a.year - b.year), keys: classes }
+  }, [serviceClassTrend])
+
   /* ── aircraft mix ──────────────────────────────────────────────────── */
   const NB_GROUP = 6 // AIRCRAFT_GROUP code for Narrow-Body Jet
 
@@ -943,6 +958,7 @@ export default function TexasMexicoPage() {
           loadFactorByRoute={loadFactorByRoute}
           serviceClassShare={serviceClassShare}
           serviceClassTrend={serviceClassTrend}
+          serviceClassTrendWide={serviceClassTrendWide}
           aircraftMixInsight={aircraftMixInsight}
           aircraftFreightByYear={aircraftFreightByYear}
           aircraftFreightIntensity={aircraftFreightIntensity}

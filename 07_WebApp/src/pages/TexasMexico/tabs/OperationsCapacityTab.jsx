@@ -6,7 +6,7 @@ import InsightCallout from '@/components/ui/InsightCallout'
 import LineChart from '@/components/charts/LineChart'
 import BarChart from '@/components/charts/BarChart'
 import LollipopChart from '@/components/charts/LollipopChart'
-import DonutChart from '@/components/charts/DonutChart'
+
 import StackedBarChart from '@/components/charts/StackedBarChart'
 import { fmtCompact, fmtLbs } from '@/lib/aviationHelpers'
 import { CHART_COLORS } from '@/lib/chartColors'
@@ -16,7 +16,7 @@ const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rg
 export default function OperationsCapacityTab({
   seatTrend, depTrend, adherenceData,
   loadFactorTrend, loadFactorByRoute,
-  serviceClassShare, serviceClassTrend,
+  serviceClassShare, serviceClassTrend, serviceClassTrendWide,
   aircraftMixInsight, aircraftFreightByYear, aircraftFreightIntensity,
   nonNbCargoCarriers, nonNbDepTrend,
 }) {
@@ -113,21 +113,30 @@ export default function OperationsCapacityTab({
           <h3 className="text-xl font-bold text-text-primary mb-1">Service Class Breakdown</h3>
           <p className="text-base text-text-secondary">Charter, cargo-only, and scheduled service operations on Texas&ndash;Mexico routes.</p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ChartCard
-            title="Flight Share by Service Class"
-            subtitle="Departures performed by class (all filtered years)"
-            downloadData={{ summary: { data: serviceClassShare, filename: 'tx-mx-service-class-share' } }}
-          >
-            <DonutChart data={serviceClassShare} formatValue={fmtCompact} />
-          </ChartCard>
-          <ChartCard
-            title="Flights by Service Class Over Time"
-            subtitle="Departures performed by class and year"
-            downloadData={{ summary: { data: serviceClassTrend, filename: 'tx-mx-service-class-trend' } }}
-          >
-            <LineChart data={serviceClassTrend} xKey="year" yKey="value" seriesKey="Class" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
-          </ChartCard>
+        <ChartCard
+          title="Flight Share by Service Class"
+          subtitle="Departures performed by class (all filtered years)"
+          downloadData={{ summary: { data: serviceClassShare, filename: 'tx-mx-service-class-share' } }}
+        >
+          <BarChart data={serviceClassShare} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
+        </ChartCard>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+          {serviceClassTrendWide.keys.map((cls) => {
+            const classData = serviceClassTrendWide.data
+              .map((d) => ({ year: d.year, value: d[cls] || 0 }))
+              .filter((d) => d.value > 0)
+            if (!classData.length) return null
+            return (
+              <ChartCard
+                key={cls}
+                title={cls}
+                subtitle="Departures performed by year"
+                downloadData={{ summary: { data: classData, filename: `tx-mx-${cls.replace(/\s+/g, '-').toLowerCase()}` } }}
+              >
+                <LineChart data={classData} xKey="year" yKey="value" formatValue={fmtCompact} annotations={COVID_ANNOTATION} />
+              </ChartCard>
+            )
+          })}
         </div>
       </SectionBlock>
 

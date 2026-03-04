@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Package } from 'lucide-react'
+import { Package, TrendingUp } from 'lucide-react'
 import SectionBlock from '@/components/ui/SectionBlock'
 import ChartCard from '@/components/ui/ChartCard'
 import InsightCallout from '@/components/ui/InsightCallout'
@@ -33,16 +33,31 @@ export default function CargoTradeTab({
     return maxAirport ? { airport: maxAirport, type: maxType } : null
   }, [freightImbalance])
 
+  const satInsight = useMemo(() => {
+    if (!freightImbalance?.length) return null
+    const totalCargo = freightImbalance.reduce((s, d) => s + (d.exports || 0) + (d.imports || 0), 0)
+    const sat = freightImbalance.find((d) => d.label?.includes('SAT') || d.label?.includes('San Antonio'))
+    if (!sat || !totalCargo) return null
+    const satCargo = (sat.exports || 0) + (sat.imports || 0)
+    const pct = (satCargo / totalCargo * 100).toFixed(0)
+    return Number(pct) >= 20 ? { pct } : null
+  }, [freightImbalance])
+
   return (
     <>
       {/* Narrative introduction */}
       <SectionBlock>
         <div className="space-y-4">
           <p className="text-base text-text-secondary leading-relaxed">
-            While passengers dominate headlines, air cargo reveals the trade relationship
-            between Texas and Mexico. Freight flows are highly asymmetric &mdash; some airports
-            are net exporters while others are net importers. This section examines freight and
-            mail volumes, trade imbalances, and which routes carry the most cargo per flight.
+            While passengers dominate headlines, air cargo reveals the underlying trade
+            relationship between Texas and Mexico. Cross-border supply chains &mdash; particularly
+            maquiladora assembly operations in electronics, automotive, and aerospace &mdash; rely
+            on air freight for high-value, time-sensitive components. Top commodities moving by
+            air include electrical machinery, aircraft parts, and precision instruments. Despite
+            this, Texas ranks far lower nationally in air cargo than in passengers: most
+            cross-border freight moves overland because Texas is close enough to Mexico for
+            trucking to outcompete air transport in cost and time. The air cargo that does move
+            tends to reflect urgent or high-value supply chain needs rather than steady bulk flows.
           </p>
           {imbalanceInsight && (
             <InsightCallout
@@ -50,6 +65,14 @@ export default function CargoTradeTab({
               context="The diverging bar chart below shows the export/import balance for each Texas airport."
               variant="default"
               icon={Package}
+            />
+          )}
+          {satInsight && (
+            <InsightCallout
+              finding={`San Antonio (SAT) handles roughly ${satInsight.pct}% of all Texas–Mexico air cargo by weight — more than DFW or IAH.`}
+              context="SAT is not a border airport, yet its cargo volume exceeds all other Texas airports on this corridor. This concentration likely reflects specific industry logistics arrangements rather than geographic proximity to the border."
+              variant="warning"
+              icon={TrendingUp}
             />
           )}
         </div>
@@ -78,7 +101,7 @@ export default function CargoTradeTab({
       {/* Freight Imbalance */}
       <SectionBlock>
         <ChartCard
-          title="TX\u2013MX Freight Imbalance by Airport"
+          title="TX–MX Freight Imbalance by Airport"
           subtitle="Exports vs Imports in freight lbs per Texas airport"
           downloadData={{ summary: { data: freightImbalance.map((d) => ({ label: d.label, Exports: d.exports, Imports: d.imports })), filename: 'tx-mx-freight-imbalance' } }}
         >
@@ -88,7 +111,7 @@ export default function CargoTradeTab({
             leftLabel="Imports (MX \u2192 TX)" rightLabel="Exports (TX \u2192 MX)"
             formatValue={fmtLbs}
           />
-          <p className="text-base text-text-secondary mt-3 italic">Airports with larger bars on the right ship more freight to Mexico; those extending left receive more. This asymmetry reflects cross-border trade flow patterns.</p>
+          <p className="text-base text-text-secondary mt-3 italic">Airports with larger bars on the right ship more freight to Mexico; those extending left receive more. This asymmetry is analogous to &ldquo;deadheading&rdquo; in trucking &mdash; cargo flights often move loaded in one direction and return empty, which increases per-unit transportation costs and influences the economic viability of air versus surface freight.</p>
         </ChartCard>
       </SectionBlock>
 
@@ -100,7 +123,7 @@ export default function CargoTradeTab({
           downloadData={{ summary: { data: freightPerDep, filename: 'tx-mx-freight-per-departure' } }}
         >
           <BarChart data={freightPerDep} xKey="label" yKey="value" horizontal formatValue={fmtLbs} color={CHART_COLORS[4]} />
-          <p className="text-base text-text-secondary mt-3 italic">Segment-level metric: shows how much cargo each flight actually carries, complementing market-level freight totals.</p>
+          <p className="text-base text-text-secondary mt-3 italic">Segment-level metric: shows how much cargo each flight actually carries. Routes with irregular, high-intensity spikes may reflect &ldquo;emergency supply chain&rdquo; usage &mdash; airports serving as last-resort modal options for urgent, high-value shipments when surface transport cannot meet delivery timelines.</p>
         </ChartCard>
       </SectionBlock>
 

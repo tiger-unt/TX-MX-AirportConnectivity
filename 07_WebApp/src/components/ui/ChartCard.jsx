@@ -119,35 +119,32 @@ export default function ChartCard({
                 detail={effectiveDownloadData.detail}
               />
             )}
-            {/* Secondary actions — revealed on hover or keyboard focus */}
-            <div className="flex items-center gap-2 opacity-0 group-hover/actions:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+            <button
+              onClick={handleExportPng}
+              className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
+                         hover:bg-surface-alt transition-all duration-150"
+              title="Export as PNG"
+            >
+              <ImageIcon size={14} />
+            </button>
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
+                         hover:bg-surface-alt transition-all duration-150"
+              title="Full screen"
+            >
+              <Maximize2 size={14} />
+            </button>
+            {onReset && (
               <button
-                onClick={handleExportPng}
+                onClick={onReset}
                 className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
                            hover:bg-surface-alt transition-all duration-150"
-                title="Export as PNG"
+                title="Reset filter"
               >
-                <ImageIcon size={14} />
+                <RotateCcw size={14} />
               </button>
-              <button
-                onClick={() => setIsFullscreen(true)}
-                className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
-                           hover:bg-surface-alt transition-all duration-150"
-                title="Full screen"
-              >
-                <Maximize2 size={14} />
-              </button>
-              {onReset && (
-                <button
-                  onClick={onReset}
-                  className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
-                             hover:bg-surface-alt transition-all duration-150"
-                  title="Reset filter"
-                >
-                  <RotateCcw size={14} />
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
 

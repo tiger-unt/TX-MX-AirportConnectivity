@@ -95,6 +95,7 @@ export default function PassengersRoutesTab({
             title="Carrier Market Share"
             subtitle={`${filters.year.length === 1 ? filters.year[0] : latestYear || '\u2014'} passengers`}
             downloadData={{ summary: { data: carrierMarketShare, filename: 'tx-mx-carrier-share' } }}
+            className="max-w-3xl mx-auto"
           >
             <DonutChart data={carrierMarketShare} formatValue={fmtCompact} />
           </ChartCard>

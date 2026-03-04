@@ -36,9 +36,6 @@ export default function SiteHeader() {
             <h1 className="text-xl md:text-2xl font-semibold text-brand-blue leading-tight truncate">
               Airport Connectivity Dashboard
             </h1>
-            <p className="text-base text-text-secondary mt-0.5 truncate">
-              TxDOT IAC 2025–26 · UNT System
-            </p>
           </div>
         </div>
 

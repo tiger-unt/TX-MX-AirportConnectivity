@@ -568,6 +568,7 @@ export default function TexasInternationalPage() {
           title="Top International Destinations"
           subtitle="From Texas (all filtered years)"
           downloadData={{ summary: { data: topCountries, filename: 'tx-top-intl-destinations' } }}
+          className="max-w-3xl mx-auto"
         >
           <DonutChart
             data={topCountries}

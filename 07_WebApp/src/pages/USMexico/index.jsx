@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Users, PieChart, MapPin, Route, Package, Award } from 'lucide-react'
+import { Users, PieChart, MapPin, Route, Package, Award, AlertTriangle } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isUsToMx, isMxToUs, computeAdherenceData, CLASS_LABELS, CARRIER_TYPE_LABELS, getCarrierType, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
@@ -737,6 +737,16 @@ export default function USMexicoPage() {
             highlight icon={Package}
           />
         </div>
+        {txRankStats.paxRank && txRankStats.cargoRank && txRankStats.paxRank !== '-' && txRankStats.cargoRank !== '-' && Number(txRankStats.cargoRank) > Number(txRankStats.paxRank) && (
+          <div className="mb-5">
+            <InsightCallout
+              finding={`Texas ranks #${txRankStats.paxRank} for U.S.–Mexico air passengers but only #${txRankStats.cargoRank} for air cargo — a striking disparity.`}
+              context="Texas's proximity to Mexico means most cross-border cargo can move overland at lower cost than by air. States farther from the border (Kentucky, California, Alaska) rely more heavily on air freight, pushing Texas down in cargo rankings despite its dominant passenger position."
+              variant="warning"
+              icon={AlertTriangle}
+            />
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <ChartCard
             title="U.S. States by Mexico Passengers"

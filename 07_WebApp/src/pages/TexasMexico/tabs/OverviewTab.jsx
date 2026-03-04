@@ -29,11 +29,14 @@ export default function OverviewTab({
       <SectionBlock>
         <div className="space-y-4">
           <p className="text-base text-text-secondary leading-relaxed">
-            Texas and Mexico share one of the busiest bilateral air corridors in the Americas.
+            Texas and Mexico share one of the busiest bilateral air corridors in the Americas,
+            underpinned by deep economic integration. Cross-border supply chains &mdash; particularly
+            in electronics, automotive, and aerospace manufacturing &mdash; depend on reliable air
+            connectivity for high-value, time-sensitive shipments. Meanwhile, strong cultural ties
+            and tourism drive passenger volumes through major hubs like DFW, IAH, and SAT.
             This overview captures the scale and trajectory of that connectivity &mdash; from
             passenger volumes and flight operations to freight and mail flows &mdash; spanning
-            2015 to {latestYear || '\u2026'}. Use the filters to focus on specific years,
-            directions, or carriers.
+            2015 to {latestYear || '\u2026'}.
           </p>
           <p className="text-base text-text-secondary/70 leading-relaxed italic">
             Scope: Texas&ndash;Mexico only, bidirectional. This corridor is also included in the

@@ -66,6 +66,7 @@ export default function StackedBarChart({
   stackKeys = [],
   formatValue = formatCompact,
   animate = true,
+  normalize = false,
 }) {
   const containerRef = useRef(null)
   const svgRef = useRef(null)
@@ -76,11 +77,24 @@ export default function StackedBarChart({
 
     const FS = getResponsiveFontSize(width, isFullscreen)
 
+    // When normalize=true, convert each row so stackKeys sum to 100%
+    const chartData = normalize
+      ? data.map((d) => {
+          const total = stackKeys.reduce((s, k) => s + (d[k] || 0), 0)
+          const row = { ...d }
+          if (total > 0) stackKeys.forEach((k) => { row[k] = (d[k] || 0) / total * 100 })
+          else stackKeys.forEach((k) => { row[k] = 0 })
+          return row
+        })
+      : data
+    const pctFmt = (v) => `${v.toFixed(1)}%`
+
     // Dynamic left margin: measure the longest Y-axis label to prevent clipping
-    const stackEst = d3.stack().keys(stackKeys)(data)
+    const stackEst = d3.stack().keys(stackKeys)(chartData)
     const yMaxEst = d3.max(stackEst, (layer) => d3.max(layer, (d) => d[1])) || 1
-    const yTicksEst = d3.scaleLinear().domain([0, yMaxEst]).nice().ticks(5)
-    const maxYLabelLen = d3.max(yTicksEst, (v) => (v === 0 ? '' : formatValue(v)).length) || 4
+    const yTicksEst = d3.scaleLinear().domain([0, normalize ? 100 : yMaxEst]).nice().ticks(5)
+    const yLabelFmt = normalize ? pctFmt : formatValue
+    const maxYLabelLen = d3.max(yTicksEst, (v) => (v === 0 ? '' : yLabelFmt(v)).length) || 4
     const dynamicLeft = Math.max(48, maxYLabelLen * (FS * 0.6) + 16)
 
     const margin = isFullscreen
@@ -119,15 +133,15 @@ export default function StackedBarChart({
     // D3 stack layout: converts the wide-format data into layer arrays.
     // Each layer contains [y0, y1] pairs per data point (cumulative ranges).
     const stack = d3.stack().keys(stackKeys)
-    const stacked = stack(data)
+    const stacked = stack(chartData)
 
     const x = d3.scaleBand()
-      .domain(data.map((d) => d[xKey]))
+      .domain(chartData.map((d) => d[xKey]))
       .range([0, innerW])
       .padding(0.25)
 
     const y = d3.scaleLinear()
-      .domain([0, d3.max(stacked, (layer) => d3.max(layer, (d) => d[1])) || 1])
+      .domain([0, normalize ? 100 : (d3.max(stacked, (layer) => d3.max(layer, (d) => d[1])) || 1)])
       .nice()
       .range([innerH, 0])
 
@@ -195,7 +209,10 @@ export default function StackedBarChart({
     // Invisible overlay rects spanning each bar column's full height.
     // These capture mouse events so the tooltip works even when hovering
     // between stacked layers or on the gap between bars.
-    g.append('g').selectAll('.hover-col').data(data).enter()
+    // Look up original (un-normalized) row by xKey for tooltip display
+    const origMap = normalize ? new Map(data.map((d) => [d[xKey], d])) : null
+
+    g.append('g').selectAll('.hover-col').data(chartData).enter()
       .append('rect')
       .attr('class', 'hover-col')
       .attr('x', (d) => x(d[xKey]))
@@ -208,11 +225,12 @@ export default function StackedBarChart({
         g.selectAll('.bar-layer').attr('opacity', (bd) => bd.data[xKey] === d[xKey] ? 1 : 0.3)
       })
       .on('mousemove', function (event, d) {
+        const orig = origMap ? origMap.get(d[xKey]) : d
         // Build rows (top-of-stack first)
         const rows = [...stackKeys].reverse()
-          .map((key) => ({ name: key, value: d[key] || 0, color: colorScale(key) }))
-          .filter((r) => r.value > 0)
-        const total = rows.reduce((s, r) => s + r.value, 0)
+          .map((key) => ({ name: key, pct: d[key] || 0, abs: (orig ? orig[key] : d[key]) || 0, color: colorScale(key) }))
+          .filter((r) => (normalize ? r.abs > 0 : r.pct > 0))
+        const totalAbs = rows.reduce((s, r) => s + r.abs, 0)
 
         // Build tooltip using safe DOM APIs — textContent and createElement
         // only. Never use innerHTML to prevent XSS from data values.
@@ -238,7 +256,7 @@ export default function StackedBarChart({
           left.appendChild(labelSpan)
           const valSpan = document.createElement('span')
           Object.assign(valSpan.style, { fontWeight: '600', marginLeft: '16px' })
-          valSpan.textContent = formatValue(r.value)
+          valSpan.textContent = normalize ? `${r.pct.toFixed(1)}% (${formatValue(r.abs)})` : formatValue(r.pct)
           row.appendChild(left)
           row.appendChild(valSpan)
           body.appendChild(row)
@@ -250,7 +268,7 @@ export default function StackedBarChart({
         const totalLabel = document.createElement('span')
         totalLabel.textContent = 'Total'
         const totalVal = document.createElement('span')
-        totalVal.textContent = formatValue(total)
+        totalVal.textContent = normalize ? `100% (${formatValue(totalAbs)})` : formatValue(totalAbs)
         footer.appendChild(totalLabel)
         footer.appendChild(totalVal)
         tipDiv.appendChild(footer)
@@ -292,9 +310,8 @@ export default function StackedBarChart({
       .attr('text-anchor', 'end')
 
     // Y Axis — dynamic unit (centered tick marks, skip zero)
-    const yMax = d3.max(stacked, (layer) => d3.max(layer, (d) => d[1])) || 1
     const yAxisG = g.append('g')
-      .call(d3.axisLeft(y).ticks(5).tickFormat((v) => v === 0 ? '' : formatValue(v)).tickSize(0))
+      .call(d3.axisLeft(y).ticks(5).tickFormat((v) => v === 0 ? '' : yLabelFmt(v)).tickSize(0))
     yAxisG.select('.domain').remove()
     yAxisG.selectAll('.tick').append('line')
       .attr('x1', -TICK_HALF).attr('x2', TICK_HALF)
@@ -347,7 +364,7 @@ export default function StackedBarChart({
     }
 
     return () => { document.getElementById(tipId)?.remove() }
-  }, [data, width, containerHeight, isFullscreen, xKey, stackKeys, animate])
+  }, [data, width, containerHeight, isFullscreen, xKey, stackKeys, animate, normalize])
 
   // Ensure container expands for legend rows
   const estLegendRows = stackKeys.length > 0 ? Math.max(1, Math.ceil(stackKeys.length / 4)) : 0

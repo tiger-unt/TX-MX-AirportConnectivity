@@ -231,9 +231,8 @@ export default function OverviewPage() {
             Airport Connectivity Dashboard
           </h1>
           <p className="text-white/70 mt-3 text-base md:text-lg">
-            TxDOT IAC 2025–26 research project, UNT System. Comprehensive analysis
-            of air connectivity between Texas, Mexico, and the broader U.S. using BTS
-            T-100 Air Carrier Statistics.
+            Exploring air connectivity between Texas, Mexico, and the broader U.S.
+            using BTS T-100 Air Carrier Statistics.
           </p>
           <p className="text-white/50 mt-4 text-base border-l-2 border-white/30 pl-4 leading-relaxed">
             How has air connectivity between Texas and Mexico evolved over
