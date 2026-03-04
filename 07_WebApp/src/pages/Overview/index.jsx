@@ -181,7 +181,7 @@ export default function OverviewPage() {
     <>
       {/* Hero */}
       <div className="gradient-blue text-white">
-        <div className="max-w-5xl mx-auto px-6 py-14 md:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14">
           <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
             Texas–Mexico Air Connectivity Dashboard
           </h1>
@@ -193,9 +193,9 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Summary Stats */}
-        <section className="py-10">
+        <section className="py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               label={`Texas Passengers (${latestYear || '\u2014'})`}
@@ -221,7 +221,7 @@ export default function OverviewPage() {
         </section>
 
         {/* ── Map + Summary Sidebar ──────────────────────────────────── */}
-        <section className="pb-10">
+        <section className="pb-8">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Map */}
             <div className="lg:col-span-3">
@@ -329,7 +329,7 @@ export default function OverviewPage() {
         </section>
 
         {/* Explore Pages */}
-        <section className="pb-14">
+        <section className="pb-10">
           <h3 className="text-xl font-bold text-text-primary mb-5">Explore the Data</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {pages.map((p) => (
