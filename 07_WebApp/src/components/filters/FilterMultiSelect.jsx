@@ -36,6 +36,7 @@ export default function FilterMultiSelect({
   const searchRef = useRef(null)
   const triggerRef = useRef(null)
   const [computedMaxH, setComputedMaxH] = useState(maxHeight)
+  const [dropUp, setDropUp] = useState(false)
 
   // Close on outside click
   useEffect(() => {
@@ -46,19 +47,24 @@ export default function FilterMultiSelect({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Compute available viewport space when dropdown opens
+  // Compute available viewport space and flip direction when dropdown opens
   useEffect(() => {
     if (open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
-      const available = window.innerHeight - rect.bottom - 16
+      const spaceBelow = window.innerHeight - rect.bottom - 16
+      const spaceAbove = rect.top - 16
+      const shouldDropUp = spaceBelow < 200 && spaceAbove > spaceBelow
+      setDropUp(shouldDropUp)
+      const available = shouldDropUp ? spaceAbove : spaceBelow
       setComputedMaxH(Math.max(200, available))
     }
   }, [open])
 
-  // Reset search when dropdown closes; focus search when it opens
+  // Reset search and dropUp when dropdown closes; focus search when it opens
   useEffect(() => {
     if (!open) {
       setSearch('')
+      setDropUp(false)
     } else if (searchable) {
       requestAnimationFrame(() => searchRef.current?.focus())
     }
@@ -190,7 +196,7 @@ export default function FilterMultiSelect({
 
         {open && (
           <div
-            className="absolute z-50 mt-1 w-full bg-white border border-border rounded-lg shadow-lg flex flex-col"
+            className={`absolute z-50 w-full bg-white border border-border rounded-lg shadow-lg flex flex-col ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}
             style={{ maxHeight: `${computedMaxH}px` }}
           >
             {/* All option */}
