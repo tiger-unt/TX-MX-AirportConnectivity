@@ -101,7 +101,7 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 4. Pages subscribe to store, filter data by route predicates, render charts/tables/maps
 
 ### Error Handling
-- **Data load failure**: If `loadData()` fails, the store sets `error` with the message. `AppContent` in `App.jsx` reads `error` and renders a `DataLoadError` component (warning icon, error message, Retry button) instead of routes. The Retry button calls `loadData()` again.
+- **Data load failure**: If `loadData()` fails, the store sets `error` with the message. `AppContent` in `App.jsx` reads `error` and renders a `DataLoadError` component (warning icon, error message, Retry button) instead of routes. The Retry button calls `loadData()` again. During retry, the button shows "Retrying…" with a spinning icon and is disabled to prevent double-clicks.
 - **Render errors**: `ErrorBoundary` (class component) wraps routes and catches rendering/lifecycle errors. Its "Try again" button resets error state AND calls an optional `onRetry` callback prop — in `App.jsx` this is wired to `loadData()` so recovery also re-fetches data.
 - **Empty filtered data**: `DashboardLayout` accepts a `filteredEmpty` prop. When `filteredEmpty && activeCount > 0`, it replaces page content with a "No data matches the current filters" message and a Clear-all button. All four data pages pass `filteredEmpty={!filtered.length}`.
 - **Per-chart empty state**: Individual `ChartCard` instances use the `emptyState` prop with contextual messages (e.g., "Cargo flights do not carry passengers") via the `isEmptyOrAllZero()` helper from `aviationHelpers.js`.
@@ -237,7 +237,12 @@ All chart components accept a `formatValue` prop that controls how numeric value
 4. **BTS data units**: PASSENGERS = count, DEPARTURES = count, SEATS = count, FREIGHT = pounds (lbs), MAIL = pounds (lbs). None of these are currency.
 
 ### Accessibility
-- **AskAIDrawer**: Focus trap keeps Tab cycling within the drawer while open. On open, focus moves to the first focusable element after the slide-in transition. On close, focus restores to the previously focused element. Uses `aria-modal="true"` and `role="dialog"`.
+- **Skip link**: `PageWrapper` renders a visually hidden "Skip to main content" link at the top of the page. It becomes visible on focus (Tab) and targets `<main id="main-content">`.
+- **AskAIDrawer**: Focus trap keeps Tab cycling within the drawer while open. On open, focus moves to the first focusable element after the slide-in transition. On close, focus restores to the previously focused element. Uses `aria-modal="true"` and `role="dialog"`. The "Ask AI" button in `SiteHeader` has `aria-label="Open Ask AI assistant"`.
+- **FilterMultiSelect**: Follows ARIA combobox/listbox pattern — trigger button has `aria-expanded`, `aria-haspopup="listbox"`, `aria-controls`; dropdown container has `role="listbox"` with `aria-multiselectable="true"`; each option has `role="option"` and `aria-selected`. Keyboard navigation: Arrow Up/Down to move focus, Enter/Space to toggle selection, Escape to close, Home/End to jump.
+- **DownloadButton**: When dropdown mode is active, trigger has `aria-expanded` and `aria-haspopup="menu"`; dropdown has `role="menu"` with `role="menuitem"` on options. Keyboard: Arrow Up/Down to navigate, Enter to select, Escape to close and restore focus.
+- **MainNav (mobile)**: Hamburger button has `aria-expanded`. On open, focus moves to the first nav link; on close, focus restores to the hamburger button.
+- **AirportMap**: Map container has `role="region"` and `aria-label` describing the current metric (e.g. "Airport map showing passengers").
 
 ### Key Patterns
 - **Data-agnostic components**: Charts, tables, and cards receive data as props — no hardcoded field names

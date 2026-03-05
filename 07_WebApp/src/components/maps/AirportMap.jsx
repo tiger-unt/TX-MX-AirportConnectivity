@@ -298,6 +298,8 @@ export default function AirportMap({
     <div
       style={{ minHeight: height, width: '100%' }}
       className="airport-map-container h-full flex flex-col rounded-lg overflow-hidden border border-border-light isolate"
+      role="region"
+      aria-label={`Airport map showing ${metricLabel}`}
     >
       {/* Map wrapper — flex-1 fills remaining space; absolute-positioned MapContainer inside */}
       <div className="flex-1 relative" style={{ minHeight: 0 }} onWheel={handleWheel}>

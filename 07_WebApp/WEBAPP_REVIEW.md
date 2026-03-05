@@ -1,7 +1,20 @@
 # Web App Review — Improvements & Concerns
 
-**Date:** March 5, 2025  
+**Date:** March 5, 2025
 **Scope:** Airport Connectivity Dashboard (`07_WebApp/`)
+
+---
+
+## Status
+
+All six items from this initial review have been **implemented** (March 2025):
+
+1. **Data Load Failure UI** — `DataLoadError` component in `App.jsx` shows error message + Retry button when `loadData()` fails
+2. **Ask AI drawer focus trap** — Focus trap, focus-on-open, and focus-restore-on-close added to `AskAIDrawer`
+3. **Favicon path** — Fixed to work with Vite base URL
+4. **Error boundary retry** — "Try again" button now also calls `loadData()` via `onRetry` prop
+5. **Empty state** — `DashboardLayout` shows "No data matches current filters" when `filteredEmpty` is true; per-chart empty states via `emptyState` prop
+6. **Meta description** — Added to `index.html`
 
 ---
 

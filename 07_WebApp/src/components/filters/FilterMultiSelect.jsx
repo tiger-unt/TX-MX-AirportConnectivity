@@ -8,8 +8,9 @@
  *   - Search/filter input for long lists
  *   - Scrollable dropdown with configurable max height
  *   - Outside click dismissal
+ *   - ARIA listbox/option pattern with arrow-key navigation
  */
-import { useState, useRef, useEffect, useMemo, useId } from 'react'
+import { useState, useRef, useEffect, useMemo, useId, useCallback } from 'react'
 import { ChevronDown, Check, Search } from 'lucide-react'
 
 function getVal(opt) {
@@ -30,11 +31,14 @@ export default function FilterMultiSelect({
   maxHeight = 280,
 }) {
   const id = useId()
+  const listboxId = `${id}-listbox`
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [focusIdx, setFocusIdx] = useState(-1)
   const ref = useRef(null)
   const searchRef = useRef(null)
   const triggerRef = useRef(null)
+  const optionRefs = useRef([])
   const [computedMaxH, setComputedMaxH] = useState(maxHeight)
   const [dropUp, setDropUp] = useState(false)
 
@@ -71,16 +75,6 @@ export default function FilterMultiSelect({
     }
   }, [open])
 
-  // Reset search and dropUp when dropdown closes; focus search when it opens
-  useEffect(() => {
-    if (!open) {
-      setSearch('')
-      setDropUp(false)
-    } else if (searchable) {
-      requestAnimationFrame(() => searchRef.current?.focus())
-    }
-  }, [open, searchable])
-
   // Flatten all options (from groups, nested subgroups, or flat list)
   const allOptions = useMemo(() => {
     if (groups) {
@@ -95,20 +89,93 @@ export default function FilterMultiSelect({
 
   const allSelected = value.length === 0
 
-  const matchesSearch = (lbl) =>
-    !search || lbl.toLowerCase().includes(search.toLowerCase())
+  const matchesSearch = useCallback(
+    (lbl) => !search || lbl.toLowerCase().includes(search.toLowerCase()),
+    [search],
+  )
 
-  const toggle = (val) => {
+  const toggle = useCallback((val) => {
     if (value.includes(val)) {
       onChange(value.filter((v) => v !== val))
     } else {
       const next = [...value, val]
-      // If all are selected, reset to empty (meaning "All")
       onChange(next.length === optionValues.length ? [] : next)
     }
-  }
+  }, [value, onChange, optionValues])
 
-  const selectAll = () => onChange([])
+  const selectAll = useCallback(() => onChange([]), [onChange])
+
+  // Reset search, dropUp, and focusIdx when dropdown closes; focus search when it opens
+  useEffect(() => {
+    if (!open) {
+      setSearch('')
+      setDropUp(false)
+      setFocusIdx(-1)
+    } else if (searchable) {
+      requestAnimationFrame(() => searchRef.current?.focus())
+    }
+  }, [open, searchable])
+
+  // Build flat list of visible option values for keyboard navigation
+  // Index 0 = "All" option, rest are data options
+  const visibleOptions = useMemo(() => {
+    const opts = allOptions.filter((opt) => matchesSearch(getLbl(opt)))
+    return ['__all__', ...opts.map(getVal)]
+  }, [allOptions, matchesSearch])
+
+  // Scroll focused option into view
+  useEffect(() => {
+    if (focusIdx >= 0 && optionRefs.current[focusIdx]) {
+      optionRefs.current[focusIdx].scrollIntoView({ block: 'nearest' })
+    }
+  }, [focusIdx])
+
+  // Keyboard handler for the dropdown
+  const handleKeyDown = useCallback((e) => {
+    if (!open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        setOpen(true)
+        setFocusIdx(0)
+      }
+      return
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setFocusIdx((prev) => Math.min(prev + 1, visibleOptions.length - 1))
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setFocusIdx((prev) => Math.max(prev - 1, 0))
+        break
+      case 'Enter':
+      case ' ':
+        e.preventDefault()
+        if (focusIdx >= 0 && focusIdx < visibleOptions.length) {
+          const val = visibleOptions[focusIdx]
+          if (val === '__all__') selectAll()
+          else toggle(val)
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setOpen(false)
+        triggerRef.current?.focus()
+        break
+      case 'Home':
+        e.preventDefault()
+        setFocusIdx(0)
+        break
+      case 'End':
+        e.preventDefault()
+        setFocusIdx(visibleOptions.length - 1)
+        break
+      default:
+        break
+    }
+  }, [open, focusIdx, visibleOptions, selectAll, toggle])
 
   const displayLabel = allSelected
     ? allLabel
@@ -121,12 +188,17 @@ export default function FilterMultiSelect({
     const lbl = getLbl(opt)
     if (!matchesSearch(lbl)) return null
     const checked = value.includes(val)
+    const idx = visibleOptions.indexOf(val)
+    const isFocused = idx === focusIdx
     return (
-      <button
+      <div
         key={val}
-        type="button"
+        ref={(el) => { if (idx >= 0) optionRefs.current[idx] = el }}
+        role="option"
+        aria-selected={checked}
         onClick={() => toggle(val)}
-        className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-brand-blue/5 transition-colors ${checked ? 'bg-brand-blue/10 font-medium text-brand-blue' : ''}`}
+        onMouseEnter={() => setFocusIdx(idx)}
+        className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors ${checked ? 'bg-brand-blue/10 font-medium text-brand-blue' : ''} ${isFocused ? 'bg-brand-blue/10 outline outline-2 outline-brand-blue/30' : 'hover:bg-brand-blue/5'}`}
       >
         <span
           className={`flex-shrink-0 flex items-center justify-center w-4 h-4 rounded border ${checked ? 'bg-brand-blue border-brand-blue' : 'border-border'}`}
@@ -134,7 +206,7 @@ export default function FilterMultiSelect({
           {checked && <Check size={12} className="text-white" />}
         </span>
         <span className="truncate">{lbl}</span>
-      </button>
+      </div>
     )
   }
 
@@ -191,6 +263,10 @@ export default function FilterMultiSelect({
           ref={triggerRef}
           type="button"
           onClick={() => setOpen((o) => !o)}
+          onKeyDown={handleKeyDown}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-controls={open ? listboxId : undefined}
           className="appearance-none w-full px-3 py-2 pr-8 rounded-lg border border-border
                      bg-white text-base text-text-primary text-left
                      focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue
@@ -207,14 +283,22 @@ export default function FilterMultiSelect({
 
         {open && (
           <div
+            id={listboxId}
+            role="listbox"
+            aria-multiselectable="true"
+            aria-label={label}
+            onKeyDown={handleKeyDown}
             className={`absolute z-50 w-full bg-white border border-border rounded-lg shadow-lg flex flex-col ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}
             style={{ maxHeight: `${computedMaxH}px` }}
           >
             {/* All option */}
-            <button
-              type="button"
+            <div
+              ref={(el) => { optionRefs.current[0] = el }}
+              role="option"
+              aria-selected={allSelected}
               onClick={selectAll}
-              className={`flex-shrink-0 w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-brand-blue/5 transition-colors ${allSelected ? 'bg-brand-blue/10 font-medium text-brand-blue' : ''}`}
+              onMouseEnter={() => setFocusIdx(0)}
+              className={`flex-shrink-0 w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer transition-colors ${allSelected ? 'bg-brand-blue/10 font-medium text-brand-blue' : ''} ${focusIdx === 0 ? 'bg-brand-blue/10 outline outline-2 outline-brand-blue/30' : 'hover:bg-brand-blue/5'}`}
             >
               <span
                 className={`flex-shrink-0 flex items-center justify-center w-4 h-4 rounded border ${allSelected ? 'bg-brand-blue border-brand-blue' : 'border-border'}`}
@@ -222,7 +306,7 @@ export default function FilterMultiSelect({
                 {allSelected && <Check size={12} className="text-white" />}
               </span>
               {allLabel}
-            </button>
+            </div>
 
             {/* Search input */}
             {searchable && (

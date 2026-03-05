@@ -21,7 +21,7 @@ function ScrollToTop() {
 }
 
 /** Shown when loadData() fails (missing CSV, network error, etc.) */
-function DataLoadError({ error, onRetry }) {
+function DataLoadError({ error, onRetry, retrying }) {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center max-w-lg px-6">
@@ -38,11 +38,13 @@ function DataLoadError({ error, onRetry }) {
         </p>
         <button
           onClick={onRetry}
+          disabled={retrying}
           className="inline-flex items-center gap-2 px-5 py-2.5 text-base font-medium text-white
-                     bg-brand-blue rounded-lg hover:bg-brand-blue-dark transition-colors"
+                     bg-brand-blue rounded-lg hover:bg-brand-blue-dark transition-colors
+                     disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <RefreshCw size={16} />
-          Retry
+          <RefreshCw size={16} className={retrying ? 'animate-spin' : ''} />
+          {retrying ? 'Retrying…' : 'Retry'}
         </button>
       </div>
     </div>
@@ -51,6 +53,7 @@ function DataLoadError({ error, onRetry }) {
 
 function AppContent() {
   const loadData = useAviationStore((s) => s.loadData)
+  const loading = useAviationStore((s) => s.loading)
   const error = useAviationStore((s) => s.error)
 
   useEffect(() => {
@@ -61,7 +64,7 @@ function AppContent() {
     <PageWrapper>
       <ScrollToTop />
       {error ? (
-        <DataLoadError error={error} onRetry={loadData} />
+        <DataLoadError error={error} onRetry={loadData} retrying={loading} />
       ) : (
         <ErrorBoundary onRetry={loadData}>
           <Routes>

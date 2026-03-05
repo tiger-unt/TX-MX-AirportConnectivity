@@ -20,6 +20,15 @@ export default function NotFoundPage() {
           <Home size={16} />
           Back to Overview
         </Link>
+        <nav className="mt-6" aria-label="Main pages">
+          <p className="text-base text-text-secondary mb-2">Or jump to:</p>
+          <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            <li><Link to="/texas-domestic" className="text-base text-brand-blue hover:underline">Texas Domestic</Link></li>
+            <li><Link to="/texas-mexico" className="text-base text-brand-blue hover:underline">Texas–Mexico</Link></li>
+            <li><Link to="/us-mexico" className="text-base text-brand-blue hover:underline">U.S.–Mexico</Link></li>
+            <li><Link to="/about-data" className="text-base text-brand-blue hover:underline">About the Data</Link></li>
+          </ul>
+        </nav>
       </div>
     </div>
   )

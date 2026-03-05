@@ -16,7 +16,7 @@
  * Make sure every navItems entry has a corresponding Route in App.jsx
  * and vice versa (except the 404 catch-all route).
  */
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Menu, X, ChevronDown } from 'lucide-react'
 
@@ -33,11 +33,24 @@ export default function MainNav() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   const navRef = useRef(null)
+  const hamburgerRef = useRef(null)
+  const firstLinkRef = useRef(null)
 
   // Close mobile menu on route change
   useEffect(() => {
     setMobileOpen(false)
   }, [location.pathname])
+
+  // Focus management: move focus into menu on open, restore on close
+  const prevOpen = useRef(false)
+  useEffect(() => {
+    if (mobileOpen && !prevOpen.current) {
+      requestAnimationFrame(() => firstLinkRef.current?.focus())
+    } else if (!mobileOpen && prevOpen.current) {
+      hamburgerRef.current?.focus()
+    }
+    prevOpen.current = mobileOpen
+  }, [mobileOpen])
 
   return (
     <nav ref={navRef} className="bg-brand-blue relative z-40">
@@ -66,9 +79,11 @@ export default function MainNav() {
         <div className="md:hidden flex items-center justify-between h-12 px-1">
           <span className="text-white text-base font-medium">Navigation</span>
           <button
+            ref={hamburgerRef}
             onClick={() => setMobileOpen(!mobileOpen)}
             className="text-white p-1.5 hover:bg-brand-blue-dark/60 rounded transition-colors"
             aria-label="Toggle navigation"
+            aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
@@ -80,10 +95,11 @@ export default function MainNav() {
             ${mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
         >
           <div className="pb-3 space-y-0.5">
-            {navItems.map((item) => (
+            {navItems.map((item, i) => (
               <NavLink
                 key={item.path}
                 to={item.path}
+                ref={i === 0 ? firstLinkRef : undefined}
                 className={({ isActive }) =>
                   `block px-4 py-2.5 text-base font-medium transition-colors duration-150
                    ${
