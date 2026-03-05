@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Users, Plane, Package, Route, BarChart3, Settings2, MapPin } from 'lucide-react'
+import HeroStardust from '@/components/ui/HeroStardust'
 import { useAviationStore } from '@/stores/aviationStore'
 import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, CLASS_LABELS, AIRCRAFT_GROUP_LABELS, CARRIER_TYPE_LABELS, getCarrierType, BORDER_AIRPORTS, BORDER_AIRPORT_LIST, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
@@ -1067,8 +1068,9 @@ export default function TexasMexicoPage() {
   )
 
   const heroSection = (
-    <div className="gradient-blue text-white">
-      <div className="container-chrome py-10 md:py-14">
+    <div className="gradient-blue text-white relative overflow-hidden">
+      <HeroStardust seed={61} />
+      <div className="container-chrome py-10 md:py-14 relative">
         <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
           Texas&ndash;Mexico Air Connectivity
         </h2>

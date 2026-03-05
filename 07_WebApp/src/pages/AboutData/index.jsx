@@ -1,7 +1,11 @@
 import {
   Database, Filter, ClipboardCheck, FileOutput, Info, BookOpen,
-  AlertTriangle, ExternalLink, FileText, Layers, MapPin, ChevronRight
+  AlertTriangle, ExternalLink, FileText, Layers, MapPin, ChevronRight, Download
 } from 'lucide-react'
+import { useAviationStore } from '@/stores/aviationStore'
+import HeroStardust from '@/components/ui/HeroStardust'
+import { downloadCsv } from '@/lib/downloadCsv'
+import { PAGE_MARKET_COLS, PAGE_SEGMENT_COLS } from '@/lib/downloadColumns'
 
 const SECTIONS = [
   { id: 'source', label: 'Data Source' },
@@ -13,11 +17,13 @@ const SECTIONS = [
 ]
 
 export default function AboutDataPage() {
+  const { marketData, segmentData } = useAviationStore()
   return (
     <>
       {/* Hero */}
-      <div className="gradient-blue text-white">
-        <div className="max-w-5xl mx-auto px-6 py-14 md:py-20">
+      <div className="gradient-blue text-white relative overflow-hidden">
+        <HeroStardust seed={83} />
+        <div className="max-w-5xl mx-auto px-6 py-14 md:py-20 relative">
           <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
             About the Data
           </h1>
@@ -88,7 +94,12 @@ export default function AboutDataPage() {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            {/* Raw Data */}
+            <h5 className="text-base font-bold text-text-primary mt-5 mb-2">Raw Data</h5>
+            <p className="text-base text-text-secondary mb-3">
+              The original, unprocessed tables as published by BTS on the TranStats portal.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <a
                 href="https://transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FMF&QO_fu146_anzr=Nv4%20Pn44vr45"
                 target="_blank"
@@ -96,7 +107,7 @@ export default function AboutDataPage() {
                 className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline"
               >
                 <ExternalLink size={14} />
-                Download Market Data (TranStats)
+                Market Data (TranStats)
               </a>
               <a
                 href="https://transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FMG&QO_fu146_anzr="
@@ -105,8 +116,32 @@ export default function AboutDataPage() {
                 className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline"
               >
                 <ExternalLink size={14} />
-                Download Segment Data (TranStats)
+                Segment Data (TranStats)
               </a>
+            </div>
+
+            {/* Processed & Cleaned Data */}
+            <h5 className="text-base font-bold text-text-primary mt-5 mb-2">Processed &amp; Cleaned Data</h5>
+            <p className="text-base text-text-secondary mb-3">
+              The datasets used by this dashboard — filtered to Texas and Mexico routes, cleaned, and enriched with airport names and coordinates.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={() => downloadCsv(marketData, 'BTS_T-100_Market_Data', PAGE_MARKET_COLS)}
+                disabled={!marketData?.length}
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Download size={14} />
+                Market Data (CSV)
+              </button>
+              <button
+                onClick={() => downloadCsv(segmentData, 'BTS_T-100_Segment_Data', PAGE_SEGMENT_COLS)}
+                disabled={!segmentData?.length}
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Download size={14} />
+                Segment Data (CSV)
+              </button>
             </div>
           </div>
         </section>

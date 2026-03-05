@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import {
   ArrowRightLeft, Route, Plane, Globe, ArrowRight,
   Building2, Database, TrendingUp, Layers,
-  Users, PlaneTakeoff, Package, Mail
+  Users, PlaneTakeoff, Package, Mail, Download
 } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import {
@@ -15,6 +15,9 @@ import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
 import InsightCallout from '@/components/ui/InsightCallout'
 import AirportMap from '@/components/maps/AirportMap'
 import ChartCard from '@/components/ui/ChartCard'
+import HeroStardust from '@/components/ui/HeroStardust'
+import { downloadCsv } from '@/lib/downloadCsv'
+import { PAGE_MARKET_COLS, PAGE_SEGMENT_COLS } from '@/lib/downloadColumns'
 
 export default function OverviewPage() {
   const { marketData, segmentData, airportIndex, loading } = useAviationStore()
@@ -250,14 +253,7 @@ export default function OverviewPage() {
     <>
       {/* Hero */}
       <div className="gradient-blue text-white relative overflow-hidden">
-        {/* Subtle aviation-themed background pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5 L35 25 L55 30 L35 35 L30 55 L25 35 L5 30 L25 25 Z' fill='%23ffffff' fill-opacity='1'/%3E%3C/svg%3E")`,
-            backgroundSize: '60px 60px',
-          }}
-        />
+        <HeroStardust seed={7} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14 relative">
           <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
             Airport Connectivity Dashboard
@@ -460,9 +456,28 @@ export default function OverviewPage() {
             <strong className="text-text-primary">segment data</strong> (each flight leg recorded separately with operational details).
             Both U.S. carriers (T-100) and foreign carriers operating to/from the U.S. (T-100(f)) are included.
           </p>
+          <p className="text-base font-semibold text-text-primary mt-4 mb-2">Download Processed Data</p>
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              onClick={() => downloadCsv(marketData, 'BTS_T-100_Market_Data', PAGE_MARKET_COLS)}
+              disabled={!marketData?.length}
+              className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Download size={14} />
+              Market Data (CSV)
+            </button>
+            <button
+              onClick={() => downloadCsv(segmentData, 'BTS_T-100_Segment_Data', PAGE_SEGMENT_COLS)}
+              disabled={!segmentData?.length}
+              className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Download size={14} />
+              Segment Data (CSV)
+            </button>
+          </div>
           <Link
             to="/about-data"
-            className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline"
+            className="inline-flex items-center gap-1.5 text-base font-semibold text-brand-blue hover:underline mt-4"
           >
             Data details, methodology & limitations
             <ArrowRight size={14} />
