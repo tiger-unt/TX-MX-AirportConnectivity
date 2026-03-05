@@ -247,6 +247,21 @@
     to { opacity: 1; }
   }
 
+  @keyframes yearPop {
+    0% {
+      opacity: 0.9;
+      transform: scale(0.6);
+    }
+    40% {
+      opacity: 0.7;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.15);
+    }
+  }
+
   /* CHART HEIGHT — IMPORTANT
      Chart components (BarChart, LineChart, StackedBarChart, DonutChart, TreemapChart)
      manage their own height via inline `minHeight` styles on their container divs.
@@ -315,6 +330,20 @@
   .fullscreen-chart-area svg .data-dot {
     r: 6;
     stroke-width: 3 !important;
+  }
+
+  /* Reduced motion — respect user preference for less animation */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up,
+    .animate-fade-in {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .typing-dot {
+      animation: none !important;
+      opacity: 0.6 !important;
+    }
   }
 
   /* Hidden scrollbar — used by TabBar for mobile horizontal scroll */

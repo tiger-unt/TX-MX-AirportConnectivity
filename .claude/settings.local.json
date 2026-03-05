@@ -153,7 +153,14 @@
       "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js \"http://localhost:5179\" --screenshots --wait 4000 --route \"/texas-mexico\" --tab border)",
       "Bash(ls \"c:/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Task 6 - Airport Connectivity/07_WebApp/\"*.png)",
       "Bash(ls \"c:/Users/UNT/UNT System/TxDOT IAC 2025-26 - General/Task 6 - Airport Connectivity/07_WebApp/screenshots/\"*.png)",
-      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js \"http://localhost:5179\" --screenshots --wait 4000 --route \"/texas-mexico\" --tab border --viewport 1920x1080)"
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js \"http://localhost:5179\" --screenshots --wait 4000 --route \"/texas-mexico\" --tab border --viewport 1920x1080)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route \"/texas-mexico\" --tab \"border\" --out-dir ./screenshots-border)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route /texas-mexico --out-dir ./screenshots-wcag)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route / --out-dir ./screenshots-wcag-overview)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --out-dir ./screenshots-verify)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route / --out-dir ./screenshots-hero)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route \"/texas-mexico\" --tab \"operations\" --out-dir ./screenshots-verify --wait 4000)",
+      "Bash(MSYS_NO_PATHCONV=1 node scripts/visual-check.js http://localhost:5173 --screenshots --route \"/\" --out-dir ./screenshots-verify --wait 4000)"
     ],
     "additionalDirectories": [
       "c:\\Users\\UNT\\UNT System\\TxDOT IAC 2025-26 - General\\Data-Dashboard-Boilerplate\\Boilerplate\\src\\components\\ui",

@@ -110,18 +110,6 @@ export default function BarChartRace({
       svg.append('g').attr('class', 'bars-group').attr('transform', `translate(${margin.left},${margin.top})`)
       svg.append('g').attr('class', 'labels-group').attr('transform', `translate(${margin.left - 8},${margin.top})`)
       svg.append('g').attr('class', 'values-group').attr('transform', `translate(${margin.left},${margin.top})`)
-      svg
-        .append('text')
-        .attr('class', 'year-watermark')
-        .attr('x', width - margin.right - 10)
-        .attr('y', height - 12)
-        .attr('text-anchor', 'end')
-        .attr('font-size', `${Math.min(96, innerW * 0.2)}px`)
-        .attr('font-weight', '800')
-        .attr('fill', 'var(--color-text-secondary)')
-        .attr('opacity', 0.08)
-        .attr('font-family', 'var(--font-primary)')
-
       structureRef.current = { width, height, maxBars, innerW, innerH, margin }
     }
 
@@ -351,11 +339,7 @@ export default function BarChartRace({
           )
       )
 
-    // ── Year watermark ───────────────────────────────────────────────────
-    svg
-      .select('.year-watermark')
-      .transition(t)
-      .text(currentYear)
+    // (year watermark removed — parent handles year display)
   }, [frames, currentYear, globalMax, maxBars, formatValue, originColors, getColor, width, containerHeight, isFullscreen, fillContainer])
 
   // Min height for the container (bar-count-based, not containerHeight)

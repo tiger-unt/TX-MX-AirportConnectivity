@@ -274,15 +274,22 @@ export default function DataTable({ columns, data, pageSize: fixedPageSize }) {
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  onClick={() => handleSort(col.key)}
-                  className="px-4 py-3 text-left text-base font-semibold text-text-secondary
-                           uppercase tracking-wider cursor-pointer select-none
-                           hover:text-brand-blue transition-colors whitespace-nowrap"
+                  aria-sort={sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  className="px-4 py-3 text-left whitespace-nowrap"
                 >
-                  <span className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSort(col.key)}
+                    className="inline-flex items-center gap-1 text-base font-semibold text-text-secondary
+                             uppercase tracking-wider cursor-pointer select-none
+                             hover:text-brand-blue focus-visible:text-brand-blue
+                             focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue
+                             transition-colors bg-transparent border-none p-0"
+                    aria-label={`Sort by ${col.label}${sortKey === col.key ? (sortDir === 'asc' ? ', currently ascending' : ', currently descending') : ''}`}
+                  >
                     {col.label}
                     <SortIcon col={col.key} />
-                  </span>
+                  </button>
                 </th>
               ))}
             </tr>

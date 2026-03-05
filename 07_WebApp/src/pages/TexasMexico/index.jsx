@@ -1134,85 +1134,96 @@ export default function TexasMexicoPage() {
             tabs={TAB_CONFIG}
             activeTab={activeTab}
             onChange={handleTabChange}
+            idPrefix="txmx-tab"
           />
       </div>
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
-        <OverviewTab
-          mapAirports={mapAirports}
-          mapRoutes={mapRoutes}
-          mapMetric={mapMetric}
-          setMapMetric={setMapMetric}
-          mapMetricConfig={mapMetricConfig}
-          selectedAirport={selectedAirport}
-          setSelectedAirport={setSelectedAirport}
-          paxTrend={paxTrend}
-          flightTrend={flightTrend}
-          freightTrend={freightTrend}
-          mailTrend={mailTrend}
-          latestYear={latestYear}
-        />
+        <div role="tabpanel" id="txmx-tab-panel-overview" aria-labelledby="txmx-tab-overview">
+          <OverviewTab
+            mapAirports={mapAirports}
+            mapRoutes={mapRoutes}
+            mapMetric={mapMetric}
+            setMapMetric={setMapMetric}
+            mapMetricConfig={mapMetricConfig}
+            selectedAirport={selectedAirport}
+            setSelectedAirport={setSelectedAirport}
+            paxTrend={paxTrend}
+            flightTrend={flightTrend}
+            freightTrend={freightTrend}
+            mailTrend={mailTrend}
+            latestYear={latestYear}
+          />
+        </div>
       )}
       {activeTab === 'passengers' && (
-        <PassengersRoutesTab
-          topRoutes={topRoutes}
-          topTxAirports={topTxAirports}
-          topMxAirports={topMxAirports}
-          topMxStates={topMxStates}
-          carrierMarketShare={carrierMarketShare}
-          tableData={tableData}
-          tableColumns={tableColumns}
-          filters={filters}
-          latestYear={latestYear}
-        />
+        <div role="tabpanel" id="txmx-tab-panel-passengers" aria-labelledby="txmx-tab-passengers">
+          <PassengersRoutesTab
+            topRoutes={topRoutes}
+            topTxAirports={topTxAirports}
+            topMxAirports={topMxAirports}
+            topMxStates={topMxStates}
+            carrierMarketShare={carrierMarketShare}
+            tableData={tableData}
+            tableColumns={tableColumns}
+            filters={filters}
+            latestYear={latestYear}
+          />
+        </div>
       )}
       {activeTab === 'operations' && (
-        <OperationsCapacityTab
-          seatTrend={seatTrend}
-          depTrend={depTrend}
-          filteredSegment={filteredSegment}
-          loadFactorTrend={loadFactorTrend}
-          loadFactorDistribution={loadFactorDistribution}
-          payloadUtilTrend={payloadUtilTrend}
-          serviceClassShare={serviceClassShare}
-          serviceClassTrend={serviceClassTrend}
-          serviceClassTrendWide={serviceClassTrendWide}
-          aircraftMixInsight={aircraftMixInsight}
-          aircraftFreightByYear={aircraftFreightByYear}
-          aircraftFreightIntensity={aircraftFreightIntensity}
-          nonNbCargoCarriers={nonNbCargoCarriers}
-          nonNbDepTrend={nonNbDepTrend}
-        />
+        <div role="tabpanel" id="txmx-tab-panel-operations" aria-labelledby="txmx-tab-operations">
+          <OperationsCapacityTab
+            seatTrend={seatTrend}
+            depTrend={depTrend}
+            filteredSegment={filteredSegment}
+            loadFactorTrend={loadFactorTrend}
+            loadFactorDistribution={loadFactorDistribution}
+            payloadUtilTrend={payloadUtilTrend}
+            serviceClassShare={serviceClassShare}
+            serviceClassTrend={serviceClassTrend}
+            serviceClassTrendWide={serviceClassTrendWide}
+            aircraftMixInsight={aircraftMixInsight}
+            aircraftFreightByYear={aircraftFreightByYear}
+            aircraftFreightIntensity={aircraftFreightIntensity}
+            nonNbCargoCarriers={nonNbCargoCarriers}
+            nonNbDepTrend={nonNbDepTrend}
+          />
+        </div>
       )}
       {activeTab === 'cargo' && (
-        <CargoTradeTab
-          freightTrend={freightTrend}
-          mailTrend={mailTrend}
-          freightImbalance={freightImbalance}
-          freightPerDep={freightPerDep}
-          borderSummaryTable={borderSummaryTable}
-          scatterScale={scatterScale}
-          setScatterScale={setScatterScale}
-          classGFreightUtilTrend={classGFreightUtilTrend}
-          classGFreightUtilByRoute={classGFreightUtilByRoute}
-          classGStats={classGStats}
-        />
+        <div role="tabpanel" id="txmx-tab-panel-cargo" aria-labelledby="txmx-tab-cargo">
+          <CargoTradeTab
+            freightTrend={freightTrend}
+            mailTrend={mailTrend}
+            freightImbalance={freightImbalance}
+            freightPerDep={freightPerDep}
+            borderSummaryTable={borderSummaryTable}
+            scatterScale={scatterScale}
+            setScatterScale={setScatterScale}
+            classGFreightUtilTrend={classGFreightUtilTrend}
+            classGFreightUtilByRoute={classGFreightUtilByRoute}
+            classGStats={classGStats}
+          />
+        </div>
       )}
       {activeTab === 'border' && (
-        <BorderAirportsTab
-          borderMapAirports={borderMapAirports}
-          hoveredBorderAirport={hoveredBorderAirport}
-          setHoveredBorderAirport={setHoveredBorderAirport}
-          borderPaxShare={borderPaxShare}
-          borderCargoShare={borderCargoShare}
-          borderInsight={borderInsight}
-          odMatrixData={odMatrixData}
-          matrixMetric={matrixMetric}
-          setMatrixMetric={setMatrixMetric}
-          airportIndex={airportIndex}
-          routeEvolutionData={routeEvolutionData}
-        />
+        <div role="tabpanel" id="txmx-tab-panel-border" aria-labelledby="txmx-tab-border">
+          <BorderAirportsTab
+            borderMapAirports={borderMapAirports}
+            hoveredBorderAirport={hoveredBorderAirport}
+            setHoveredBorderAirport={setHoveredBorderAirport}
+            borderPaxShare={borderPaxShare}
+            borderCargoShare={borderCargoShare}
+            borderInsight={borderInsight}
+            odMatrixData={odMatrixData}
+            matrixMetric={matrixMetric}
+            setMatrixMetric={setMatrixMetric}
+            airportIndex={airportIndex}
+            routeEvolutionData={routeEvolutionData}
+          />
+        </div>
       )}
     </DashboardLayout>
   )

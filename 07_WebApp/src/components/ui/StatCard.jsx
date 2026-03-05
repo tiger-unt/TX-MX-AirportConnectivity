@@ -36,7 +36,78 @@
  *   label text, value formatting, and trend calculations in the PAGE components
  *   that use StatCard — not here. This file does not need modification.
  */
+import { useState, useEffect, useRef } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+
+/**
+ * Animated counter hook — animates a numeric value from 0 to target.
+ * Extracts the leading number from a formatted string (e.g. "11.0M" → 11.0)
+ * and interpolates it while preserving the suffix.
+ */
+function useCountUp(displayValue, duration = 1200, startDelay = 0) {
+  const rafRef = useRef(null)
+  const [shown, setShown] = useState(displayValue)
+
+  useEffect(() => {
+    if (typeof displayValue !== 'string') {
+      setShown(displayValue)
+      return
+    }
+
+    // Parse leading number and suffix from formatted string
+    const match = displayValue.match(/^([^0-9]*)([\d,.]+)(.*)$/)
+    if (!match) {
+      setShown(displayValue)
+      return
+    }
+
+    const [, prefix, numStr, suffix] = match
+    const target = parseFloat(numStr.replace(/,/g, ''))
+    if (isNaN(target) || target === 0) {
+      setShown(displayValue)
+      return
+    }
+
+    // Count decimal places to preserve formatting
+    const decimalMatch = numStr.match(/\.(\d+)/)
+    const decimals = decimalMatch ? decimalMatch[1].length : 0
+    const useCommas = numStr.includes(',')
+
+    // Start from 0
+    setShown(`${prefix}${(0).toFixed(decimals)}${suffix}`)
+
+    // Delay the count-up so it starts AFTER the card's fade-up CSS animation
+    // completes (500ms base + stagger delay). The 50ms extra ensures the zero
+    // value renders first. This also survives React strict mode's double-mount.
+    const timerId = setTimeout(() => {
+      const start = performance.now()
+      const animate = (now) => {
+        const elapsed = now - start
+        const progress = Math.min(elapsed / duration, 1)
+        // Ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3)
+        const current = target * eased
+        let formatted = current.toFixed(decimals)
+        if (useCommas) {
+          const [intPart, decPart] = formatted.split('.')
+          formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (decPart ? '.' + decPart : '')
+        }
+        setShown(`${prefix}${formatted}${suffix}`)
+        if (progress < 1) {
+          rafRef.current = requestAnimationFrame(animate)
+        }
+      }
+      rafRef.current = requestAnimationFrame(animate)
+    }, startDelay + 50)
+
+    return () => {
+      clearTimeout(timerId)
+      cancelAnimationFrame(rafRef.current)
+    }
+  }, [displayValue, duration])
+
+  return shown
+}
 
 export default function StatCard({
   label,
@@ -49,6 +120,9 @@ export default function StatCard({
   icon: Icon,
   delay = 0,
 }) {
+  // Start count-up after the fade-up animation completes (500ms base + stagger delay)
+  const animatedValue = useCountUp(typeof value === 'string' ? value : null, 1200, 500 + delay)
+
   const trendIcon =
     trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus
   const TrendIcon = trendIcon
@@ -70,8 +144,9 @@ export default function StatCard({
 
   return (
     <div
-      className={`group rounded-xl p-5 transition-all duration-300 animate-fade-up row-span-3 grid grid-rows-subgrid gap-y-0 relative ${cardClass}`}
+      className={`group rounded-xl p-5 transition-all duration-300 animate-fade-up row-span-3 grid grid-rows-subgrid gap-y-0 relative hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue ${cardClass}`}
       style={{ animationDelay: `${delay}ms` }}
+      {...(title ? { tabIndex: 0, role: 'group', 'aria-label': `${label}: ${typeof value === 'string' ? value : ''}${trendLabel ? `, ${trendLabel}` : ''}. ${title}` } : {})}
     >
       {/* Row 1 — label */}
       <p
@@ -87,7 +162,7 @@ export default function StatCard({
           highlight ? 'text-white' : 'text-text-primary'
         }`}
       >
-        {value}
+        {typeof value === 'string' ? animatedValue : value}
       </p>
       {/* Row 3 — trend (sized to tallest trend across sibling cards) */}
       <div>
@@ -113,9 +188,9 @@ export default function StatCard({
           />
         </div>
       )}
-      {/* Tooltip — shown on hover when title is provided */}
+      {/* Tooltip — shown on hover or focus-within when title is provided */}
       {title && (
-        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 z-50">
           <div className="bg-gray-900 text-white text-sm rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
             {title}
           </div>

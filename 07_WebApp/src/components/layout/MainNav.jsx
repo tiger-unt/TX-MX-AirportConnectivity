@@ -62,7 +62,7 @@ export default function MainNav() {
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `px-4 h-full flex items-center text-base font-medium transition-all duration-200
+                `group/nav px-4 h-full flex items-center text-base font-medium transition-all duration-200 relative
                  ${
                    isActive
                      ? 'bg-brand-blue-dark text-white shadow-inner'
@@ -71,6 +71,7 @@ export default function MainNav() {
               }
             >
               {item.label}
+              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-white/80 rounded-full transition-all duration-300 w-0 group-hover/nav:w-3/4" />
             </NavLink>
           ))}
         </div>

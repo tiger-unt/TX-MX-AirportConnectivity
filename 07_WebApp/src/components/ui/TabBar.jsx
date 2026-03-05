@@ -16,7 +16,7 @@
  */
 import { useRef, useCallback } from 'react'
 
-export default function TabBar({ tabs, activeTab, onChange, className = '' }) {
+export default function TabBar({ tabs, activeTab, onChange, className = '', idPrefix = 'tab' }) {
   const tabRefs = useRef([])
 
   const handleKeyDown = useCallback((e, index) => {
@@ -51,9 +51,11 @@ export default function TabBar({ tabs, activeTab, onChange, className = '' }) {
           return (
             <button
               key={tab.key}
+              id={`${idPrefix}-${tab.key}`}
               ref={(el) => { tabRefs.current[i] = el }}
               role="tab"
               aria-selected={isActive}
+              aria-controls={`${idPrefix}-panel-${tab.key}`}
               tabIndex={isActive ? 0 : -1}
               onClick={() => onChange(tab.key)}
               onKeyDown={(e) => handleKeyDown(e, i)}

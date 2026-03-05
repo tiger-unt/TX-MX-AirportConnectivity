@@ -252,12 +252,12 @@ export default function OverviewPage() {
   return (
     <>
       {/* Hero */}
-      <div className="gradient-blue text-white relative overflow-hidden">
-        <HeroStardust seed={7} />
+      <div className="gradient-blue text-white relative overflow-visible">
+        <HeroStardust seed={7} animate />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14 relative">
-          <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-balance">
             Airport Connectivity Dashboard
-          </h1>
+          </h2>
           <p className="text-white/80 mt-3 text-base md:text-lg max-w-3xl">
             A data-driven exploration of air connectivity between Texas, Mexico, and the broader
             United States — built on BTS T-100 Air Carrier Statistics

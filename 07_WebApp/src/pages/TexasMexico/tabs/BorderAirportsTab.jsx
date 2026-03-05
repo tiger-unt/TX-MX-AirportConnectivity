@@ -92,6 +92,21 @@ export default function BorderAirportsTab({
     }
   }, [raceFrames])
 
+  /* ── year pop overlay state ─────────────────────────────────────────── */
+  const [popYear, setPopYear] = useState(null)
+  const popTimerRef = useRef(null)
+  const prevYearRef = useRef(currentYear)
+
+  useEffect(() => {
+    if (currentYear != null && currentYear !== prevYearRef.current) {
+      prevYearRef.current = currentYear
+      setPopYear(currentYear)
+      clearTimeout(popTimerRef.current)
+      popTimerRef.current = setTimeout(() => setPopYear(null), 800)
+    }
+    return () => clearTimeout(popTimerRef.current)
+  }, [currentYear])
+
   const hasEvolution = years.length > 0
 
   return (
@@ -324,7 +339,25 @@ export default function BorderAirportsTab({
           </div>
 
           {/* ── Side-by-side: Route Map + Bar Chart Race ────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 relative">
+            {/* Year pop overlay */}
+            {popYear != null && (
+              <div
+                key={popYear}
+                className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+              >
+                <span
+                  className="text-brand-blue font-extrabold tabular-nums select-none"
+                  style={{
+                    fontSize: 'clamp(80px, 12vw, 160px)',
+                    opacity: 0,
+                    animation: 'yearPop 0.8s ease-out forwards',
+                  }}
+                >
+                  {popYear}
+                </span>
+              </div>
+            )}
             <ChartCard
               title="Border Airport Route Map"
               subtitle={`Year ${currentYear} – ${metricUnit}`}

@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
+import PageTransition from '@/components/ui/PageTransition'
 import PageWrapper from '@/components/layout/PageWrapper'
 import OverviewPage from '@/pages/Overview'
 import TexasDomesticPage from '@/pages/TexasDomestic'
@@ -67,15 +68,17 @@ function AppContent() {
         <DataLoadError error={error} onRetry={loadData} retrying={loading} />
       ) : (
         <ErrorBoundary onRetry={loadData}>
-          <Routes>
-            <Route path="/" element={<OverviewPage />} />
-            <Route path="/texas-domestic" element={<TexasDomesticPage />} />
-            <Route path="/texas-international" element={<TexasInternationalPage />} />
-            <Route path="/us-mexico" element={<USMexicoPage />} />
-            <Route path="/texas-mexico" element={<TexasMexicoPage />} />
-            <Route path="/about-data" element={<AboutDataPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+          <PageTransition>
+            <Routes>
+              <Route path="/" element={<OverviewPage />} />
+              <Route path="/texas-domestic" element={<TexasDomesticPage />} />
+              <Route path="/texas-international" element={<TexasInternationalPage />} />
+              <Route path="/us-mexico" element={<USMexicoPage />} />
+              <Route path="/texas-mexico" element={<TexasMexicoPage />} />
+              <Route path="/about-data" element={<AboutDataPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </PageTransition>
         </ErrorBoundary>
       )}
     </PageWrapper>

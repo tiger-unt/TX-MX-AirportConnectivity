@@ -24,9 +24,9 @@ export default function AboutDataPage() {
       <div className="gradient-blue text-white relative overflow-hidden">
         <HeroStardust seed={83} />
         <div className="max-w-5xl mx-auto px-6 py-14 md:py-20 relative">
-          <h1 className="text-3xl md:text-4xl font-bold text-white text-balance">
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-balance">
             About the Data
-          </h1>
+          </h2>
           <p className="text-white/70 mt-3 text-base md:text-lg">
             How BTS T-100 data was collected, cleaned, and prepared for this
             dashboard — and what you should know when interpreting the numbers.

@@ -124,7 +124,7 @@ export default function ChartCard({
     <ZoomRangeContext.Provider value={setZoomRange}>
       <div
         className={`bg-white rounded-xl border border-border-light shadow-xs min-w-0
-                    hover:shadow-sm transition-shadow duration-300 overflow-hidden
+                    hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 overflow-hidden
                     flex flex-col ${className}`}
       >
         {/* Header */}
@@ -147,16 +147,18 @@ export default function ChartCard({
             )}
             <button
               onClick={handleExportPng}
-              className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
-                         hover:bg-surface-alt transition-all duration-150"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md text-text-secondary hover:text-brand-blue
+                         hover:bg-surface-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue transition-all duration-150"
+              aria-label="Export as PNG"
               title="Export as PNG"
             >
               <ImageIcon size={14} />
             </button>
             <button
               onClick={() => setIsFullscreen(true)}
-              className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
-                         hover:bg-surface-alt transition-all duration-150"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md text-text-secondary hover:text-brand-blue
+                         hover:bg-surface-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue transition-all duration-150"
+              aria-label="Full screen"
               title="Full screen"
             >
               <Maximize2 size={14} />
@@ -164,8 +166,9 @@ export default function ChartCard({
             {onReset && (
               <button
                 onClick={onReset}
-                className="p-1.5 rounded-md text-text-secondary hover:text-brand-blue
-                           hover:bg-surface-alt transition-all duration-150"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md text-text-secondary hover:text-brand-blue
+                           hover:bg-surface-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue transition-all duration-150"
+                aria-label="Reset filter"
                 title="Reset filter"
               >
                 <RotateCcw size={14} />
@@ -178,7 +181,7 @@ export default function ChartCard({
             Chart components set their own minHeight based on data/legend needs.
             The flex-1 lets this area grow; the chart's inline minHeight drives expansion.
             When fullscreen is active, hide card children to avoid duplicate Leaflet maps. */}
-        <div ref={chartAreaRef} className={`px-3 flex-1 ${footnote && !emptyState ? 'pb-2' : 'pb-5'}`} style={{ minHeight }}>
+        <div ref={chartAreaRef} className={`px-3 flex-1 ${footnote && !emptyState ? 'pb-2' : 'pb-5'}`} style={{ minHeight }} role="img" aria-label={title ? `Chart: ${title}` : undefined}>
           {emptyState ? (
             <div className="flex items-center justify-center h-48 text-text-secondary italic text-base px-4 text-center">
               {emptyState}

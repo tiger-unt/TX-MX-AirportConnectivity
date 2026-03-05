@@ -143,7 +143,7 @@ export default function DownloadButton({ summary, detail, size = 'default' }) {
               ref={(el) => { menuItemRefs.current[0] = el }}
               role="menuitem"
               onClick={() => handleClick('summary')}
-              className="w-full text-left px-3 py-1.5 text-base text-text-primary hover:bg-surface-alt focus:bg-surface-alt focus:outline-none transition-colors"
+              className="w-full text-left px-3 py-1.5 text-base text-text-primary hover:bg-surface-alt focus:bg-surface-alt focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-inset transition-colors outline-none"
               title="Aggregated totals matching the current chart view"
             >
               Summary (CSV)
@@ -154,7 +154,7 @@ export default function DownloadButton({ summary, detail, size = 'default' }) {
               ref={(el) => { menuItemRefs.current[hasSummary ? 1 : 0] = el }}
               role="menuitem"
               onClick={() => handleClick('detail')}
-              className="w-full text-left px-3 py-1.5 text-base text-text-primary hover:bg-surface-alt focus:bg-surface-alt focus:outline-none transition-colors"
+              className="w-full text-left px-3 py-1.5 text-base text-text-primary hover:bg-surface-alt focus:bg-surface-alt focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-inset transition-colors outline-none"
               title="Row-level records with all columns for the current filters"
             >
               Detail (CSV)
