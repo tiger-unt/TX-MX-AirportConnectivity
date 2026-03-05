@@ -100,6 +100,12 @@ Scripts use relative paths from their own location (`Path(__file__).parent`).
 3. Every row enriched with airport names + coordinates via `enrichRow()`
 4. Pages subscribe to store, filter data by route predicates, render charts/tables/maps
 
+### Error Handling
+- **Data load failure**: If `loadData()` fails, the store sets `error` with the message. `AppContent` in `App.jsx` reads `error` and renders a `DataLoadError` component (warning icon, error message, Retry button) instead of routes. The Retry button calls `loadData()` again.
+- **Render errors**: `ErrorBoundary` (class component) wraps routes and catches rendering/lifecycle errors. Its "Try again" button resets error state AND calls an optional `onRetry` callback prop — in `App.jsx` this is wired to `loadData()` so recovery also re-fetches data.
+- **Empty filtered data**: `DashboardLayout` accepts a `filteredEmpty` prop. When `filteredEmpty && activeCount > 0`, it replaces page content with a "No data matches the current filters" message and a Clear-all button. All four data pages pass `filteredEmpty={!filtered.length}`.
+- **Per-chart empty state**: Individual `ChartCard` instances use the `emptyState` prop with contextual messages (e.g., "Cargo flights do not carry passengers") via the `isEmptyOrAllZero()` helper from `aviationHelpers.js`.
+
 ### Pages & Routes
 | Route | Page | Data Filter |
 |---|---|---|
@@ -229,6 +235,9 @@ All chart components accept a `formatValue` prop that controls how numeric value
 2. **Always pass `formatValue` explicitly** when rendering a chart. Do not rely on the default formatter — be explicit about units.
 3. **Y-axis ticks use `formatValue` directly** — LineChart and StackedBarChart call `formatValue(v)` for each Y-axis tick label. This ensures the axis shows the same units as the tooltip (e.g., "1.5M lbs" for mail, "3.0M" for passengers). The helper `getAxisFormatter(maxValue, prefix, suffix)` in `chartColors.js` is available for custom axis formatting if needed.
 4. **BTS data units**: PASSENGERS = count, DEPARTURES = count, SEATS = count, FREIGHT = pounds (lbs), MAIL = pounds (lbs). None of these are currency.
+
+### Accessibility
+- **AskAIDrawer**: Focus trap keeps Tab cycling within the drawer while open. On open, focus moves to the first focusable element after the slide-in transition. On close, focus restores to the previously focused element. Uses `aria-modal="true"` and `role="dialog"`.
 
 ### Key Patterns
 - **Data-agnostic components**: Charts, tables, and cards receive data as props — no hardcoded field names

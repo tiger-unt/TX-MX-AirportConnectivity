@@ -1089,6 +1089,7 @@ export default function TexasMexicoPage() {
       onResetAll={resetFilters}
       activeCount={activeCount}
       activeTags={activeTags}
+      filteredEmpty={!filtered.length}
       pageDownload={{
         market: { data: filtered, filename: 'texas-mexico-market-data', columns: PAGE_MARKET_COLS },
         segment: { data: filteredSegment, filename: 'texas-mexico-segment-data', columns: PAGE_SEGMENT_COLS },

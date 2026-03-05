@@ -14,6 +14,8 @@
  *   - onResetAll   — Callback to clear all active filters
  *   - activeCount  — Number of active filter categories
  *   - activeTags   — Array of { group, label, onRemove } for tag display
+ *   - filteredEmpty — Boolean; when true AND filters are active, replaces
+ *                     children with a "no data" message and a Clear-all button
  *
  * The hero section spans full width; the filter sidebar begins below it.
  *
@@ -22,12 +24,12 @@
  * structural wrapper only. If you want to move the sidebar to the left,
  * add a top toolbar, or change the layout structure, edit this file.
  */
-import { Filter, X } from 'lucide-react'
+import { Filter, X, SearchX } from 'lucide-react'
 import FilterSidebar from '@/components/filters/FilterSidebar'
 import FilterBar from '@/components/filters/FilterBar'
 import FilterContext from '@/contexts/FilterContext'
 
-export default function DashboardLayout({ children, hero, filters, onResetAll, activeCount, activeTags, pageDownload }) {
+export default function DashboardLayout({ children, hero, filters, onResetAll, activeCount, activeTags, pageDownload, filteredEmpty }) {
   return (
     <FilterContext.Provider value={filters ? { filters, onResetAll, activeCount, activeTags } : null}>
       {/* Hero — full-width, above the filter sidebar */}
@@ -62,7 +64,23 @@ export default function DashboardLayout({ children, hero, filters, onResetAll, a
               </FilterBar>
             </div>
           )}
-          {children}
+          {/* Global empty-data banner — shown when filters remove all data */}
+          {filteredEmpty && activeCount > 0 && (
+            <div className="mx-4 sm:mx-6 mt-8 mb-4 flex flex-col items-center justify-center py-12 text-center">
+              <SearchX size={40} className="text-text-secondary/40 mb-3" />
+              <p className="text-lg font-medium text-text-primary mb-1">No data matches the current filters</p>
+              <p className="text-base text-text-secondary mb-4">Try broadening your filter selection or clearing all filters.</p>
+              <button
+                onClick={onResetAll}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-base font-medium text-white
+                           bg-brand-blue rounded-lg hover:bg-brand-blue-dark transition-colors"
+              >
+                <X size={14} />
+                Clear all filters
+              </button>
+            </div>
+          )}
+          {(!filteredEmpty || !activeCount) && children}
         </div>
 
         {/* Desktop sidebar filters */}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { X, Sparkles, Trash2 } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 import ChatMessageList from './ChatMessageList'
@@ -13,20 +13,56 @@ export default function AskAIDrawer() {
   const sendMessage = useChatStore((s) => s.sendMessage)
   const clearChat = useChatStore((s) => s.clearChat)
 
-  // Close on Escape key
+  const drawerRef = useRef(null)
+  const previousFocusRef = useRef(null)
+
+  // Focus trap: keep Tab cycling within the drawer while open
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Escape') { close(); return }
+    if (e.key !== 'Tab') return
+
+    const drawer = drawerRef.current
+    if (!drawer) return
+    const focusable = drawer.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )
+    if (!focusable.length) return
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus() }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+  }, [close])
+
+  // Manage focus on open/close and body scroll lock
   useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') close()
-    }
     if (isOpen) {
-      document.addEventListener('keydown', handleEsc)
+      previousFocusRef.current = document.activeElement
+      document.addEventListener('keydown', handleKeyDown)
       document.body.style.overflow = 'hidden'
+      // Move focus into the drawer after the slide-in transition
+      const timer = setTimeout(() => {
+        const drawer = drawerRef.current
+        if (drawer) {
+          const first = drawer.querySelector(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          )
+          if (first) first.focus()
+        }
+      }, 50)
+      return () => { clearTimeout(timer); document.removeEventListener('keydown', handleKeyDown); document.body.style.overflow = '' }
     }
-    return () => {
-      document.removeEventListener('keydown', handleEsc)
-      document.body.style.overflow = ''
+    // Restore focus when closing
+    if (previousFocusRef.current) {
+      previousFocusRef.current.focus()
+      previousFocusRef.current = null
     }
-  }, [isOpen, close])
+    return () => { document.removeEventListener('keydown', handleKeyDown); document.body.style.overflow = '' }
+  }, [isOpen, handleKeyDown])
 
   return (
     <>
@@ -40,12 +76,14 @@ export default function AskAIDrawer() {
 
       {/* Drawer panel */}
       <aside
+        ref={drawerRef}
         className={`fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-xl z-50
           flex flex-col transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
         role="dialog"
         aria-label="Ask AI"
         aria-hidden={!isOpen}
+        aria-modal="true"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">

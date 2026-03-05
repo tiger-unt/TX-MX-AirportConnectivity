@@ -481,6 +481,7 @@ export default function TexasInternationalPage() {
       onResetAll={resetFilters}
       activeCount={activeCount}
       activeTags={activeTags}
+      filteredEmpty={!filtered.length}
       pageDownload={{
         market: { data: filtered, filename: 'texas-international-market-data', columns: PAGE_MARKET_COLS },
         segment: { data: filteredSegment, filename: 'texas-international-segment-data', columns: PAGE_SEGMENT_COLS },

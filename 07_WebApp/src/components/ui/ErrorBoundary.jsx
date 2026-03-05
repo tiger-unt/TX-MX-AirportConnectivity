@@ -14,11 +14,13 @@
  *
  * Usage
  *   Wrap any section of the component tree that should be isolated:
- *     <ErrorBoundary>
+ *     <ErrorBoundary onRetry={() => store.loadData()}>
  *       <SomeChart />
  *     </ErrorBoundary>
  *   If <SomeChart> throws during render, the fallback UI replaces it while
- *   the rest of the page remains functional.
+ *   the rest of the page remains functional. The optional `onRetry` callback
+ *   is invoked alongside the state reset when the user clicks "Try again",
+ *   allowing data reloading or navigation recovery.
  *
  * Why a class component?
  *   React error boundaries require getDerivedStateFromError and componentDidCatch,
@@ -59,7 +61,10 @@ export default class ErrorBoundary extends Component {
               An error occurred while rendering this section. Try refreshing the page.
             </p>
             <button
-              onClick={() => this.setState({ hasError: false, error: null })}
+              onClick={() => {
+                this.setState({ hasError: false, error: null })
+                if (this.props.onRetry) this.props.onRetry()
+              }}
               className="px-4 py-2 text-base font-medium text-white bg-brand-blue rounded-lg
                          hover:bg-brand-blue-dark transition-colors"
             >

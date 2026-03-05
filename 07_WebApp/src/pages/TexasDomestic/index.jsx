@@ -484,6 +484,7 @@ export default function TexasDomesticPage() {
       onResetAll={resetFilters}
       activeCount={activeCount}
       activeTags={activeTags}
+      filteredEmpty={!filtered.length}
       pageDownload={{
         market: { data: filtered, filename: 'texas-domestic-market-data', columns: PAGE_MARKET_COLS },
         segment: { data: filteredSegment, filename: 'texas-domestic-segment-data', columns: PAGE_SEGMENT_COLS },

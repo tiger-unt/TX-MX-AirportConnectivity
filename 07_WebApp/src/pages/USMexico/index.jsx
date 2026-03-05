@@ -644,6 +644,7 @@ export default function USMexicoPage() {
       onResetAll={resetFilters}
       activeCount={activeCount}
       activeTags={activeTags}
+      filteredEmpty={!filtered.length}
       pageDownload={{
         market: { data: filtered, filename: 'us-mexico-market-data', columns: PAGE_MARKET_COLS },
         segment: { data: filteredSegment, filename: 'us-mexico-segment-data', columns: PAGE_SEGMENT_COLS },

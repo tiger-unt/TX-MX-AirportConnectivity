@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import PageWrapper from '@/components/layout/PageWrapper'
@@ -19,8 +20,38 @@ function ScrollToTop() {
   return null
 }
 
+/** Shown when loadData() fails (missing CSV, network error, etc.) */
+function DataLoadError({ error, onRetry }) {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="text-center max-w-lg px-6">
+        <AlertTriangle size={48} className="text-brand-orange mx-auto mb-4" />
+        <h2 className="text-2xl font-semibold text-text-primary mb-2">
+          Unable to load data
+        </h2>
+        <p className="text-base text-text-secondary mb-2">
+          The dashboard could not load its data files. This may be a temporary
+          network issue or the data files may be missing from the server.
+        </p>
+        <p className="text-base text-text-secondary/70 mb-6 font-mono break-all">
+          {error}
+        </p>
+        <button
+          onClick={onRetry}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-base font-medium text-white
+                     bg-brand-blue rounded-lg hover:bg-brand-blue-dark transition-colors"
+        >
+          <RefreshCw size={16} />
+          Retry
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function AppContent() {
   const loadData = useAviationStore((s) => s.loadData)
+  const error = useAviationStore((s) => s.error)
 
   useEffect(() => {
     loadData()
@@ -29,17 +60,21 @@ function AppContent() {
   return (
     <PageWrapper>
       <ScrollToTop />
-      <ErrorBoundary>
-        <Routes>
-          <Route path="/" element={<OverviewPage />} />
-          <Route path="/texas-domestic" element={<TexasDomesticPage />} />
-          <Route path="/texas-international" element={<TexasInternationalPage />} />
-          <Route path="/us-mexico" element={<USMexicoPage />} />
-          <Route path="/texas-mexico" element={<TexasMexicoPage />} />
-          <Route path="/about-data" element={<AboutDataPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </ErrorBoundary>
+      {error ? (
+        <DataLoadError error={error} onRetry={loadData} />
+      ) : (
+        <ErrorBoundary onRetry={loadData}>
+          <Routes>
+            <Route path="/" element={<OverviewPage />} />
+            <Route path="/texas-domestic" element={<TexasDomesticPage />} />
+            <Route path="/texas-international" element={<TexasInternationalPage />} />
+            <Route path="/us-mexico" element={<USMexicoPage />} />
+            <Route path="/texas-mexico" element={<TexasMexicoPage />} />
+            <Route path="/about-data" element={<AboutDataPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </ErrorBoundary>
+      )}
     </PageWrapper>
   )
 }
