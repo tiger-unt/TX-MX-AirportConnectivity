@@ -1,0 +1,76 @@
+---
+name: bts-air-carrier-statistics-database
+description: Guidelines for working with the BTS Air Carrier Statistics database (SQLite).
+---
+
+# BTS Air Carrier Statistics Database
+
+This rule provides the location and schema context for the BTS Air Carrier Statistics database. Use this information whenever you are asked to query, analyze, or write scripts for this data.
+
+## Database Location
+- **Root Directory**: `02_Data_Staging\BTS_Air_Carrier_Statistics\Database`
+- **Database File**: `BTS_Air_Carrier_Statistics.db`
+- **Schema Reference**: `Database_Schema.json`
+- **Detailed Documentation**: `Database_Schema_README.md`
+
+## Data Dictionaries
+Data dictionaries provide detailed field descriptions and definitions for the BTS data tables:
+- **Market Data Dictionary**: `01_Raw Data\BTS_Air_Carrier_Statistics\Dictionary_market.csv`
+- **Segment Data Dictionary**: `01_Raw Data\BTS_Air_Carrier_Statistics\Dictionary_segment.csv`
+
+Each dictionary contains:
+- `SYS_FIELD_NAME`: The actual column name used in the database tables
+- `FIELD_DESC`: Detailed description of what the field represents, including units, codes, and usage notes
+
+**Key Fields to Note:**
+- Use `UNIQUE_CARRIER` for consistent carrier analysis across years (handles code reuse)
+- Use `AIRPORT_ID`/`AIRPORT_SEQ_ID` for airport identification (airport codes can change over time)
+- Use `CITY_MARKET_ID` to consolidate airports serving the same metropolitan area
+- `DATA_SOURCE`: Two-character code — first letter: D (Domestic route) or I (International route); second letter: U (U.S. carrier) or F (Foreign carrier). Values: DU, IU, DF, IF.
+- Distance is measured in miles, freight/mail in pounds, air time in minutes
+
+## Table Summary & Key Columns
+
+### 1. `BORDER_AIRPORTS` (~244 records)
+Focuses on Texas border airports and relevant Mexican airports.
+- `AIRPORT_ID`: Unique identifier
+- `IATA_CODE`: 3-letter airport code (e.g., IAH, MEX)
+- `DISPLAY_AIRPORT_NAME`: Full airport name
+- `AIRPORT_STATE_NAME`: State (e.g., Texas)
+- `AIRPORT_COUNTRY_NAME`: Country (United States, Mexico)
+- `WKT`: Geometry point for GIS mapping
+
+### 2. `BTS_MARKET` (~8.3M records)
+Market-level data (O&D passengers, freight, mail). Better for "True Origin/Destination" analysis.
+- `YEAR`, `QUARTER`, `MONTH`: Time periods
+- `ORIGIN`, `DEST`: 3-letter airport codes
+- `PASSENGERS`: Total enplaned passengers
+- `FREIGHT`, `MAIL`: Weight in pounds
+- `ORIGIN_STATE_ABR`, `DEST_STATE_ABR`: State abbreviations (e.g., 'TX')
+- `ORIGIN_COUNTRY_NAME`, `DEST_COUNTRY_NAME`: Country names
+
+### 3. `BTS_SEGMENT` (~11.4M records)
+Leg-by-leg flight data. Better for "Operational" analysis (seats, flight counts).
+- Includes all `BTS_MARKET` columns plus:
+- `DEPARTURES_PERFORMED`: Actual flights flown
+- `SEATS`: Total available seats
+- `AIRCRAFT_TYPE`: Code for aircraft model
+- `AIR_TIME`: Flight duration (minutes)
+
+## Guidelines for the Agent
+1. **Always use the JSON schema**: Reference `Database_Schema.json` for exact column names and data types before writing SQL.
+2. **Texas-Mexico Focus**: Most queries should filter by `ORIGIN_STATE_ABR = 'TX'` and `DEST_COUNTRY_NAME = 'Mexico'` (or vice versa).
+3. **Performance**: Main tables are large (8M+ rows). Always use indexed columns (`YEAR`, `ORIGIN`, `DEST`) in `WHERE` clauses where possible.
+4. **Data Source**: Use `DATA_SOURCE IN ('IU','IF')` for International routes or `DATA_SOURCE IN ('DU','DF')` for Domestic routes. Use second letter to filter by carrier nationality: U = U.S. carrier, F = Foreign carrier.
+5. **GIS Analysis**: Use the `WKT` column in `BORDER_AIRPORTS` for mapping tasks.
+
+## Example Query Pattern
+```sql
+-- Get total passengers from Texas to Mexico by year
+SELECT YEAR, SUM(PASSENGERS) as Total_Pax
+FROM BTS_MARKET
+WHERE ORIGIN_STATE_ABR = 'TX' 
+  AND DEST_COUNTRY_NAME = 'Mexico'
+GROUP BY YEAR
+ORDER BY YEAR;
+```
