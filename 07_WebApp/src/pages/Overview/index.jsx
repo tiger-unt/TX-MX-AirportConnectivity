@@ -14,7 +14,6 @@ import {
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
 import InsightCallout from '@/components/ui/InsightCallout'
 import AirportMap from '@/components/maps/AirportMap'
-import ChartCard from '@/components/ui/ChartCard'
 import HeroStardust from '@/components/ui/HeroStardust'
 import { downloadCsv } from '@/lib/downloadCsv'
 import { PAGE_MARKET_COLS, PAGE_SEGMENT_COLS } from '@/lib/downloadColumns'
@@ -253,7 +252,7 @@ export default function OverviewPage() {
     <>
       {/* Hero */}
       <div className="gradient-blue text-white relative overflow-visible">
-        <HeroStardust seed={7} animate />
+        <HeroStardust seed={7} animate tall />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14 relative">
           <h2 className="text-3xl md:text-4xl font-bold text-white text-balance">
             Airport Connectivity Dashboard
@@ -264,27 +263,31 @@ export default function OverviewPage() {
             {minYear && latestYear ? ` (${minYear}–${latestYear})` : ''}.
           </p>
         </div>
-      </div>
 
-      {/* ── TX-MX Route Map ─────────────────────────────────────────── */}
+      {/* ── TX-MX Route Map ───────────────────────────────────────────────────── */}
       {!loading && mapAirports.length > 0 && (
-        <div className="bg-surface-alt border-y border-border-light">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-            <ChartCard
-              title={`Texas–Mexico Route Network (${latestYear})`}
-              subtitle="Top routes and airport volumes — click an airport to explore its connections"
-              headerRight={
-                <select
-                  value={mapMetric}
-                  onChange={(e) => setMapMetric(e.target.value)}
-                  className="text-base border border-border rounded-md px-2 py-1 bg-surface-primary"
-                >
-                  {MAP_METRIC_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              }
-            >
+        <div className="relative">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-xl font-bold text-white">
+                  Texas–Mexico Route Network ({latestYear})
+                </h3>
+                <p className="text-white/70 text-base mt-0.5">
+                  Top routes and airport volumes — click an airport to explore its connections
+                </p>
+              </div>
+              <select
+                value={mapMetric}
+                onChange={(e) => setMapMetric(e.target.value)}
+                className="text-base border border-white/30 rounded-md px-2 py-1 bg-white/10 text-white"
+              >
+                {MAP_METRIC_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="text-text-primary">{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="rounded-xl overflow-hidden ring-1 ring-white/20">
               <AirportMap
                 airports={mapAirports}
                 routes={mapRoutes}
@@ -303,10 +306,11 @@ export default function OverviewPage() {
                 zoom={5}
                 height="500px"
               />
-            </ChartCard>
+            </div>
           </div>
         </div>
       )}
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* ── Our Approach ─────────────────────────────────────────────── */}

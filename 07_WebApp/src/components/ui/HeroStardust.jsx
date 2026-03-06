@@ -4,18 +4,18 @@ const PLANE_R = 16 // plane bounding radius at scale 1.0
 const PLANE_PATH =
   'M0-16 C1.2-16 1.8-14.4 1.8-11.2 L1.8 0 L13.2 8 L13.2 11.2 L1.8 5.6 L1.8 20 L5.4 24 L5.4 26.4 L0 23.2 L-5.4 26.4 L-5.4 24 L-1.8 20 L-1.8 5.6 L-13.2 11.2 L-13.2 8 L-1.8 0 L-1.8-11.2 C-1.8-14.4-1.2-16 0-16Z'
 const DEG2RAD = Math.PI / 180
-const W = 2400, H = 200
+const W = 2400, DEFAULT_H = 200
 const MARGIN = 30 // extra space so plane fully exits before wrapping
 
 /**
  * Find how far along heading (hx,hy) from (px,py) until exiting the padded box.
  * Returns smallest positive t where the ray leaves [-MARGIN, W+MARGIN] × [-MARGIN, H+MARGIN].
  */
-function rayExit(px, py, hx, hy) {
+function rayExit(px, py, hx, hy, h) {
   let tMin = Infinity
   if (hx > 0) tMin = Math.min(tMin, (W + MARGIN - px) / hx)
   else if (hx < 0) tMin = Math.min(tMin, (-MARGIN - px) / hx)
-  if (hy > 0) tMin = Math.min(tMin, (H + MARGIN - py) / hy)
+  if (hy > 0) tMin = Math.min(tMin, (h + MARGIN - py) / hy)
   else if (hy < 0) tMin = Math.min(tMin, (-MARGIN - py) / hy)
   return tMin === Infinity ? 300 : tMin // fallback for perfectly axis-aligned edge cases
 }
@@ -31,7 +31,8 @@ function rayExit(px, py, hx, hy) {
  * @param {number} seed - PRNG seed for unique pattern per page
  * @param {boolean} animate - Enable straight-line flight animation (home page only)
  */
-export default function HeroStardust({ seed = 7, animate = false }) {
+export default function HeroStardust({ seed = 7, animate = false, tall = false }) {
+  const H = tall ? 800 : DEFAULT_H
   const planes = useMemo(() => {
     let s = seed
     const rand = () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647 }
@@ -69,8 +70,8 @@ export default function HeroStardust({ seed = 7, animate = false }) {
         const hx = Math.sin(rad)
         const hy = -Math.cos(rad)
         // Distance backward to entry edge, forward to exit edge
-        const tBack = rayExit(x, y, -hx, -hy)
-        const tFwd = rayExit(x, y, hx, hy)
+        const tBack = rayExit(x, y, -hx, -hy, H)
+        const tFwd = rayExit(x, y, hx, hy, H)
         const totalDist = tBack + tFwd
         // Translate offsets (additive to the base translate(x,y))
         const startX = +(-tBack * hx).toFixed(1)
@@ -90,7 +91,7 @@ export default function HeroStardust({ seed = 7, animate = false }) {
       }
     }
     return result
-  }, [seed])
+  }, [seed, H])
 
   // Unique IDs so multiple instances don't clash
   const planeId = `plane-${seed}`
