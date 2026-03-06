@@ -193,6 +193,19 @@ src/
 3. **ChartCard emits a dev-time console warning** if `<p>` elements are detected in children — fix these immediately.
 4. For methodology notes that are NOT inside a ChartCard, place them below the ChartCard or below the grid container (see Class G Freight Payload Utilization pattern).
 
+### FilterSidebar Positioning — MUST USE `sticky`, NEVER `fixed` (RECURRING BUG)
+**This is a bug that appeared during development.** The FilterSidebar was originally implemented with `position: fixed` and JavaScript-driven scroll tracking to dynamically adjust `top` and `height`. This caused the sidebar to float over the viewport independently of the page content, overlapping content and breaking the two-column layout on all data pages.
+
+**Root cause**: `position: fixed` removes the element from document flow. Even with a spacer `<div>` to reserve width, the sidebar floated over content as the user scrolled, detached from the flex layout.
+
+**Fix**: FilterSidebar uses `position: sticky` with `top: 0`, `self-start`, and `h-screen`. This keeps the sidebar in the document flow within the DashboardLayout flex row, sticking to the top of the viewport as the user scrolls while its internal content scrolls independently via `overflow-y-auto`.
+
+**Rules:**
+1. **FilterSidebar must use `sticky top-0 self-start h-screen`** — never `fixed` or `absolute` positioning.
+2. **No spacer div needed** — sticky elements remain in document flow and occupy their natural width.
+3. **No JavaScript scroll/resize listeners for positioning** — sticky positioning is handled entirely by CSS. The only JS scroll listener is for the "Back to top" button visibility threshold.
+4. **DashboardLayout's flex row** (`flex flex-col lg:flex-row`) is the positioning context — the sidebar stretches to the full height of the content area, allowing sticky to work correctly.
+
 ### Design Rules
 - **Minimum font size**: 16px throughout the entire site. No text should be smaller than 16px. **Exceptions** (approved below-16px usage):
   - Filter selection chips/tags (e.g., active filter indicators above the filter bar) — space-constrained UI chrome

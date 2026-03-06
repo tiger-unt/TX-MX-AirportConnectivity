@@ -1,7 +1,7 @@
 /**
  * ── FILTER SIDEBAR ──────────────────────────────────────────────────────
  *
- * Fixed right-side sidebar that provides filter controls for dashboard pages.
+ * Sticky right-side sidebar that provides filter controls for dashboard pages.
  * This component is rendered by DashboardLayout and receives filter controls
  * as children from each page component.
  *
@@ -11,10 +11,8 @@
  *     remove buttons (X) for each selected value
  *   - "Reset all filters" button — visible when any filters are active
  *   - "Back to top" button — appears after scrolling past 300px
- *   - "Ask AI" button — pinned to bottom of sidebar, appears when the
- *     header's Ask AI button has scrolled out of view
- *   - Sticky positioning — sidebar stays fixed to viewport and adjusts
- *     its top offset to sit below the header/nav chrome
+ *   - Sticky positioning — sidebar sticks to top of viewport within
+ *     the flex layout, scrolling its own content independently
  *
  * Props:
  *   - children      — Filter control components (FilterSelect, FilterMultiSelect)
@@ -40,54 +38,18 @@ export default function FilterSidebar({ children, onResetAll, activeCount = 0, a
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [dlOpen, setDlOpen] = useState(false)
   const dlRef = useRef(null)
-  const asideRef = useRef(null)
-  const chromeHeightRef = useRef(0)
-  const rafRef = useRef(0)
   const lastScrollTopRef = useRef(false)
 
   useEffect(() => {
-    const measureChrome = () => {
-      // Prefer the dashboard content marker so the sidebar starts below the hero
-      const marker = document.querySelector('[data-sidebar-top]')
-      if (marker) {
-        chromeHeightRef.current = marker.getBoundingClientRect().top + window.scrollY
-      } else {
-        const nav = document.querySelector('nav')
-        if (nav) chromeHeightRef.current = nav.offsetTop + nav.offsetHeight
+    const onScroll = () => {
+      const shouldShow = window.scrollY > 300
+      if (shouldShow !== lastScrollTopRef.current) {
+        lastScrollTopRef.current = shouldShow
+        setShowScrollTop(shouldShow)
       }
     }
-
-    const onScroll = () => {
-      cancelAnimationFrame(rafRef.current)
-      rafRef.current = requestAnimationFrame(() => {
-        if (!asideRef.current) return
-        const top = Math.max(0, chromeHeightRef.current - window.scrollY)
-        asideRef.current.style.top = `${top}px`
-        asideRef.current.style.height = `calc(100vh - ${top}px)`
-
-        // Only trigger re-render when crossing the threshold
-        const shouldShow = window.scrollY > 300
-        if (shouldShow !== lastScrollTopRef.current) {
-          lastScrollTopRef.current = shouldShow
-          setShowScrollTop(shouldShow)
-        }
-      })
-    }
-
-    const onResize = () => {
-      measureChrome()
-      onScroll()
-    }
-
-    measureChrome()
-    onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onResize, { passive: true })
-    return () => {
-      cancelAnimationFrame(rafRef.current)
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onResize)
-    }
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   // Close download dropdown on outside click
@@ -107,18 +69,12 @@ export default function FilterSidebar({ children, onResetAll, activeCount = 0, a
   const width = collapsed ? 'w-12' : 'w-72'
 
   return (
-    <>
-      {/* Spacer to reserve width in document flow */}
-      <div className={`flex-shrink-0 ${width} transition-all duration-300 ease-in-out`} />
-
-      {/* Fixed sidebar pinned to viewport, below header/nav */}
       <aside
-        ref={asideRef}
-        className={`fixed right-0 flex flex-col z-40
+        className={`sticky top-0 self-start h-screen flex-shrink-0 flex flex-col z-40
           bg-[#edf1f7] border-l border-border-light shadow-sm
+          transition-all duration-300 ease-in-out
           ${width}
         `}
-        style={{ top: 0, height: '100vh', transition: 'width 300ms ease-in-out' }}
       >
         {/* Header — always visible, never scrolls */}
         <div
@@ -248,6 +204,5 @@ export default function FilterSidebar({ children, onResetAll, activeCount = 0, a
         </div>
 
       </aside>
-    </>
   )
 }
