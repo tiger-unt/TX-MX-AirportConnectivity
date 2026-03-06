@@ -21,8 +21,8 @@ export default function AboutDataPage() {
   return (
     <>
       {/* Hero */}
-      <div className="gradient-blue text-white relative overflow-hidden">
-        <HeroStardust seed={83} />
+      <div className="gradient-blue text-white relative overflow-visible">
+        <HeroStardust seed={83} animate />
         <div className="max-w-5xl mx-auto px-6 py-14 md:py-20 relative">
           <h2 className="text-3xl md:text-4xl font-bold text-white text-balance">
             About the Data

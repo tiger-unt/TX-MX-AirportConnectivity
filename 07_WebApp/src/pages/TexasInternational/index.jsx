@@ -460,8 +460,8 @@ export default function TexasInternationalPage() {
   )
 
   const heroSection = (
-    <div className="gradient-blue text-white relative overflow-hidden">
-      <HeroStardust seed={29} />
+    <div className="gradient-blue text-white relative overflow-visible">
+      <HeroStardust seed={29} animate />
       <div className="container-chrome py-10 md:py-14 relative">
         <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
           Texas International Air Connectivity

@@ -623,8 +623,8 @@ export default function USMexicoPage() {
   )
 
   const heroSection = (
-    <div className="gradient-blue text-white relative overflow-hidden">
-      <HeroStardust seed={47} />
+    <div className="gradient-blue text-white relative overflow-visible">
+      <HeroStardust seed={47} animate />
       <div className="container-chrome py-10 md:py-14 relative">
         <h2 className="text-2xl md:text-3xl font-bold text-balance text-white">
           U.S.&ndash;Mexico Air Connectivity
