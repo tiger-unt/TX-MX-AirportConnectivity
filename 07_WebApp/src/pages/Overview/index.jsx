@@ -69,7 +69,7 @@ export default function OverviewPage() {
   }, [marketData])
 
   /* ── homepage map ────────────────────────────────────────────────── */
-  const [mapMetric, setMapMetric] = useState('PASSENGERS')
+  const [mapMetric, setMapMetric] = useState('FLIGHTS')
   const [selectedAirport, setSelectedAirport] = useState(null)
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
 

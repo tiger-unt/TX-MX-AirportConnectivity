@@ -70,7 +70,7 @@ const EXTRACTORS = {
 export default function TexasMexicoPage() {
   const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
-  const [mapMetric, setMapMetric] = useState('PASSENGERS')
+  const [mapMetric, setMapMetric] = useState('FLIGHTS')
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
 
   /* ── tab state (synced to URL for shareability) ──────────────────── */

@@ -51,7 +51,7 @@ const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rg
 export default function TexasDomesticPage() {
   const { marketData, segmentData, airportIndex, loading, filters, setFilter, setFilters, resetFilters } = useAviationStore()
   const [selectedAirport, setSelectedAirport] = useState(null)
-  const [mapMetric, setMapMetric] = useState('PASSENGERS')
+  const [mapMetric, setMapMetric] = useState('FLIGHTS')
   const mapMetricConfig = MAP_METRIC_OPTIONS.find((m) => m.value === mapMetric)
 
   // Reset stale direction filter carried from other pages
