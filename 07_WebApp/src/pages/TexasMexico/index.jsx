@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Users, Plane, Package, Route, BarChart3, Settings2, MapPin } from 'lucide-react'
 import HeroStardust from '@/components/ui/HeroStardust'
 import { useAviationStore } from '@/stores/aviationStore'
+import { trackTabSwitch } from '@/lib/analytics'
 import { fmtCompact, fmtLbs, isTxToMx, isMxToTx, isTxMx, CLASS_LABELS, AIRCRAFT_GROUP_LABELS, CARRIER_TYPE_LABELS, getCarrierType, BORDER_AIRPORTS, BORDER_AIRPORT_LIST, MAP_METRIC_OPTIONS } from '@/lib/aviationHelpers'
 import { useCascadingFilters } from '@/lib/useCascadingFilters'
 import { aggregateRoutes, aggregateAirportVolumes } from '@/lib/airportUtils'
@@ -79,6 +80,8 @@ export default function TexasMexicoPage() {
   const rawTab = searchParams.get('tab')
   const activeTab = VALID_TABS.has(rawTab) ? rawTab : 'overview'
   const handleTabChange = useCallback((key) => {
+    const tab = TAB_CONFIG.find((t) => t.key === key)
+    trackTabSwitch(key, tab?.label || key, '/texas-mexico')
     setSearchParams({ tab: key }, { replace: true })
   }, [setSearchParams])
   const tabBarRef = useRef(null)

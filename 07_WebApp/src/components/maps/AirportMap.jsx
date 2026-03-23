@@ -27,6 +27,7 @@ import { useMemo, useCallback, useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { MapContainer, TileLayer, CircleMarker, Polyline, Popup, useMapEvents, useMap } from 'react-leaflet'
 import { greatCircleArc } from '@/lib/airportUtils'
+import { trackMapClick } from '@/lib/analytics'
 import 'leaflet/dist/leaflet.css'
 
 const COLORS = {
@@ -266,7 +267,9 @@ export default function AirportMap({
   const handleAirportClick = useCallback(
     (iata) => {
       if (!onAirportSelect) return
-      onAirportSelect(selectedAirport === iata ? null : iata)
+      const isSelecting = selectedAirport !== iata
+      trackMapClick(iata, isSelecting ? 'select' : 'deselect')
+      onAirportSelect(isSelecting ? iata : null)
     },
     [onAirportSelect, selectedAirport]
   )

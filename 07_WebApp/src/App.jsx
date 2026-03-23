@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useAviationStore } from '@/stores/aviationStore'
+import { trackPageView } from '@/lib/analytics'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import PageTransition from '@/components/ui/PageTransition'
 import PageWrapper from '@/components/layout/PageWrapper'
@@ -17,13 +18,7 @@ function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
-    // Send page view to Google Analytics for hash-based routing
-    if (window.gtag) {
-      window.gtag('event', 'page_view', {
-        page_path: pathname,
-        page_title: document.title,
-      })
-    }
+    trackPageView(pathname)
   }, [pathname])
   return null
 }

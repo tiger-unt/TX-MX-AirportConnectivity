@@ -7,6 +7,7 @@
 import { create } from 'zustand'
 import * as d3 from 'd3'
 import { buildAirportIndex, enrichRow } from '@/lib/airportUtils'
+import { trackFilter, trackFilterReset } from '@/lib/analytics'
 
 const STRING_FIELDS = [
   'ORIGIN', 'ORIGIN_CITY_NAME', 'ORIGIN_STATE_NM', 'ORIGIN_COUNTRY_NAME',
@@ -53,6 +54,7 @@ export const useAviationStore = create((set) => ({
   },
 
   setFilter: (key, value) => {
+    trackFilter(key, value)
     set((state) => ({
       filters: { ...state.filters, [key]: value },
     }))
@@ -65,6 +67,7 @@ export const useAviationStore = create((set) => ({
   },
 
   resetFilters: () => {
+    trackFilterReset()
     set({
       filters: {
         year: [], direction: '', serviceClass: [], carrierType: '',

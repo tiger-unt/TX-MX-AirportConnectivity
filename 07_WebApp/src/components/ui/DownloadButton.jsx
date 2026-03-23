@@ -28,6 +28,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Download } from 'lucide-react'
 import { downloadCsv } from '@/lib/downloadCsv'
+import { trackDownload } from '@/lib/analytics'
 
 /**
  * Small download icon button with a dropdown to choose Summary or Detail CSV.
@@ -69,7 +70,10 @@ export default function DownloadButton({ summary, detail, size = 'default' }) {
 
   const handleClick = (type) => {
     const src = type === 'summary' ? summary : detail
-    if (src?.data?.length) downloadCsv(src.data, src.filename, src.columns)
+    if (src?.data?.length) {
+      trackDownload(src.filename, type)
+      downloadCsv(src.data, src.filename, src.columns)
+    }
     setOpen(false)
     triggerRef.current?.focus()
   }
