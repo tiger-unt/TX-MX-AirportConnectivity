@@ -22,8 +22,8 @@ import { Menu, X, ChevronDown } from 'lucide-react'
 
 const navItems = [
   { label: 'Home', path: '/' },
-  { label: 'Texas Domestic', path: '/texas-domestic' },
   { label: 'Texas International', path: '/texas-international' },
+  { label: 'Texas Domestic', path: '/texas-domestic' },
   { label: 'U.S.–Mexico', path: '/us-mexico' },
   { label: 'Texas–Mexico', path: '/texas-mexico' },
   { label: 'About the Data', path: '/about-data' },

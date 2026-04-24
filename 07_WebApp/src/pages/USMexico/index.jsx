@@ -22,6 +22,25 @@ import InsightCallout from '@/components/ui/InsightCallout'
 
 const isUsMx = (d) => isUsToMx(d) || isMxToUs(d)
 
+function aggregateByUsState(data, field, sidebarDirection) {
+  const byState = new Map()
+  const doExport = sidebarDirection !== 'MX_TO_US'
+  const doImport = sidebarDirection !== 'US_TO_MX'
+  if (doExport) {
+    data.filter(isUsToMx).forEach((d) => {
+      if (!d.ORIGIN_STATE_NM) return
+      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d[field])
+    })
+  }
+  if (doImport) {
+    data.filter(isMxToUs).forEach((d) => {
+      if (!d.DEST_STATE_NM) return
+      byState.set(d.DEST_STATE_NM, (byState.get(d.DEST_STATE_NM) || 0) + d[field])
+    })
+  }
+  return byState
+}
+
 /* ── COVID annotation for trend charts ─────────────────────────────── */
 const COVID_ANNOTATION = [{ x: 2019.5, x2: 2020.5, label: 'COVID-19', color: 'rgba(217,13,13,0.08)', labelColor: '#d90d0d' }]
 
@@ -423,97 +442,68 @@ export default function USMexicoPage() {
 
   /* ── TX share donut ────────────────────────────────────────────────── */
   const txShareData = useMemo(() => {
-    let txTotal = 0, otherTotal = 0
-    filtered.filter(isUsToMx).forEach((d) => {
-      if (d.ORIGIN_STATE_NM === 'Texas') txTotal += d.PASSENGERS
-      else otherTotal += d.PASSENGERS
-    })
+    const byState = aggregateByUsState(filtered, 'PASSENGERS', filters.direction)
+    const txTotal = byState.get('Texas') || 0
+    let otherTotal = 0
+    byState.forEach((v, k) => { if (k !== 'Texas') otherTotal += v })
     if (txTotal === 0 && otherTotal === 0) return []
     return [
       { label: 'Texas', value: txTotal },
       { label: 'Other States', value: otherTotal },
     ]
-  }, [filtered])
+  }, [filtered, filters.direction])
 
   /* ── top US states ─────────────────────────────────────────────────── */
   const topStates = useMemo(() => {
-    const byState = new Map()
-    filtered.filter(isUsToMx).forEach((d) => {
-      if (!d.ORIGIN_STATE_NM) return
-      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.PASSENGERS)
-    })
+    const byState = aggregateByUsState(filtered, 'PASSENGERS', filters.direction)
     return Array.from(byState, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10)
-  }, [filtered])
+  }, [filtered, filters.direction])
 
   /* ── state ranking: passengers vs cargo ───────────────────────────── */
   const stateRankingCargo = useMemo(() => {
-    const byState = new Map()
-    filtered.filter(isUsToMx).forEach((d) => {
-      if (!d.ORIGIN_STATE_NM) return
-      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.FREIGHT)
-    })
+    const byState = aggregateByUsState(filtered, 'FREIGHT', filters.direction)
     return Array.from(byState, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 15)
-  }, [filtered])
+  }, [filtered, filters.direction])
 
   const stateRankingPax = useMemo(() => {
-    const byState = new Map()
-    filtered.filter(isUsToMx).forEach((d) => {
-      if (!d.ORIGIN_STATE_NM) return
-      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.PASSENGERS)
-    })
+    const byState = aggregateByUsState(filtered, 'PASSENGERS', filters.direction)
     return Array.from(byState, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 15)
-  }, [filtered])
-
-  /* Full national totals (all states, not truncated to top-15) for accurate share % */
-  const nationalTotals = useMemo(() => {
-    let totalPax = 0, totalCargo = 0
-    filtered.filter(isUsToMx).forEach((d) => {
-      if (!d.ORIGIN_STATE_NM) return
-      totalPax += d.PASSENGERS
-      totalCargo += d.FREIGHT
-    })
-    return { totalPax, totalCargo }
-  }, [filtered])
+  }, [filtered, filters.direction])
 
   /* Latest-year national totals & rankings for consistent TX share % (matches KPI card) */
-  const nationalTotalsLatest = useMemo(() => {
-    if (!latestYear) return { totalPax: 0, totalCargo: 0 }
-    let totalPax = 0, totalCargo = 0
-    filtered.filter(isUsToMx).filter((d) => d.YEAR === latestYear).forEach((d) => {
-      if (!d.ORIGIN_STATE_NM) return
-      totalPax += d.PASSENGERS
-      totalCargo += d.FREIGHT
-    })
-    return { totalPax, totalCargo }
+  const latestYearData = useMemo(() => {
+    if (!latestYear) return []
+    return filtered.filter((d) => d.YEAR === latestYear)
   }, [filtered, latestYear])
+
+  const nationalTotalsLatest = useMemo(() => {
+    if (!latestYearData.length) return { totalPax: 0, totalCargo: 0 }
+    const byState = aggregateByUsState(latestYearData, 'PASSENGERS', filters.direction)
+    const totalPax = Array.from(byState.values()).reduce((s, v) => s + v, 0)
+    const byStateCargo = aggregateByUsState(latestYearData, 'FREIGHT', filters.direction)
+    const totalCargo = Array.from(byStateCargo.values()).reduce((s, v) => s + v, 0)
+    return { totalPax, totalCargo }
+  }, [latestYearData, filters.direction])
 
   const stateRankingPaxLatest = useMemo(() => {
-    if (!latestYear) return []
-    const byState = new Map()
-    filtered.filter(isUsToMx).filter((d) => d.YEAR === latestYear).forEach((d) => {
-      if (!d.ORIGIN_STATE_NM) return
-      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.PASSENGERS)
-    })
+    if (!latestYearData.length) return []
+    const byState = aggregateByUsState(latestYearData, 'PASSENGERS', filters.direction)
     return Array.from(byState, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
-  }, [filtered, latestYear])
+  }, [latestYearData, filters.direction])
 
   const stateRankingCargoLatest = useMemo(() => {
-    if (!latestYear) return []
-    const byState = new Map()
-    filtered.filter(isUsToMx).filter((d) => d.YEAR === latestYear).forEach((d) => {
-      if (!d.ORIGIN_STATE_NM) return
-      byState.set(d.ORIGIN_STATE_NM, (byState.get(d.ORIGIN_STATE_NM) || 0) + d.FREIGHT)
-    })
+    if (!latestYearData.length) return []
+    const byState = aggregateByUsState(latestYearData, 'FREIGHT', filters.direction)
     return Array.from(byState, ([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
-  }, [filtered, latestYear])
+  }, [latestYearData, filters.direction])
 
   const txRankStats = useMemo(() => {
     const paxRank = stateRankingPaxLatest.findIndex((d) => d.label === 'Texas') + 1
@@ -790,8 +780,8 @@ export default function USMexicoPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <ChartCard
             title="Texas Share of U.S.–Mexico Air Traffic"
-            subtitle="Passengers from U.S. to Mexico (all filtered years)"
-            downloadData={{ summary: { data: txShareData, filename: 'tx-share-us-mx', columns: DL.regionPax } }}
+            subtitle={`Passengers, ${filters.direction === 'US_TO_MX' ? 'U.S. → Mexico' : filters.direction === 'MX_TO_US' ? 'Mexico → U.S.' : 'both directions'} (all filtered years)`}
+            downloadData={{ summary: { data: txShareData, filename: `tx-share-us-mx-${filters.direction || 'both'}`, columns: DL.regionPax } }}
             emptyState={isEmptyOrAllZero(txShareData) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
             footnote={<p className="text-base text-text-secondary mt-1 italic">Texas's dominant share reflects both geographic proximity to Mexico and the state's concentration of major hub airports.</p>}
           >
@@ -800,8 +790,8 @@ export default function USMexicoPage() {
           <ChartCard
             className="lg:col-span-2"
             title="Top U.S. States Serving Mexico"
-            subtitle={`Total passengers, U.S. → Mexico (all filtered years)`}
-            downloadData={{ summary: { data: topStates, filename: 'top-us-states-to-mexico', columns: DL.statesPax } }}
+            subtitle={`Top 10 by passengers, ${filters.direction === 'US_TO_MX' ? 'U.S. → Mexico' : filters.direction === 'MX_TO_US' ? 'Mexico → U.S.' : 'both directions'} (all filtered years)`}
+            downloadData={{ summary: { data: topStates, filename: `top-us-states-to-mexico-${filters.direction || 'both'}`, columns: DL.statesPax } }}
             emptyState={isEmptyOrAllZero(topStates) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
           >
             <BarChart data={topStates} xKey="label" yKey="value" horizontal formatValue={fmtCompact} />
@@ -836,16 +826,16 @@ export default function USMexicoPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <ChartCard
             title="U.S. States by Mexico Passengers"
-            subtitle="Top 15 states, U.S. &rarr; Mexico"
-            downloadData={{ summary: { data: stateRankingPax, filename: 'us-states-mx-passengers', columns: DL.statesPax } }}
+            subtitle={`Top 15 states, ${filters.direction === 'US_TO_MX' ? 'U.S. → Mexico' : filters.direction === 'MX_TO_US' ? 'Mexico → U.S.' : 'both directions'}`}
+            downloadData={{ summary: { data: stateRankingPax, filename: `us-states-mx-passengers-${filters.direction || 'both'}`, columns: DL.statesPax } }}
             emptyState={isEmptyOrAllZero(stateRankingPax) ? 'No passenger data for the current filter selection. Cargo (Class G) flights do not carry passengers.' : null}
           >
             <BarChart data={stateRankingPax} xKey="label" yKey="value" horizontal formatValue={fmtCompact} selectedBar="Texas" />
           </ChartCard>
           <ChartCard
             title="U.S. States by Mexico Cargo"
-            subtitle="Top 15 states, U.S. &rarr; Mexico (freight lbs)"
-            downloadData={{ summary: { data: stateRankingCargo, filename: 'us-states-mx-cargo', columns: DL.statesCargo } }}
+            subtitle={`Top 15 states, ${filters.direction === 'US_TO_MX' ? 'U.S. → Mexico' : filters.direction === 'MX_TO_US' ? 'Mexico → U.S.' : 'both directions'} (freight lbs)`}
+            downloadData={{ summary: { data: stateRankingCargo, filename: `us-states-mx-cargo-${filters.direction || 'both'}`, columns: DL.statesCargo } }}
           >
             <BarChart data={stateRankingCargo} xKey="label" yKey="value" horizontal formatValue={fmtLbs} selectedBar="Texas" />
           </ChartCard>
